@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>פנקס מדידות אלומיניום</title>
+<meta name="description" content="מדידת חלונות, דלתות וויטרינות בשטח — וייצוא קובץ מסודר ליצרן">
+<meta name="theme-color" content="#2c4e9e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+<style>
+:root{
+  --paper:#f5f4ef; --surface:#ffffff; --ink:#1b2430; --ink2:#5b6472;
+  --pen:#2c4e9e; --pen-soft:#e8edf8; --line:#ddd9cf; --line2:#ece9e0;
+  --ok:#2e7d4f; --warn:#a05a1f; --warn-bg:#fdf3e4; --danger:#b3402f;
+  --shadow:0 1px 3px rgba(27,36,48,.08), 0 4px 14px rgba(27,36,48,.06);
+  --r:12px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#11151c; --surface:#1a212b; --ink:#e9ebee; --ink2:#9aa4b1;
+    --pen:#84a3ea; --pen-soft:#232f45; --line:#2c3542; --line2:#232b37;
+    --ok:#5cba8a; --warn:#e0a35f; --warn-bg:#332818; --danger:#e07a68;
+    --shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="light"]{
+  --paper:#f5f4ef; --surface:#ffffff; --ink:#1b2430; --ink2:#5b6472;
+  --pen:#2c4e9e; --pen-soft:#e8edf8; --line:#ddd9cf; --line2:#ece9e0;
+  --ok:#2e7d4f; --warn:#a05a1f; --warn-bg:#fdf3e4; --danger:#b3402f;
+  --shadow:0 1px 3px rgba(27,36,48,.08), 0 4px 14px rgba(27,36,48,.06);
+}
+:root[data-theme="dark"]{
+  --paper:#11151c; --surface:#1a212b; --ink:#e9ebee; --ink2:#9aa4b1;
+  --pen:#84a3ea; --pen-soft:#232f45; --line:#2c3542; --line2:#232b37;
+  --ok:#5cba8a; --warn:#e0a35f; --warn-bg:#332818; --danger:#e07a68;
+  --shadow:0 1px 3px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:"Segoe UI","Heebo","Assistant",Tahoma,Arial,sans-serif;
+  font-size:16px; line-height:1.45;
+}
+#app{max-width:760px;margin:0 auto;padding:0 14px 90px}
+h1,h2,h3{text-wrap:balance;margin:0}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{
+  font:inherit;color:var(--ink);background:var(--surface);
+  border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;
+}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2.5px solid var(--pen);outline-offset:1px}
+label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bottom:5px}
+.field{margin-bottom:14px}
+.num{font-variant-numeric:tabular-nums}
+
+.topbar{
+  position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;
+  background:var(--paper);padding:14px 0 10px;border-bottom:1px solid var(--line2);margin-bottom:14px;
+}
+.topbar h1{font-size:1.25rem;font-weight:700}
+.topbar .sub{font-size:.8rem;color:var(--ink2)}
+.backbtn{
+  flex:none;width:40px;height:40px;border-radius:10px;background:var(--surface);
+  border:1.5px solid var(--line);font-size:1.2rem;display:flex;align-items:center;justify-content:center;
+}
+.spacer{flex:1}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:46px;padding:10px 18px;border-radius:12px;font-weight:700;
+  background:var(--surface);border:1.5px solid var(--line);color:var(--ink);
+}
+.btn.primary{background:var(--pen);border-color:var(--pen);color:#fff}
+:root[data-theme="dark"] .btn.primary,
+:root:not([data-theme="light"]) .btn.primary{color:#fff}
+@media (prefers-color-scheme: dark){ .btn.primary{color:#0f1420} :root[data-theme="light"] .btn.primary{color:#fff} }
+:root[data-theme="dark"] .btn.primary{color:#0f1420}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.small{min-height:36px;padding:6px 12px;font-size:.85rem;border-radius:9px}
+.btn.wide{width:100%}
+.fab{
+  position:fixed;bottom:18px;inset-inline-start:50%;transform:translateX(50%);
+  z-index:30;box-shadow:var(--shadow);min-width:min(420px,calc(100vw - 40px));
+}
+
+.card{
+  background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);
+  padding:14px;box-shadow:var(--shadow);margin-bottom:12px;
+}
+.card.tap{cursor:pointer}
+.rowline{display:flex;align-items:center;gap:12px}
+.grow{flex:1;min-width:0}
+.muted{color:var(--ink2);font-size:.85rem}
+.title-md{font-weight:700;font-size:1.05rem}
+
+.seg{display:flex;background:var(--surface);border:1.5px solid var(--line);border-radius:11px;overflow:hidden}
+.seg button{flex:1;min-height:42px;padding:8px 6px;font-weight:600;color:var(--ink2);border-inline-start:1px solid var(--line2)}
+.seg button:first-child{border-inline-start:none}
+.seg button.on{background:var(--pen);color:#fff}
+:root[data-theme="dark"] .seg button.on{color:#0f1420}
+@media (prefers-color-scheme: dark){ .seg button.on{color:#0f1420} :root[data-theme="light"] .seg button.on{color:#fff} }
+.seg.big button{min-height:56px;font-size:1rem}
+
+.measure-box{
+  border:2px solid var(--warn);background:var(--warn-bg);border-radius:12px;padding:12px;margin-bottom:14px;
+}
+.measure-box label{color:var(--warn);font-size:.9rem}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{
+  border:1.5px solid var(--line);border-radius:999px;padding:8px 16px;font-weight:600;
+  background:var(--surface);color:var(--ink2);min-height:40px;
+}
+.chip.on{background:var(--pen-soft);border-color:var(--pen);color:var(--pen)}
+
+.typegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (max-width:420px){ .typegrid{grid-template-columns:repeat(2,1fr)} }
+.typecard{
+  border:1.5px solid var(--line);border-radius:11px;background:var(--surface);
+  padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;
+}
+.typecard.on{border-color:var(--pen);background:var(--pen-soft)}
+.typecard .tname{font-size:.72rem;font-weight:600;line-height:1.25}
+.typecard .tnum{font-size:.7rem;color:var(--ink2)}
+
+.sk{color:var(--pen)}
+.sk svg{display:block}
+.preview-wrap{
+  background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);
+  display:flex;justify-content:center;padding:10px;margin-bottom:14px;box-shadow:var(--shadow);
+}
+
+.thumb{flex:none;background:var(--surface);border-radius:8px}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+.colorbox{position:relative}
+.colorlist{
+  position:absolute;top:100%;inset-inline:0;z-index:40;max-height:260px;overflow-y:auto;
+  background:var(--surface);border:1.5px solid var(--line);border-radius:10px;box-shadow:var(--shadow);
+}
+.colorlist .fam{font-size:.72rem;font-weight:700;color:var(--ink2);padding:8px 12px 2px;letter-spacing:.03em}
+.colorlist .copt{display:block;width:100%;text-align:start;padding:9px 12px;border-top:1px solid var(--line2)}
+.colorlist .copt small{color:var(--ink2)}
+.colorlist .copt:active{background:var(--pen-soft)}
+
+.photo-thumb{max-width:130px;max-height:130px;border-radius:10px;border:1.5px solid var(--line);display:block}
+
+.itemrow{display:flex;gap:12px;align-items:center}
+.itemrow .acts{display:flex;flex-direction:column;gap:4px}
+.iconbtn{
+  width:34px;height:34px;border-radius:8px;border:1.5px solid var(--line);
+  background:var(--surface);font-size:.95rem;display:flex;align-items:center;justify-content:center;color:var(--ink2);
+}
+.badge{
+  display:inline-block;padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:700;
+}
+.badge.prod{background:var(--pen);color:#fff}
+:root[data-theme="dark"] .badge.prod{color:#0f1420}
+@media (prefers-color-scheme: dark){ .badge.prod{color:#0f1420} :root[data-theme="light"] .badge.prod{color:#fff} }
+.badge.open{background:var(--warn-bg);color:var(--warn);border:1.5px solid var(--warn)}
+
+.errbanner{
+  background:rgba(179,64,47,.1);border:2px solid var(--danger);color:var(--danger);
+  border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:.92rem;line-height:1.7;
+}
+.empty{
+  text-align:center;color:var(--ink2);padding:40px 16px;border:1.5px dashed var(--line);
+  border-radius:var(--r);margin-bottom:12px;
+}
+
+/* ===== Export sheets ===== */
+.sheet{
+  background:#fff;color:#161a20;width:100%;max-width:210mm;margin:0 auto 16px;
+  padding:9mm;border:1px solid var(--line);border-radius:4px;box-shadow:var(--shadow);
+  direction:rtl;
+}
+.sheet .sk{color:#233f80}
+.sheet-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;min-height:10mm}
+.sheet-top .bsd{font-size:.78rem;font-weight:700;color:#333;line-height:1}
+.sheet-logo{height:13mm;max-width:36mm;object-fit:contain;border-radius:2px}
+.sheet-head{border-bottom:2.5px solid #233f80;padding-bottom:8px;margin-bottom:10px}
+.sheet-head h2{font-size:1.15rem;color:#161a20}
+.sheet-head .meta{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:.82rem;color:#444;margin-top:4px}
+.sheet-grid{display:grid;gap:6px}
+.cell{
+  border:1.5px solid #8a93a5;border-radius:6px;padding:6px;display:flex;flex-direction:column;
+  break-inside:avoid;
+}
+.cell .cellhead{display:flex;justify-content:space-between;align-items:baseline;gap:6px;border-bottom:1px solid #d5d9e2;padding-bottom:2px;margin-bottom:2px}
+.cell .cnum{font-weight:800;font-size:.95rem;color:#233f80}
+.cell .cloc{font-weight:700;font-size:.85rem;color:#161a20;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell .csk{display:flex;justify-content:center;padding:2px 0}
+.cell .cdims{font-weight:800;font-size:1.02rem;text-align:center;font-variant-numeric:tabular-nums;color:#161a20}
+.cell .cdims .u{font-weight:600;font-size:.78rem;color:#555}
+.cell .cbadge{text-align:center;margin:2px 0}
+.cell .cbadge span{font-size:.68rem;font-weight:800;padding:2px 8px;border-radius:99px;border:1.5px solid #233f80;color:#233f80}
+.cell .cbadge span.bopen{border-color:#a05a1f;color:#a05a1f;background:#fdf3e4}
+.cell .cinfo{font-size:.72rem;color:#333;line-height:1.4}
+.cell .cinfo b{color:#161a20}
+.cell .ctype{font-size:.75rem;font-weight:700;color:#233f80;text-align:center}
+.cell .cnote{font-size:.7rem;color:#555;border-top:1px dashed #ccc;margin-top:2px;padding-top:2px}
+.cell img{max-width:100%;max-height:26mm;object-fit:contain;border-radius:4px;margin-top:3px}
+.sheet-foot{text-align:center;font-size:.72rem;color:#777;margin-top:8px}
+
+.exp-tools{position:sticky;top:0;z-index:25;background:var(--paper);padding:12px 0;border-bottom:1px solid var(--line2);margin-bottom:14px}
+
+@media print{
+  body{background:#fff}
+  #app{max-width:none;padding:0}
+  .no-print{display:none !important}
+  .sheet{border:none;box-shadow:none;border-radius:0;margin:0;max-width:none;width:auto;padding:0;page-break-after:always}
+  .sheet:last-of-type{page-break-after:auto}
+  .sheet .sk{color:#000}
+  .sheet-head{border-color:#000}
+  .cell{border-color:#555}
+  .cell .cnum,.cell .ctype{color:#000}
+  .cell .cbadge span{border-color:#000;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cell .cbadge span.bopen{background:#eee;border-color:#000;color:#000}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important} }
+</style>
+
+<div id="app" dir="rtl"></div>
+
+<script>
+"use strict";
+/* ================= DATA ================= */
+const LS_KEY = "alum_projects_v1";
+
+const TYPES = [
+  {id:1,  name:"הזזה 2 זכוכית + רשת",              sashes:2, slide:true,  mesh:true},
+  {id:2,  name:"הזזה 3 זכוכית + רשת",              sashes:3, slide:true,  mesh:true},
+  {id:3,  name:"גלילה חיצוני",                      roller:true, opSel:true, defOp:"electric"},
+  {id:4,  name:"פתיחה ציר",                         hinge:"side"},
+  {id:5,  name:"הזזה 2 כנפיים קבוע תחתון + רשת",   sashes:2, slide:true, fixedBottom:true, mesh:true},
+  {id:6,  name:"תריס הזזה 2 כנף",                   sashes:2, slide:true, slats:true},
+  {id:7,  name:"חלון דריי קיפ",                     hinge:"dreikipp"},
+  {id:8,  name:"חלון קבוע",                         fixedAll:true},
+  {id:9,  name:"גלילה 2 כנפיים + רשת (חבל)",        sashes:2, slide:true, rollerBox:true, mesh:true, opSel:true, defOp:"rope"},
+  {id:10, name:"2 כנפיים גלילה קבוע תחתון + רשת",  sashes:2, slide:true, rollerBox:true, fixedBottom:true, mesh:true, opSel:true, defOp:"electric"},
+  {id:11, name:"2 כנפיים גלילה חשמלי + רשת",       sashes:2, slide:true, rollerBox:true, mesh:true, opSel:true, defOp:"electric"},
+  {id:12, name:"קיפ קבוע תחתון",                    hinge:"kipp", fixedBottom:true},
+  {id:13, name:"דריי קיפ קבוע תחתון",               hinge:"dreikipp", fixedBottom:true},
+];
+const TYPE = id => TYPES.find(t=>t.id===Number(id)) || TYPES[0];
+
+/* סדרות קליל — kind: slide/hinge, style קובע את מראה הפרופיל בשרטוט
+   (minimal=קו דק כמעט סמוי, standard=קו רגיל, heavy=קו עבה מסיבי, belgian=דק + קווי חלוקה בלגיים) */
+const PROFILES = [
+  {code:"1400", kind:"slide", style:"minimal",  desc:"ZEROLINE / FINE S — הזזה מינימליסטית, פרופיל כמעט סמוי"},
+  {code:"1700", kind:"slide", style:"belgian",  desc:"בלגי — הזזה במראה ברזל, פרופיל דק ועדין"},
+  {code:"2200", kind:"slide", style:"heavy",    desc:"BOLD — הזזה / הרם־הזז למפתחי ענק, פרופיל עוצמתי"},
+  {code:"2600", kind:"slide", style:"minimal",  desc:"באוהאוס — דלתות הזזה למפתחי ענק, פרופיל צר"},
+  {code:"4100", kind:"hinge", style:"belgian",  desc:"בלגי פלוס — חלונות ודלתות ציר"},
+  {code:"4300", kind:"hinge", style:"belgian",  desc:"בלגי — ציר, פרופיל צר במראה ברזל"},
+  {code:"4350", kind:"hinge", style:"belgian",  desc:"בייסיק — ציר במראה בלגי חלק"},
+  {code:"4500", kind:"hinge", style:"standard", desc:"קלאסי / בייסיק — ציר, קיפ, דריי־קיפ וקבועים"},
+  {code:"5500", kind:"hinge", style:"standard", desc:"בייסיק — ציר מודרני, כנף סמויה, גם דריי־קיפ"},
+  {code:"5600", kind:"hinge", style:"minimal",  desc:"באוהאוס — חלונות ודלתות ציר, פרופיל צר"},
+  {code:"7000", kind:"slide", style:"standard", desc:"בייסיק — הזזה, הפרופיל הקלאסי הנפוץ"},
+  {code:"7100", kind:"slide", style:"belgian",  desc:"בלגי פלוס — חלונות ודלתות הזזה"},
+  {code:"7300", kind:"slide", style:"belgian",  desc:"בלגי — הזזה למפתח בינוני וגדול"},
+  {code:"7600", kind:"slide", style:"minimal",  desc:"באוהאוס — הזזה, פרופיל צר ומסילות שטוחות"},
+  {code:"9000", kind:"slide", style:"standard", desc:"בייסיק — הזזה / ויטרינה למפתח בינוני וגדול"},
+  {code:"9200", kind:"slide", style:"heavy",    desc:"בייסיק — הזזה למפתחים גדולים, אפשרות מונובלוק"},
+  {code:"9400", kind:"slide", style:"minimal",  desc:"FINE / נוף — הזזה מינימליסטית למפתחים גדולים"},
+];
+const PROF = code => PROFILES.find(p=>p.code===code) || null;
+/* מאפייני ציור לכל סגנון פרופיל: רוחב מסגרת כפולה, עובי קו, קווי חלוקה בלגיים */
+const PSTYLE = {
+  minimal:  {gap:3.5, sw:1.5, div:1.4, bars:false},
+  standard: {gap:7,   sw:2.3, div:2.1, bars:false},
+  heavy:    {gap:11,  sw:3.2, div:3.2, bars:false},
+  belgian:  {gap:5,   sw:1.8, div:1.7, bars:true},
+};
+
+const KLIL_COLORS = [
+  {fam:"הבית הניטרלי", list:[
+    ["לבן מט","K001"],["עננים","11F"],["לבן לאטה","12F"],["חמאת קרם","14F"],["חימר מינרלי","15I"],
+    ["קרם קפה","16F"],["חלב סויה","16I"],["שיבולת","17I"],["לבן אבן גיר","21F"],["פרח וניל","73F"]]},
+  {fam:"הבית הנוכח", list:[
+    ["עמוק חלל","38F"],["מגע תעשייתי","38I"],["סלע מנצנץ","34F"],["קוורץ מעושן","34I"],["שחור מט","95F"],
+    ["אינוקס גס","66I"],["מתכת אורבנית","40F"],["גרפיט גס","40I"],["סגסוגת אנודייז","49F"],
+    ["ערפל מטאוריטי","31F"],["אור כוכבים","47I"],["שחור אדמדם","45F"],["לילה ביער","43F"]]},
+  {fam:"הבית המתוחכם", list:[
+    ["קוביית קרח","51I"],["כחול מלכותי","42I"],["כחול בהיר","52F"],["דמדומי חלום","53I"],
+    ["לילה מעורפל","57I"],["כחול חצות","59I"],["שיר ערש חצות","65F"],["כחול נורדי","55I"]]},
+  {fam:"הבית בחורש", list:[
+    ["אפור ירק","33I"],["ירוק נעים","19I"],["קציר זיתים","63I"],["טחב עירוני","67I"],
+    ["ליים מנצנץ","61F"],["יער אמרלד","68F"]]},
+  {fam:"בית של חופש", list:[
+    ["גרייג'","35I"],["חום בזלת","36I"],["אפור נחצב","37F"],["לוסטר מוקה","39I"],
+    ["פלדה חלודה","74I"],["חום אגוז","75I"],["סוכר קינמון","76I"],["דיונת מדבר","77I"],["דמדומי סתיו","79F"]]},
+];
+
+const GLASS_SUGGEST = ["בידודית","בידודית שקוף","שקוף","חלבי","טריפלקס","זכוכית ביטחון","רפלקטיבי","סאטן"];
+const LOC_SUGGEST = ["סלון","מטבח","ממ\"ד","חדר שינה הורים","חדר ילדים","חדר רחצה","שירותים","מרפסת","פינת אוכל","חדר עבודה","מסדרון","כניסה"];
+
+/* ================= STORE ================= */
+function load(){
+  let d;
+  try{ d = JSON.parse(localStorage.getItem(LS_KEY)) || {projects:[]}; }
+  catch(e){ d = {projects:[]}; }
+  if(!d.projects) d.projects=[];
+  if(!d.settings) d.settings={logo:null};
+  return d;
+}
+let DB = load();
+function save(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
+  catch(e){ alert("האחסון בדפדפן מלא — מחק תמונות מפריטים ישנים או ייצא גיבוי ומחק פרויקטים ישנים."); }
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc = s => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const proj = pid => DB.projects.find(p=>p.id===pid);
+
+function newItem(typeId){
+  const t = TYPE(typeId||1);
+  return {
+    id:uid(), type:t.id, location:"", width:"", height:"", wallDepth:"", unit:"cm",
+    measureType:"production", qty:1,
+    openDir: t.sashes===3 ? "std" : "center",
+    handleSide:"right",
+    op: t.defOp || "electric", elecSide:"right",
+    mesh: !!t.mesh,
+    hal:{top:false,bottom:false,right:false,left:false},
+    profile:"", profileOther:"", color:"", glass:"", notes:"", photo:null
+  };
+}
+
+/* ================= SKETCH SVG ================= */
+function sketchSVG(it, w){
+  w = w || 250;
+  const T = TYPE(it.type);
+  const pst = PSTYLE[(PROF(it.profile)||{}).style] || PSTYLE.standard;
+  const W=260, H=232, FX=34, FY=24, FW=192, FH=182;
+  const P=[];
+  const ln=(x1,y1,x2,y2,extra)=>P.push('<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'"'+(extra||"")+'/>');
+  const faint=' stroke-width="1.4" opacity="0.75"';
+
+  // frame — double line, gap according to the selected profile series
+  P.push('<rect x="'+FX+'" y="'+FY+'" width="'+FW+'" height="'+FH+'" rx="3"/>');
+  P.push('<rect x="'+(FX+pst.gap)+'" y="'+(FY+pst.gap)+'" width="'+(FW-2*pst.gap)+'" height="'+(FH-2*pst.gap)+'" rx="2" stroke-width="'+Math.max(1.2,pst.sw*0.6)+'"/>');
+
+  let top=FY, bot=FY+FH;
+
+  // roller drum (type 3) / roller box (9/10/11)
+  if(T.roller){
+    const bh=38;
+    ln(FX, FY+bh, FX+FW, FY+bh);
+    P.push('<circle cx="'+(FX+16)+'" cy="'+(FY+19)+'" r="11" fill="none"/>');
+    P.push('<circle cx="'+(FX+FW-16)+'" cy="'+(FY+19)+'" r="11" fill="none"/>');
+    ln(FX+27, FY+11, FX+FW-27, FY+11, faint);
+    top = FY+bh;
+  }
+  if(T.rollerBox){
+    const bh=28;
+    ln(FX, FY+bh, FX+FW, FY+bh);
+    top = FY+bh;
+  }
+
+  let areaBot = bot;
+  if(T.fixedBottom){
+    const fh=42;
+    areaBot = bot - fh;
+    ln(FX, areaBot, FX+FW, areaBot);
+    xmark(P, FX+FW/2, (areaBot+bot)/2, 11);
+  }
+
+  // electric X in roller band
+  if((T.roller||T.rollerBox) && it.op==="electric"){
+    const bx = it.elecSide==="left" ? FX+18 : FX+FW-18;
+    const by = FY + (T.roller?38:28)/2;
+    xmark(P, bx, by, 7);
+  }
+
+  // slats
+  if(T.roller){
+    for(let y=top+14; y<bot-8; y+=15) ln(FX+8, y, FX+FW-8, y, faint);
+  }
+  if(T.slats){
+    for(let y=top+12; y<areaBot-8; y+=14) ln(FX+6, y, FX+FW-6, y, faint);
+  }
+
+  // sashes + arrows
+  if(T.sashes){
+    const n=T.sashes, sw=FW/n, midY=(top+areaBot)/2;
+    for(let i=1;i<n;i++) ln(FX+sw*i, top, FX+sw*i, areaBot, ' stroke-width="'+pst.div+'"');
+    const cx = i => FX+sw*i+sw/2;
+    if(n===2){
+      if(it.openDir==="toleft"){ arrow(P,cx(0),midY,"l"); arrow(P,cx(1),midY,"l"); }
+      else if(it.openDir==="toright"){ arrow(P,cx(0),midY,"r"); arrow(P,cx(1),midY,"r"); }
+      else { arrow(P,cx(0),midY,"r"); arrow(P,cx(1),midY,"l"); }
+    } else {
+      if(it.openDir==="flip"){ arrow(P,cx(0),midY,"r"); arrow(P,cx(1),midY,"lr"); arrow(P,cx(2),midY,"lr"); }
+      else { arrow(P,cx(0),midY,"lr"); arrow(P,cx(1),midY,"lr"); arrow(P,cx(2),midY,"l"); }
+    }
+  }
+
+  // belgian glazing bars (1700/4300/4350/4100/7100/7300)
+  if(pst.bars && !T.slats && !T.roller){
+    const barAttr=' stroke-width="1.3" opacity="0.85"';
+    const y1=top+(areaBot-top)/3, y2=top+2*(areaBot-top)/3;
+    if(T.sashes){
+      const n=T.sashes, bw=FW/n;
+      for(let i=0;i<n;i++){
+        ln(FX+bw*i+5, y1, FX+bw*(i+1)-5, y1, barAttr);
+        ln(FX+bw*i+5, y2, FX+bw*(i+1)-5, y2, barAttr);
+      }
+    } else {
+      ln(FX+6, y1, FX+FW-6, y1, barAttr);
+      ln(FX+6, y2, FX+FW-6, y2, barAttr);
+    }
+  }
+
+  // hinges
+  if(T.hinge==="side" || T.hinge==="dreikipp"){
+    const hs = it.handleSide==="left" ? "left" : "right";
+    const apexX = hs==="left" ? FX : FX+FW;
+    const fromX = hs==="left" ? FX+FW : FX;
+    const midY=(top+areaBot)/2;
+    ln(fromX, top, apexX, midY);
+    ln(fromX, areaBot, apexX, midY);
+  }
+  if(T.hinge==="kipp" || T.hinge==="dreikipp"){
+    ln(FX, top, FX+FW/2, areaBot);
+    ln(FX+FW, top, FX+FW/2, areaBot);
+  }
+  if(T.hinge && T.hinge!=="kipp"){
+    const hx = it.handleSide==="left" ? FX+8 : FX+FW-20;
+    P.push('<text x="'+hx+'" y="'+(areaBot-8)+'" font-size="17" font-weight="700" fill="currentColor" stroke="none">ר</text>');
+  }
+
+  if(T.fixedAll){
+    ln(FX, FY, FX+FW, FY+FH);
+    ln(FX+FW, FY, FX, FY+FH);
+  }
+
+  // halbashot carets
+  const h=it.hal||{};
+  if(h.top)   P.push('<polyline points="'+(FX+FW/2-9)+','+(FY-4)+' '+(FX+FW/2)+','+(FY-13)+' '+(FX+FW/2+9)+','+(FY-4)+'" fill="none"/>');
+  if(h.bottom)P.push('<polyline points="'+(FX+FW/2-9)+','+(bot+4)+' '+(FX+FW/2)+','+(bot+13)+' '+(FX+FW/2+9)+','+(bot+4)+'" fill="none"/>');
+  if(h.right) P.push('<polyline points="'+(FX+FW+4)+','+(FY+FH/2-9)+' '+(FX+FW+13)+','+(FY+FH/2)+' '+(FX+FW+4)+','+(FY+FH/2+9)+'" fill="none"/>');
+  if(h.left)  P.push('<polyline points="'+(FX-4)+','+(FY+FH/2-9)+' '+(FX-13)+','+(FY+FH/2)+' '+(FX-4)+','+(FY+FH/2+9)+'" fill="none"/>');
+
+  return '<span class="sk"><svg viewBox="0 0 '+W+' '+H+'" width="'+w+'" height="'+Math.round(w*H/W)+'" '
+    +'stroke="currentColor" fill="none" stroke-width="'+pst.sw+'" stroke-linecap="round" stroke-linejoin="round">'
+    +P.join("")+'</svg></span>';
+}
+function xmark(P,x,y,s){
+  P.push('<line x1="'+(x-s)+'" y1="'+(y-s)+'" x2="'+(x+s)+'" y2="'+(y+s)+'"/>');
+  P.push('<line x1="'+(x+s)+'" y1="'+(y-s)+'" x2="'+(x-s)+'" y2="'+(y+s)+'"/>');
+}
+function arrow(P,cx,cy,dir){
+  const len=38, x1=cx-len/2, x2=cx+len/2, a=7;
+  P.push('<line x1="'+x1+'" y1="'+cy+'" x2="'+x2+'" y2="'+cy+'"/>');
+  if(dir==="r"||dir==="lr"){
+    P.push('<polyline points="'+(x2-a)+','+(cy-a)+' '+x2+','+cy+' '+(x2-a)+','+(cy+a)+'" fill="none"/>');
+  }
+  if(dir==="l"||dir==="lr"){
+    P.push('<polyline points="'+(x1+a)+','+(cy-a)+' '+x1+','+cy+' '+(x1+a)+','+(cy+a)+'" fill="none"/>');
+  }
+}
+
+/* ================= HELPERS ================= */
+const unitName = u => u==="mm" ? "מ\"מ" : "ס\"מ";
+function dimsHTML(it, big){
+  if(!it.width && !it.height) return '<span class="muted">ללא מידות</span>';
+  return '<span class="num">'+esc(it.width||"?")+' × '+esc(it.height||"?")+'</span> <span class="u">'+unitName(it.unit)+'</span>';
+}
+function measureBadge(it){
+  return it.measureType==="opening"
+    ? '<span class="bopen">מידת פתח — ללא הורדה</span>'
+    : '<span>מידה לייצור</span>';
+}
+function profileText(it){
+  if(it.profile==="other") return it.profileOther ? "סדרה "+it.profileOther : "";
+  const pr = PROF(it.profile);
+  if(!pr) return it.profile ? "סדרה "+it.profile : "";
+  return "סדרה "+pr.code+" ("+pr.desc.split("—")[0].trim()+")";
+}
+function opText(it){
+  const T=TYPE(it.type);
+  if(!(T.roller||T.rollerBox)) return "";
+  if(it.op==="rope") return "גלילה: חבל";
+  return "גלילה: חשמל · צד "+(it.elecSide==="left"?"שמאל":"ימין");
+}
+function halText(it){
+  const h=it.hal||{}, arr=[];
+  if(h.top)arr.push("למעלה"); if(h.bottom)arr.push("למטה"); if(h.right)arr.push("ימין"); if(h.left)arr.push("שמאל");
+  return arr.length ? "הלבשות: "+arr.join(", ") : "ללא הלבשות";
+}
+/* פריטי גלילה (ארגז תריס) מחייבים עובי קיר */
+function needsWall(it){
+  const T=TYPE(it.type);
+  return !!(T.roller || T.rollerBox);
+}
+/* אילו נתוני חובה חסרים בפריט */
+function missingList(it){
+  const m=[];
+  if(!String(it.width||"").trim())  m.push("רוחב");
+  if(!String(it.height||"").trim()) m.push("גובה");
+  if(needsWall(it) && !String(it.wallDepth||"").trim()) m.push("עובי קיר (לארגז התריס)");
+  return m;
+}
+function today(){
+  const d=new Date();
+  return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
+}
+
+/* ================= ROUTER ================= */
+window.addEventListener("hashchange", render);
+function nav(h){ location.hash = h; }
+function render(){
+  const parts = location.hash.replace(/^#\/?/,"").split("/").filter(Boolean);
+  const app = document.getElementById("app");
+  if(parts[0]==="p" && parts[1]){
+    const p = proj(parts[1]);
+    if(!p){ nav("/"); return; }
+    if(parts[2]==="item"){ app.innerHTML = viewItem(p, parts[3]); afterItemRender(); }
+    else if(parts[2]==="export"){ app.innerHTML = viewExport(p); }
+    else app.innerHTML = viewProject(p);
+  } else {
+    app.innerHTML = viewHome();
+  }
+  window.scrollTo(0,0);
+}
+
+/* ================= VIEWS ================= */
+function viewHome(){
+  let cards = DB.projects.map(p=>{
+    return '<div class="card tap" onclick="nav(\'/p/'+p.id+'\')">'
+      +'<div class="rowline"><div class="grow">'
+      +'<div class="title-md">'+esc(p.name||"פרויקט ללא שם")+'</div>'
+      +'<div class="muted">'+esc(p.client||"")+(p.client&&p.date?" · ":"")+esc(p.date||"")+' · <span class="num">'+p.items.length+'</span> פריטים</div>'
+      +'</div><div style="font-size:1.3rem;color:var(--ink2)">‹</div></div></div>';
+  }).join("");
+  if(!DB.projects.length) cards = '<div class="empty">עדיין אין פרויקטים.<br>לוחצים על "פרויקט חדש" ומתחילים למדוד.</div>';
+  return ''
+  +'<div class="topbar"><div><h1>פנקס מדידות אלומיניום</h1><div class="sub">מדידה בשטח → קובץ מסודר ליצרן</div></div></div>'
+  + cards
+  +'<div class="card"><label>לוגו החברה — מופיע קטן בפינה השמאלית העליונה של כל קובץ מיוצא (לצד בס״ד מימין)</label>'
+  +'<div class="rowline" style="margin-top:6px">'
+  +'<label class="btn small" style="margin:0"><input type="file" accept="image/*" style="display:none" onchange="App.logoUpload(this)">🏷 העלה לוגו</label>'
+  +(DB.settings.logo?'<button class="btn small danger" onclick="App.logoRemove()">הסר</button>':'')
+  +'</div>'
+  +(DB.settings.logo?'<img src="'+DB.settings.logo+'" alt="לוגו" style="max-height:64px;max-width:160px;object-fit:contain;margin-top:10px;border-radius:8px">':'<div class="muted" style="margin-top:8px">עדיין לא הועלה לוגו — הקבצים ייצאו עם בס״ד בלבד.</div>')
+  +'</div>'
+  +'<div class="card"><div class="rowline">'
+  +'<button class="btn small" onclick="App.backup()">⬇ גיבוי לקובץ</button>'
+  +'<label class="btn small" style="margin:0"><input type="file" accept=".json" style="display:none" onchange="App.restore(this)">⬆ שחזור מגיבוי</label>'
+  +'</div><div class="muted" style="margin-top:8px">הנתונים נשמרים בדפדפן במכשיר הזה. מומלץ לייצא גיבוי מדי פעם.</div></div>'
+  +'<button class="btn primary fab" onclick="App.newProject()">+ פרויקט חדש</button>';
+}
+
+function viewProject(p){
+  const items = p.items.map((it,i)=>{
+    const T=TYPE(it.type);
+    return '<div class="card"><div class="itemrow">'
+      +'<div class="thumb">'+sketchSVG(it,86)+'</div>'
+      +'<div class="grow tap" onclick="nav(\'/p/'+p.id+'/item/'+it.id+'\')">'
+      +'<div class="title-md"><span class="num">'+(i+1)+'.</span> '+esc(it.location||T.name)+'</div>'
+      +'<div class="muted">'+T.name+'</div>'
+      +'<div style="font-weight:700;margin-top:2px">'+dimsHTML(it)+' '
+      +(it.measureType==="opening"?'<span class="badge open">מידת פתח</span>':'<span class="badge prod">לייצור</span>')
+      +(Number(it.qty)>1?' <span class="num">×'+esc(it.qty)+'</span>':'')
+      +'</div>'
+      +(missingList(it).length?'<div style="color:var(--danger);font-size:.8rem;font-weight:700;margin-top:2px">⚠ חסר: '+missingList(it).join(", ")+'</div>':'')
+      +'</div>'
+      +'<div class="acts">'
+      +'<button class="iconbtn" title="למעלה" onclick="App.move(\''+p.id+'\','+i+',-1)">↑</button>'
+      +'<button class="iconbtn" title="שכפל" onclick="App.dupItem(\''+p.id+'\',\''+it.id+'\')">⧉</button>'
+      +'<button class="iconbtn" title="למטה" onclick="App.move(\''+p.id+'\','+i+',1)">↓</button>'
+      +'</div></div></div>';
+  }).join("");
+
+  return ''
+  +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
+  +'<div class="grow"><h1>'+esc(p.name||"פרויקט")+'</h1><div class="sub"><span class="num">'+p.items.length+'</span> פריטים</div></div>'
+  +'<button class="btn small primary" '+(p.items.length?'':'disabled style="opacity:.5"')+' onclick="nav(\'/p/'+p.id+'/export\')">📄 קובץ ליצוא</button></div>'
+
+  +'<div class="card"><details'+(p.items.length?'':' open')+'><summary style="font-weight:700;cursor:pointer">פרטי הפרויקט (לשימוש פנימי)</summary>'
+  +'<div style="margin-top:12px">'
+  +'<div class="field"><label>שם הפרויקט</label><input value="'+esc(p.name)+'" oninput="App.pf(\''+p.id+'\',\'name\',this.value)"></div>'
+  +'<div class="two">'
+  +'<div class="field"><label>שם הלקוח</label><input value="'+esc(p.client)+'" oninput="App.pf(\''+p.id+'\',\'client\',this.value)"></div>'
+  +'<div class="field"><label>טלפון</label><input inputmode="tel" value="'+esc(p.phone)+'" oninput="App.pf(\''+p.id+'\',\'phone\',this.value)"></div>'
+  +'</div>'
+  +'<div class="field"><label>כתובת</label><input value="'+esc(p.address)+'" oninput="App.pf(\''+p.id+'\',\'address\',this.value)"></div>'
+  +'<div class="two">'
+  +'<div class="field"><label>תאריך מדידה</label><input value="'+esc(p.date)+'" oninput="App.pf(\''+p.id+'\',\'date\',this.value)"></div>'
+  +'<div class="field"><label>שם המודד</label><input value="'+esc(p.measurer)+'" oninput="App.pf(\''+p.id+'\',\'measurer\',this.value)"></div>'
+  +'</div>'
+  +'<div class="field"><label>הערות פרויקט</label><textarea rows="2" oninput="App.pf(\''+p.id+'\',\'notes\',this.value)">'+esc(p.notes)+'</textarea></div>'
+  +'<button class="btn small danger" onclick="App.delProject(\''+p.id+'\')">מחק פרויקט</button>'
+  +'</div></details></div>'
+
+  +(items || '<div class="empty">אין פריטים עדיין.<br>מוסיפים את החלון או הדלת הראשונים.</div>')
+  +'<button class="btn primary fab" onclick="nav(\'/p/'+p.id+'/item/new\')">+ הוסף פריט</button>';
+}
+
+/* ---------- item editor ---------- */
+let draft = null, draftPid = null, draftIid = null, typeOpen = false;
+
+function viewItem(p, iid){
+  draftPid = p.id;
+  if(iid==="new"){ draft = newItem(1); draftIid = null; typeOpen = true; }
+  else {
+    const src = p.items.find(x=>x.id===iid);
+    if(!src){ return viewProject(p); }
+    draft = JSON.parse(JSON.stringify(src)); draftIid = iid; typeOpen = false;
+  }
+  return ''
+  +'<div class="topbar"><button class="backbtn" onclick="nav(\'/p/'+p.id+'\')">→</button>'
+  +'<div class="grow"><h1>'+(draftIid?"עריכת פריט":"פריט חדש")+'</h1><div class="sub">'+esc(p.name||"")+'</div></div>'
+  +(draftIid?'<button class="btn small danger" onclick="App.delItem()">מחק</button>':'')
+  +'</div>'
+  +'<div class="preview-wrap" id="preview"></div>'
+  +'<div id="itemform"></div>'
+  +'<button class="btn primary fab" onclick="App.saveItem()">✓ שמור פריט</button>';
+}
+
+function afterItemRender(){
+  renderItemForm();
+  renderPreview();
+}
+function renderPreview(){
+  const el = document.getElementById("preview");
+  if(el) el.innerHTML = sketchSVG(draft, 250);
+}
+
+function segBtn(on, label, fn){
+  return '<button type="button" class="'+(on?"on":"")+'" onclick="'+fn+'">'+label+'</button>';
+}
+
+function renderItemForm(){
+  const T = TYPE(draft.type);
+  const f = document.getElementById("itemform");
+  if(!f) return;
+  let html = "";
+
+  /* type picker */
+  html += '<div class="card"><label>סוג הפריט</label>';
+  if(typeOpen){
+    html += '<div class="typegrid">'+TYPES.map(t=>{
+      const demo = Object.assign(newItem(t.id), {handleSide:"left"});
+      return '<button type="button" class="typecard '+(t.id===draft.type?"on":"")+'" onclick="App.setType('+t.id+')">'
+        +sketchSVG(demo,74)+'<span class="tnum">'+t.id+'</span><span class="tname">'+t.name+'</span></button>';
+    }).join("")+'</div>';
+  } else {
+    html += '<div class="rowline"><div class="grow"><b>'+T.id+'. '+T.name+'</b></div>'
+      +'<button type="button" class="btn small" onclick="App.openTypes()">החלף סוג</button></div>';
+  }
+  html += '</div>';
+
+  /* location */
+  html += '<div class="card">'
+    +'<div class="field"><label>מיקום בבית</label>'
+    +'<input list="locs" value="'+esc(draft.location)+'" oninput="App.f(\'location\',this.value)" placeholder="למשל: סלון, ממ&quot;ד...">'
+    +'<datalist id="locs">'+LOC_SUGGEST.map(l=>'<option value="'+l+'">').join("")+'</datalist></div>'
+
+  /* dims */
+    +'<div class="three">'
+    +'<div class="field"><label>רוחב</label><input class="num" inputmode="decimal" value="'+esc(draft.width)+'" oninput="App.f(\'width\',this.value)"></div>'
+    +'<div class="field"><label>גובה</label><input class="num" inputmode="decimal" value="'+esc(draft.height)+'" oninput="App.f(\'height\',this.value)"></div>'
+    +'<div class="field"><label>יחידות</label><div class="seg">'
+    +segBtn(draft.unit==="cm","ס\"מ","App.f('unit','cm')")
+    +segBtn(draft.unit==="mm","מ\"מ","App.f('unit','mm')")
+    +'</div></div></div>'
+
+  /* wall thickness — required for roller-shutter items (sizing the shutter box) */
+    +(needsWall(draft)
+      ? '<div class="field" style="max-width:240px"><label style="color:var(--danger)">עובי קיר — חובה (לקביעת ארגז התריס)</label>'
+        +'<input class="num" inputmode="decimal" value="'+esc(draft.wallDepth)+'" oninput="App.f(\'wallDepth\',this.value)" placeholder="'+unitName(draft.unit)+'"></div>'
+      : '')
+
+  /* measure type — prominent */
+    +'<div class="measure-box"><label>⚠ סוג המידה — חובה לוודא לפני שליחה ליצרן</label>'
+    +'<div class="seg big">'
+    +segBtn(draft.measureType==="production","מידה לייצור","App.f('measureType','production')")
+    +segBtn(draft.measureType==="opening","מידת פתח (ללא הורדה)","App.f('measureType','opening')")
+    +'</div></div>'
+
+    +'<div class="field" style="max-width:140px"><label>כמות</label><input class="num" inputmode="numeric" value="'+esc(draft.qty)+'" oninput="App.f(\'qty\',this.value)"></div>'
+    +'</div>';
+
+  /* conditional controls */
+  let cond = "";
+  if(T.slide){
+    if(T.sashes===2){
+      cond += '<div class="field"><label>כיוון פתיחה (הזזה)</label><div class="seg">'
+        +segBtn(draft.openDir==="center","זו אל זו","App.f('openDir','center')")
+        +segBtn(draft.openDir==="toright","שתיהן לימין","App.f('openDir','toright')")
+        +segBtn(draft.openDir==="toleft","שתיהן לשמאל","App.f('openDir','toleft')")
+        +'</div></div>';
+    } else if(T.sashes===3){
+      cond += '<div class="field"><label>כיוון פתיחה (הזזה)</label><div class="seg">'
+        +segBtn(draft.openDir!=="flip","רגיל","App.f('openDir','std')")
+        +segBtn(draft.openDir==="flip","הפוך (מראה)","App.f('openDir','flip')")
+        +'</div></div>';
+    }
+  }
+  if(T.hinge && T.hinge!=="kipp"){
+    cond += '<div class="field"><label>צד ידית</label><div class="seg">'
+      +segBtn(draft.handleSide==="right","ימין","App.f('handleSide','right')")
+      +segBtn(draft.handleSide==="left","שמאל","App.f('handleSide','left')")
+      +'</div></div>';
+  }
+  if(T.opSel){
+    cond += '<div class="field"><label>הפעלת הגלילה</label><div class="seg">'
+      +segBtn(draft.op==="electric","חשמל","App.f('op','electric')")
+      +segBtn(draft.op==="rope","חבל","App.f('op','rope')")
+      +'</div></div>';
+    if(draft.op==="electric"){
+      cond += '<div class="field"><label>צד החשמל (מסומן X בשרטוט)</label><div class="seg">'
+        +segBtn(draft.elecSide==="right","ימין","App.f('elecSide','right')")
+        +segBtn(draft.elecSide==="left","שמאל","App.f('elecSide','left')")
+        +'</div></div>';
+    }
+  }
+  cond += '<div class="field"><label>רשת</label><div class="seg">'
+    +segBtn(!!draft.mesh,"עם רשת","App.f('mesh',true)")
+    +segBtn(!draft.mesh,"בלי רשת","App.f('mesh',false)")
+    +'</div></div>';
+
+  cond += '<div class="field"><label>הלבשות (חיצים בשרטוט)</label><div class="chips">'
+    +'<button type="button" class="chip '+(draft.hal.top?"on":"")+'" onclick="App.hal(\'top\')">למעלה</button>'
+    +'<button type="button" class="chip '+(draft.hal.bottom?"on":"")+'" onclick="App.hal(\'bottom\')">למטה</button>'
+    +'<button type="button" class="chip '+(draft.hal.right?"on":"")+'" onclick="App.hal(\'right\')">ימין</button>'
+    +'<button type="button" class="chip '+(draft.hal.left?"on":"")+'" onclick="App.hal(\'left\')">שמאל</button>'
+    +'</div></div>';
+  html += '<div class="card">'+cond+'</div>';
+
+  /* profile / color / glass */
+  const selProf = PROF(draft.profile);
+  let profNote = "";
+  if(selProf){
+    profNote = '<div class="muted" style="margin-top:6px">'+selProf.desc+'</div>';
+    if(T.slide && selProf.kind==="hinge")
+      profNote += '<div style="color:var(--danger);font-size:.85rem;font-weight:700;margin-top:4px">⚠ סדרה '+selProf.code+' היא סדרת ציר/פתיחה — הפריט שבחרת הוא הזזה. לוודא לפני שליחה.</div>';
+    if(T.hinge && selProf.kind==="slide")
+      profNote += '<div style="color:var(--danger);font-size:.85rem;font-weight:700;margin-top:4px">⚠ סדרה '+selProf.code+' היא סדרת הזזה — הפריט שבחרת הוא ציר/קיפ. לוודא לפני שליחה.</div>';
+  }
+  html += '<div class="card">'
+    +'<div class="field"><label>סדרת פרופיל (קליל) — השרטוט מצויר לפי מראה הסדרה</label>'
+    +'<select onchange="App.f(\'profile\',this.value)">'
+    +'<option value="">— בחר סדרה —</option>'
+    +PROFILES.map(pr=>'<option value="'+pr.code+'"'+(draft.profile===pr.code?" selected":"")+'>'+pr.code+' — '+pr.desc+'</option>').join("")
+    +'<option value="other"'+(draft.profile==="other"?" selected":"")+'>אחר...</option>'
+    +'</select>'+profNote+'</div>'
+    +(draft.profile==="other"
+      ? '<div class="field"><label>סדרה אחרת</label><input value="'+esc(draft.profileOther)+'" oninput="App.f(\'profileOther\',this.value)"></div>'
+      : '')
+    +'<div class="field colorbox"><label>גוון (מניפת קליל — חיפוש, או הקלדת גוון אחר)</label>'
+    +'<input id="colorInput" value="'+esc(draft.color)+'" placeholder="חפש: שחור, לבן, 95F... או הקלד גוון חופשי"'
+    +' oninput="App.colorFilter(this.value)" onfocus="App.colorFilter(this.value)">'
+    +'<div class="colorlist" id="colorList" style="display:none"></div></div>'
+    +'<div class="field"><label>זכוכית</label>'
+    +'<input list="glasses" value="'+esc(draft.glass)+'" oninput="App.f(\'glass\',this.value)">'
+    +'<datalist id="glasses">'+GLASS_SUGGEST.map(g=>'<option value="'+g+'">').join("")+'</datalist></div>'
+    +'</div>';
+
+  /* notes + photo */
+  html += '<div class="card">'
+    +'<div class="field"><label>הערות לפריט</label><textarea rows="2" oninput="App.f(\'notes\',this.value)">'+esc(draft.notes)+'</textarea></div>'
+    +'<div class="field"><label>תמונה של הפתח (נכנסת לקובץ הפנימי בלבד)</label>'
+    +'<div class="rowline">'
+    +'<label class="btn small" style="margin:0">📷 צלם / העלה<input type="file" accept="image/*" capture="environment" style="display:none" onchange="App.photo(this)"></label>'
+    +(draft.photo?'<button type="button" class="btn small danger" onclick="App.f(\'photo\',null);renderItemForm()">הסר תמונה</button>':'')
+    +'</div>'
+    +(draft.photo?'<img class="photo-thumb" style="margin-top:10px" src="'+draft.photo+'" alt="תמונת הפתח">':'')
+    +'</div></div>'
+    +'<div style="height:8px"></div>';
+
+  f.innerHTML = html;
+}
+
+/* ---------- export ---------- */
+let expOpts = {mode:"factory", perPage:9, showName:true};
+
+function viewExport(p){
+  const problems = [];
+  p.items.forEach((it,i)=>{
+    const m = missingList(it);
+    if(m.length) problems.push({num:i+1, loc:it.location, m:m});
+  });
+  const blocked = problems.length>0 && expOpts.mode==="factory";
+  const per = expOpts.perPage;
+  const cols = per===9 ? 3 : 2;
+  const pages = [];
+  for(let i=0;i<p.items.length;i+=per) pages.push(p.items.slice(i,i+per));
+  const skW = per===9 ? 150 : (per===6 ? 175 : 210);
+  const internal = expOpts.mode==="internal";
+
+  const sheets = pages.map((chunk,pi)=>{
+    let head = "";
+    if(pi===0){
+      if(internal){
+        head = '<div class="sheet-head"><h2>דף מדידות — '+esc(p.name||"")+'</h2><div class="meta">'
+          +(p.client?'<span>לקוח: <b>'+esc(p.client)+'</b></span>':'')
+          +(p.phone?'<span>טל׳: <b class="num">'+esc(p.phone)+'</b></span>':'')
+          +(p.address?'<span>כתובת: <b>'+esc(p.address)+'</b></span>':'')
+          +'<span>תאריך: <b class="num">'+esc(p.date||"")+'</b></span>'
+          +(p.measurer?'<span>מודד: <b>'+esc(p.measurer)+'</b></span>':'')
+          +'<span>סה"כ פריטים: <b class="num">'+p.items.length+'</b></span>'
+          +(p.notes?'<span>הערות: '+esc(p.notes)+'</span>':'')
+          +'</div></div>';
+      } else {
+        head = '<div class="sheet-head"><h2>הזמנת ייצור'+(expOpts.showName&&p.name?" — "+esc(p.name):"")+'</h2><div class="meta">'
+          +'<span>תאריך: <b class="num">'+esc(p.date||today())+'</b></span>'
+          +'<span>סה"כ פריטים: <b class="num">'+p.items.length+'</b></span>'
+          +'</div></div>';
+      }
+    }
+    const cells = chunk.map(it=>{
+      const idx = p.items.indexOf(it)+1;
+      const T = TYPE(it.type);
+      const info = [];
+      const pt = profileText(it); if(pt) info.push("<b>"+esc(pt)+"</b>");
+      if(it.color) info.push("גוון: <b>"+esc(it.color)+"</b>");
+      if(it.glass) info.push("זכוכית: "+esc(it.glass));
+      info.push(it.mesh ? "רשת: כן" : "רשת: אין");
+      const ot=opText(it); if(ot) info.push(ot);
+      info.push(halText(it));
+      if(Number(it.qty)>1) info.push('כמות: <b class="num">×'+esc(it.qty)+"</b>");
+      return '<div class="cell">'
+        +'<div class="cellhead"><span class="cnum num">'+idx+'</span><span class="cloc">'+esc(it.location||"")+'</span></div>'
+        +'<div class="ctype">'+T.name+'</div>'
+        +'<div class="csk">'+sketchSVG(it,skW)+'</div>'
+        +'<div class="cdims">'+dimsHTML(it)+'</div>'
+        +(needsWall(it)
+          ? '<div class="cdims" style="font-size:.8rem">עובי קיר: <span class="num">'+esc(it.wallDepth||"?")+'</span> <span class="u">'+unitName(it.unit)+'</span></div>'
+          : '')
+        +'<div class="cbadge">'+measureBadge(it)+'</div>'
+        +'<div class="cinfo">'+info.join(" · ")+'</div>'
+        +(it.notes?'<div class="cnote">'+esc(it.notes)+'</div>':'')
+        +(internal&&it.photo?'<img src="'+it.photo+'" alt="">':'')
+        +'</div>';
+    }).join("");
+    const strip = '<div class="sheet-top">'
+      +'<span class="bsd">בס״ד</span>'
+      +(DB.settings.logo ? '<img class="sheet-logo" src="'+DB.settings.logo+'" alt="לוגו">' : '<span></span>')
+      +'</div>';
+    return '<div class="sheet">'+strip+head
+      +'<div class="sheet-grid" style="grid-template-columns:repeat('+cols+',1fr)">'+cells+'</div>'
+      +'<div class="sheet-foot">עמוד '+(pi+1)+' מתוך '+pages.length+'</div></div>';
+  }).join("");
+
+  return ''
+  +'<div class="exp-tools no-print">'
+  +'<div class="rowline" style="margin-bottom:10px"><button class="backbtn" onclick="nav(\'/p/'+p.id+'\')">→</button>'
+  +'<div class="grow"><h1 style="font-size:1.1rem">קובץ ליצוא — '+esc(p.name||"")+'</h1></div>'
+  +(blocked
+    ? '<button class="btn" disabled style="opacity:.45">🖨 הדפס / שמור PDF</button>'
+    : '<button class="btn primary" onclick="window.print()">🖨 הדפס / שמור PDF</button>')
+  +'</div>'
+  +'<div class="two">'
+  +'<div><label>ייעוד הקובץ</label><div class="seg">'
+  +segBtn(expOpts.mode==="factory","ליצרן (נקי)","App.eo('mode','factory')")
+  +segBtn(expOpts.mode==="internal","פנימי (מלא)","App.eo('mode','internal')")
+  +'</div></div>'
+  +'<div><label>פריטים בעמוד</label><div class="seg">'
+  +segBtn(expOpts.perPage===4,"4","App.eo('perPage',4)")
+  +segBtn(expOpts.perPage===6,"6","App.eo('perPage',6)")
+  +segBtn(expOpts.perPage===9,"9","App.eo('perPage',9)")
+  +'</div></div></div>'
+  +(expOpts.mode==="factory"
+    ? '<div style="margin-top:8px"><label class="chip '+(expOpts.showName?"on":"")+'" style="display:inline-flex;align-items:center" onclick="App.eo(\'showName\','+(!expOpts.showName)+')">'
+      +(expOpts.showName?"✓ ":"")+'הצג שם פרויקט בכותרת</label>'
+      +' <span class="muted">בקובץ ליצרן לא מופיעים פרטי לקוח, טלפון וכתובת.</span></div>'
+    : '<div class="muted" style="margin-top:8px">הקובץ הפנימי כולל את כל פרטי הלקוח והתמונות.</div>')
+  +'</div>'
+  +(problems.length
+    ? '<div class="errbanner no-print"><b>'
+      +(blocked ? '🚫 אי אפשר להפיק קובץ ליצרן — חסרים נתונים:' : '⚠ שים לב — חסרים נתונים:')+'</b>'
+      +problems.map(pr=>'<div>חסר <b>'+pr.m.join(" + ")+'</b> בפריט מספר <b class="num">'+pr.num+'</b>'+(pr.loc?' ('+esc(pr.loc)+')':'')+'</div>').join("")
+      +(blocked
+        ? '<div style="margin-top:4px">חוזרים לפריט, משלימים את המידה — והכפתור ייפתח.</div>'
+        : '<div style="margin-top:4px">קובץ פנימי אפשר להדפיס גם כך, אבל ליצרן זה ייחסם.</div>')
+      +'</div>'
+    : '')
+  + sheets;
+}
+
+/* ================= ACTIONS ================= */
+const App = {
+  newProject(){
+    const p = {id:uid(), name:"", client:"", phone:"", address:"", date:today(), measurer:"", notes:"", items:[]};
+    DB.projects.unshift(p); save(); nav("/p/"+p.id);
+  },
+  pf(pid,k,v){ const p=proj(pid); if(p){ p[k]=v; save(); } },
+  delProject(pid){
+    if(!confirm("למחוק את הפרויקט על כל הפריטים שלו? אין דרך חזרה.")) return;
+    DB.projects = DB.projects.filter(p=>p.id!==pid); save(); nav("/");
+  },
+  move(pid,i,dir){
+    const p=proj(pid); const j=i+dir;
+    if(!p || j<0 || j>=p.items.length) return;
+    const t=p.items[i]; p.items[i]=p.items[j]; p.items[j]=t;
+    save(); render();
+  },
+  dupItem(pid,iid){
+    const p=proj(pid); const src=p.items.find(x=>x.id===iid);
+    if(!src) return;
+    const cp=JSON.parse(JSON.stringify(src)); cp.id=uid();
+    p.items.splice(p.items.indexOf(src)+1,0,cp); save(); render();
+  },
+  /* item editor */
+  f(k,v){
+    draft[k]=v;
+    if(k==="type"||k==="op"||k==="mesh"||k==="profile"||k==="photo") renderItemForm();
+    if(k==="unit"||k==="measureType"||k==="openDir"||k==="handleSide"||k==="elecSide") renderItemForm();
+    renderPreview();
+  },
+  hal(side){ draft.hal[side]=!draft.hal[side]; renderItemForm(); renderPreview(); },
+  openTypes(){ typeOpen=true; renderItemForm(); },
+  setType(id){
+    const t=TYPE(id);
+    draft.type=id;
+    draft.op = t.defOp || draft.op;
+    draft.mesh = !!t.mesh;
+    draft.openDir = t.sashes===3 ? "std" : "center";
+    typeOpen=false; renderItemForm(); renderPreview();
+  },
+  colorFilter(q){
+    draft.color=q;
+    const list=document.getElementById("colorList");
+    if(!list) return;
+    const qq=(q||"").trim();
+    let html="";
+    KLIL_COLORS.forEach(f=>{
+      const hits=f.list.filter(([n,c])=> !qq || n.includes(qq) || c.includes(qq) || c.toLowerCase().includes(qq.toLowerCase()));
+      if(hits.length){
+        html+='<div class="fam">'+f.fam+'</div>';
+        html+=hits.map(([n,c])=>'<button type="button" class="copt" onclick="App.pickColor(\''+esc(n).replace(/'/g,"\\'")+'\',\''+c+'\')">'+esc(n)+' <small class="num">'+c+'</small></button>').join("");
+      }
+    });
+    list.innerHTML = html || '<div class="fam">אין התאמה במניפה — מה שהקלדת יישמר כגוון חופשי</div>';
+    list.style.display="block";
+  },
+  pickColor(name,code){
+    draft.color = name+" ("+code+")";
+    const inp=document.getElementById("colorInput"); if(inp) inp.value=draft.color;
+    const list=document.getElementById("colorList"); if(list) list.style.display="none";
+  },
+  photo(input){
+    const file=input.files && input.files[0];
+    if(!file) return;
+    const img=new Image();
+    const rd=new FileReader();
+    rd.onload=e=>{
+      img.onload=()=>{
+        const max=700;
+        const sc=Math.min(1, max/Math.max(img.width,img.height));
+        const cv=document.createElement("canvas");
+        cv.width=Math.round(img.width*sc); cv.height=Math.round(img.height*sc);
+        cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+        draft.photo=cv.toDataURL("image/jpeg",0.62);
+        renderItemForm();
+      };
+      img.src=e.target.result;
+    };
+    rd.readAsDataURL(file);
+  },
+  saveItem(){
+    const p=proj(draftPid); if(!p) return;
+    const miss = missingList(draft);
+    if(miss.length){
+      if(!confirm("חסרים נתונים: "+miss.join(", ")+".\nאפשר לשמור ולהשלים אחר כך — אבל קובץ ליצרן ייחסם עד שהכל יושלם. לשמור בכל זאת?")) return;
+    }
+    if(draftIid){
+      const idx=p.items.findIndex(x=>x.id===draftIid);
+      if(idx>=0) p.items[idx]=draft; else p.items.push(draft);
+    } else p.items.push(draft);
+    save(); nav("/p/"+p.id);
+  },
+  delItem(){
+    if(!confirm("למחוק את הפריט?")) return;
+    const p=proj(draftPid);
+    p.items=p.items.filter(x=>x.id!==draftIid);
+    save(); nav("/p/"+p.id);
+  },
+  /* company logo */
+  logoUpload(input){
+    const file=input.files && input.files[0];
+    if(!file) return;
+    const img=new Image();
+    const rd=new FileReader();
+    rd.onload=e=>{
+      img.onload=()=>{
+        const max=460;
+        const sc=Math.min(1, max/Math.max(img.width,img.height));
+        const cv=document.createElement("canvas");
+        cv.width=Math.round(img.width*sc); cv.height=Math.round(img.height*sc);
+        cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+        DB.settings.logo=cv.toDataURL("image/jpeg",0.85);
+        save(); render();
+      };
+      img.src=e.target.result;
+    };
+    rd.readAsDataURL(file);
+  },
+  logoRemove(){
+    if(!confirm("להסיר את הלוגו מהקבצים?")) return;
+    DB.settings.logo=null; save(); render();
+  },
+  /* export */
+  eo(k,v){ expOpts[k]=v; render(); },
+  /* backup */
+  backup(){
+    const blob=new Blob([JSON.stringify(DB,null,1)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="alum-measure-backup.json";
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  },
+  restore(input){
+    const file=input.files && input.files[0];
+    if(!file) return;
+    const rd=new FileReader();
+    rd.onload=e=>{
+      try{
+        const data=JSON.parse(e.target.result);
+        if(!data || !Array.isArray(data.projects)) throw 0;
+        if(!confirm("השחזור יחליף את כל הנתונים הקיימים במכשיר. להמשיך?")) return;
+        DB=data; save(); render();
+      }catch(err){ alert("הקובץ אינו גיבוי תקין."); }
+    };
+    rd.readAsText(file);
+  }
+};
+
+/* close color list when tapping outside */
+document.addEventListener("click", e=>{
+  const list=document.getElementById("colorList");
+  if(list && !e.target.closest(".colorbox")) list.style.display="none";
+});
+
+window.App=App; window.nav=nav; window.renderItemForm=renderItemForm;
+render();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js"); });
+}
+</script>
+</body>
+</html>
