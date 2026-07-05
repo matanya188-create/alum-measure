@@ -318,7 +318,7 @@ const pname = p => String(p.address||p.name||"").trim() || "פרויקט ללא 
 function newItem(typeId){
   const t = TYPE(typeId||1);
   return {
-    id:uid(), type:t.id, location:"", width:"", height:"", wallDepth:"", unit:"cm",
+    id:uid(), type:t.id, location:"", width:"", height:"", wallDepth:"", unit:"mm",
     measureType:"production", qty:1,
     openDir: t.sashes===3 ? "std" : "center",
     handleSide:"right",
@@ -590,8 +590,9 @@ function viewHome(){
   +'<label class="btn small" style="margin:0"><input type="file" accept=".json" style="display:none" onchange="App.restore(this)">⬆ שחזור מגיבוי</label>'
   +'</div><div class="muted" style="margin-top:8px">הנתונים נשמרים בדפדפן במכשיר הזה. מומלץ לייצא גיבוי מדי פעם.</div></div>'
   +'<div class="card"><div class="rowline">'
+  +'<button class="btn small" onclick="App.shareApp()">📤 שתף את האפליקציה</button>'
   +'<button class="btn small" onclick="App.checkUpdate(this)">🔄 בדוק עדכונים</button>'
-  +'<div class="muted grow">גרסה מותקנת: <span class="num">'+APP_VERSION+'</span></div>'
+  +'<div class="muted grow">גרסה: <span class="num">'+APP_VERSION+'</span></div>'
   +'</div></div>'
   +'<button class="btn primary fab" onclick="App.newProject()">+ פרויקט חדש</button>';
 }
@@ -1049,6 +1050,16 @@ const App = {
   discardDraft(){
     if(!confirm("למחוק את הטיוטה ולהתחיל מחדש?")) return;
     clearDraft(); render();
+  },
+  /* share the app (WhatsApp / share sheet) */
+  shareApp(){
+    const url = "https://matanya188-create.github.io/alum-measure/";
+    const text = "פנקס מדידות אלומיניום — אלום אלבז 📐\nפותחים בכרום ולוחצים \"התקן\":\n" + url;
+    if(navigator.share){
+      navigator.share({title:"פנקס מדידות אלומיניום", text:text}).catch(()=>{});
+    } else {
+      window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+    }
   },
   /* update check */
   checkUpdate(btn){
