@@ -476,7 +476,8 @@ function arrow(P,cx,cy,dir){
 const unitName = u => u==="mm" ? "מ\"מ" : "ס\"מ";
 function dimsHTML(it, big){
   if(!it.width && !it.height) return '<span class="muted">ללא מידות</span>';
-  return '<span class="num">'+esc(it.width||"?")+' × '+esc(it.height||"?")+'</span> <span class="u">'+unitName(it.unit)+'</span>';
+  /* בעברית (RTL) האיבר הראשון מוצג מימין — גובה מימין, רוחב משמאל */
+  return '<span class="num" dir="rtl">'+esc(it.height||"?")+' × '+esc(it.width||"?")+'</span> <span class="u">'+unitName(it.unit)+'</span>';
 }
 function measureBadge(it){
   return it.measureType==="opening"
