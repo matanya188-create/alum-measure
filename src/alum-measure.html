@@ -155,6 +155,24 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 @media (prefers-color-scheme: dark){ .badge.prod{color:#0f1420} :root[data-theme="light"] .badge.prod{color:#fff} }
 .badge.open{background:var(--warn-bg);color:var(--warn);border:1.5px solid var(--warn)}
 
+.modal-overlay{
+  position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  padding:24px;background:rgba(12,17,26,.5);backdrop-filter:blur(3px);
+  animation:mfade .16s ease-out;
+}
+.modal{
+  background:var(--surface);color:var(--ink);border:1.5px solid var(--line);
+  border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.4);
+  max-width:380px;width:100%;padding:22px;
+  animation:mpop .2s cubic-bezier(.2,1.2,.4,1);
+}
+.modal h3{font-size:1.08rem;margin-bottom:8px}
+.modal .msg{color:var(--ink2);white-space:pre-line;line-height:1.65;margin-bottom:20px;font-size:.95rem}
+.modal .btns{display:flex;gap:10px}
+.modal .btns .btn{flex:1}
+@keyframes mpop{from{transform:scale(.9) translateY(10px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+@keyframes mfade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){ .modal,.modal-overlay{animation:none} }
 .errbanner{
   background:rgba(179,64,47,.1);border:2px solid var(--danger);color:var(--danger);
   border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:.92rem;line-height:1.7;
@@ -307,7 +325,7 @@ function load(){
 let DB = load();
 function save(){
   try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
-  catch(e){ alert("האחסון בדפדפן מלא — מחק תמונות מפריטים ישנים או ייצא גיבוי ומחק פרויקטים ישנים."); }
+  catch(e){ uiAlert("האחסון בדפדפן מלא — מחק תמונות מפריטים ישנים או ייצא גיבוי ומחק פרויקטים ישנים.","האחסון מלא"); }
 }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -531,6 +549,31 @@ function toInputDate(s){
   const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   return m ? m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0") : "";
 }
+
+/* ================= DIALOGS — תיבות שיח מעוצבות במקום confirm/alert ================= */
+function uiDialog(opts){
+  return new Promise(res=>{
+    const ov=document.createElement("div");
+    ov.className="modal-overlay";
+    ov.innerHTML='<div class="modal" role="dialog" aria-modal="true" dir="rtl">'
+      +(opts.title?'<h3>'+esc(opts.title)+'</h3>':'')
+      +'<div class="msg">'+esc(opts.msg)+'</div>'
+      +'<div class="btns">'
+      +'<button class="btn '+(opts.danger?'danger':'primary')+'" data-m="ok">'+esc(opts.ok||"אישור")+'</button>'
+      +(opts.cancel?'<button class="btn" data-m="cancel">'+esc(opts.cancel)+'</button>':'')
+      +'</div></div>';
+    document.body.appendChild(ov);
+    const onKey=e=>{ if(e.key==="Escape") close(false); };
+    function close(v){ document.removeEventListener("keydown",onKey); ov.remove(); res(v); }
+    ov.querySelector('[data-m="ok"]').onclick=()=>close(true);
+    const c=ov.querySelector('[data-m="cancel"]'); if(c) c.onclick=()=>close(false);
+    ov.addEventListener("click",e=>{ if(e.target===ov) close(false); });
+    document.addEventListener("keydown",onKey);
+    ov.querySelector('[data-m="ok"]').focus();
+  });
+}
+const uiAlert=(msg,title)=>uiDialog({msg:msg,title:title,ok:"הבנתי"});
+const uiConfirm=(msg,o)=>uiDialog(Object.assign({msg:msg,cancel:"ביטול"},o||{}));
 
 /* ================= INSTALL PROMPT (PWA) ================= */
 let installEvt = null;
@@ -954,8 +997,10 @@ const App = {
   },
   pf(pid,k,v){ const p=proj(pid); if(p){ p[k]=v; save(); } },
   delProject(pid){
-    if(!confirm("למחוק את הפרויקט על כל הפריטים שלו? אין דרך חזרה.")) return;
-    DB.projects = DB.projects.filter(p=>p.id!==pid); save(); nav("/");
+    uiConfirm("למחוק את הפרויקט על כל הפריטים שלו? אין דרך חזרה.",{title:"מחיקת פרויקט",ok:"מחק",danger:true}).then(ok=>{
+      if(!ok) return;
+      DB.projects = DB.projects.filter(p=>p.id!==pid); save(); nav("/");
+    });
   },
   move(pid,i,dir){
     const p=proj(pid); const j=i+dir;
@@ -1032,25 +1077,30 @@ const App = {
   },
   saveItem(){
     const p=proj(draftPid); if(!p) return;
+    const doSave=()=>{
+      if(draftIid){
+        const idx=p.items.findIndex(x=>x.id===draftIid);
+        if(idx>=0) p.items[idx]=draft; else p.items.push(draft);
+      } else p.items.push(draft);
+      save(); clearDraft(); nav("/p/"+p.id);
+    };
     const miss = missingList(draft);
     if(miss.length){
-      if(!confirm("חסרים נתונים: "+miss.join(", ")+".\nאפשר לשמור ולהשלים אחר כך — אבל קובץ ליצרן ייחסם עד שהכל יושלם. לשמור בכל זאת?")) return;
-    }
-    if(draftIid){
-      const idx=p.items.findIndex(x=>x.id===draftIid);
-      if(idx>=0) p.items[idx]=draft; else p.items.push(draft);
-    } else p.items.push(draft);
-    save(); clearDraft(); nav("/p/"+p.id);
+      uiConfirm("חסרים נתונים: "+miss.join(", ")+".\nאפשר לשמור ולהשלים אחר כך — אבל קובץ ליצרן ייחסם עד שהכל יושלם.",{title:"נתונים חסרים",ok:"שמור בכל זאת"}).then(ok=>{ if(ok) doSave(); });
+    } else doSave();
   },
   delItem(){
-    if(!confirm("למחוק את הפריט?")) return;
-    const p=proj(draftPid);
-    p.items=p.items.filter(x=>x.id!==draftIid);
-    save(); clearDraft(); nav("/p/"+p.id);
+    uiConfirm("למחוק את הפריט?",{title:"מחיקת פריט",ok:"מחק",danger:true}).then(ok=>{
+      if(!ok) return;
+      const p=proj(draftPid);
+      p.items=p.items.filter(x=>x.id!==draftIid);
+      save(); clearDraft(); nav("/p/"+p.id);
+    });
   },
   discardDraft(){
-    if(!confirm("למחוק את הטיוטה ולהתחיל מחדש?")) return;
-    clearDraft(); render();
+    uiConfirm("למחוק את הטיוטה ולהתחיל מחדש?",{title:"טיוטה",ok:"התחל מחדש",danger:true}).then(ok=>{
+      if(ok){ clearDraft(); render(); }
+    });
   },
   /* share the app (WhatsApp / share sheet) */
   shareApp(){
@@ -1069,21 +1119,21 @@ const App = {
       .then(r=>r.json())
       .then(v=>{
         if(Number(v.version) > APP_VERSION){
-          if(confirm("🎉 נמצאה גרסה חדשה ("+v.version+")!\nלעדכן עכשיו? העדכון לוקח שניות והנתונים שלך נשמרים.")){
+          uiConfirm("נמצאה גרסה חדשה ("+v.version+")!\nהעדכון לוקח שניות והנתונים שלך נשמרים.",{title:"🎉 יש עדכון",ok:"עדכן עכשיו",cancel:"אחר כך"}).then(yes=>{
+            if(!yes){ render(); return; }
             const done = () => location.reload();
             if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations){
               navigator.serviceWorker.getRegistrations()
                 .then(rs=>Promise.all(rs.map(r=>r.update())))
                 .then(done, done);
             } else done();
-            return;
-          }
-        } else {
-          alert("✓ האפליקציה מעודכנת (גרסה "+APP_VERSION+")");
+          });
+          return;
         }
+        uiAlert("האפליקציה מעודכנת (גרסה "+APP_VERSION+") ✓","הכל עדכני");
         render();
       })
-      .catch(()=>{ alert("אין חיבור לאינטרנט — אי אפשר לבדוק עדכונים כרגע."); render(); });
+      .catch(()=>{ uiAlert("אין חיבור לאינטרנט — אי אפשר לבדוק עדכונים כרגע.","אין חיבור"); render(); });
   },
   /* PWA install */
   install(){
@@ -1091,7 +1141,7 @@ const App = {
       installEvt.prompt();
       installEvt.userChoice.then(()=>{ installEvt=null; render(); }).catch(()=>{ installEvt=null; render(); });
     } else {
-      alert("אם לא קפצה חלונית התקנה, יש שתי אפשרויות:\n\n1) האפליקציה כבר מותקנת — חפש את הלוגו של אלום אלבז במגירת האפליקציות של הטלפון.\n\n2) התקנה ידנית בכרום: תפריט ⋮ למעלה ← \"הוספה למסך הבית\" ← \"התקנה\".");
+      uiAlert("אם לא קפצה חלונית התקנה, יש שתי אפשרויות:\n\n1) האפליקציה כבר מותקנת — חפש את הלוגו של אלום אלבז במגירת האפליקציות של הטלפון.\n\n2) התקנה ידנית בכרום: תפריט ⋮ למעלה ← \"הוספה למסך הבית\" ← \"התקנה\".","התקנת האפליקציה");
     }
   },
   /* company logo */
@@ -1115,8 +1165,9 @@ const App = {
     rd.readAsDataURL(file);
   },
   logoRemove(){
-    if(!confirm("לחזור ללוגו המובנה של אלום אלבז?")) return;
-    DB.settings.logo=null; save(); render();
+    uiConfirm("לחזור ללוגו המובנה של אלום אלבז?",{title:"לוגו",ok:"כן, חזור למובנה"}).then(ok=>{
+      if(ok){ DB.settings.logo=null; save(); render(); }
+    });
   },
   /* export */
   eo(k,v){ expOpts[k]=v; render(); },
@@ -1137,9 +1188,10 @@ const App = {
       try{
         const data=JSON.parse(e.target.result);
         if(!data || !Array.isArray(data.projects)) throw 0;
-        if(!confirm("השחזור יחליף את כל הנתונים הקיימים במכשיר. להמשיך?")) return;
-        DB=data; save(); render();
-      }catch(err){ alert("הקובץ אינו גיבוי תקין."); }
+        uiConfirm("השחזור יחליף את כל הנתונים הקיימים במכשיר. להמשיך?",{title:"שחזור מגיבוי",ok:"שחזר",danger:true}).then(ok=>{
+          if(ok){ DB=data; if(!DB.settings) DB.settings={logo:null}; save(); render(); }
+        });
+      }catch(err){ uiAlert("הקובץ אינו גיבוי תקין.","שגיאה"); }
     };
     rd.readAsText(file);
   }
