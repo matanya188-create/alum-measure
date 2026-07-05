@@ -311,6 +311,8 @@ function save(){
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const proj = pid => DB.projects.find(p=>p.id===pid);
+/* הכתובת היא שם הפרויקט */
+const pname = p => String(p.address||p.name||"").trim() || "פרויקט ללא כתובת";
 
 function newItem(typeId){
   const t = TYPE(typeId||1);
@@ -536,7 +538,7 @@ function viewHome(){
   let cards = DB.projects.map(p=>{
     return '<div class="card tap" onclick="nav(\'/p/'+p.id+'\')">'
       +'<div class="rowline"><div class="grow">'
-      +'<div class="title-md">'+esc(p.name||"פרויקט ללא שם")+'</div>'
+      +'<div class="title-md">'+esc(pname(p))+'</div>'
       +'<div class="muted">'+esc(p.client||"")+(p.client&&p.date?" · ":"")+esc(p.date||"")+' · <span class="num">'+p.items.length+'</span> פריטים</div>'
       +'</div><div style="font-size:1.3rem;color:var(--ink2)">‹</div></div></div>';
   }).join("");
@@ -590,17 +592,16 @@ function viewProject(p){
 
   return ''
   +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
-  +'<div class="grow"><h1>'+esc(p.name||"פרויקט")+'</h1><div class="sub"><span class="num">'+p.items.length+'</span> פריטים</div></div>'
+  +'<div class="grow"><h1>'+esc(pname(p))+'</h1><div class="sub"><span class="num">'+p.items.length+'</span> פריטים</div></div>'
   +'<button class="btn small primary" '+(p.items.length?'':'disabled style="opacity:.5"')+' onclick="nav(\'/p/'+p.id+'/export\')">📄 קובץ ליצוא</button></div>'
 
   +'<div class="card"><details'+(p.items.length?'':' open')+'><summary style="font-weight:700;cursor:pointer">פרטי הפרויקט (לשימוש פנימי)</summary>'
   +'<div style="margin-top:12px">'
-  +'<div class="field"><label>שם הפרויקט</label><input value="'+esc(p.name)+'" oninput="App.pf(\''+p.id+'\',\'name\',this.value)"></div>'
+  +'<div class="field"><label>כתובת — זהו גם שם הפרויקט, וזה מה שהיצרן יראה בכותרת</label><input value="'+esc(p.address)+'" oninput="App.pf(\''+p.id+'\',\'address\',this.value)" placeholder="למשל: הרצל 12, אשדוד"></div>'
   +'<div class="two">'
   +'<div class="field"><label>שם הלקוח</label><input value="'+esc(p.client)+'" oninput="App.pf(\''+p.id+'\',\'client\',this.value)"></div>'
   +'<div class="field"><label>טלפון</label><input inputmode="tel" value="'+esc(p.phone)+'" oninput="App.pf(\''+p.id+'\',\'phone\',this.value)"></div>'
   +'</div>'
-  +'<div class="field"><label>כתובת</label><input value="'+esc(p.address)+'" oninput="App.pf(\''+p.id+'\',\'address\',this.value)"></div>'
   +'<div class="two">'
   +'<div class="field"><label>תאריך מדידה</label><input value="'+esc(p.date)+'" oninput="App.pf(\''+p.id+'\',\'date\',this.value)"></div>'
   +'<div class="field"><label>שם המודד</label><input value="'+esc(p.measurer)+'" oninput="App.pf(\''+p.id+'\',\'measurer\',this.value)"></div>'
@@ -626,7 +627,7 @@ function viewItem(p, iid){
   }
   return ''
   +'<div class="topbar"><button class="backbtn" onclick="nav(\'/p/'+p.id+'\')">→</button>'
-  +'<div class="grow"><h1>'+(draftIid?"עריכת פריט":"פריט חדש")+'</h1><div class="sub">'+esc(p.name||"")+'</div></div>'
+  +'<div class="grow"><h1>'+(draftIid?"עריכת פריט":"פריט חדש")+'</h1><div class="sub">'+esc(pname(p))+'</div></div>'
   +(draftIid?'<button class="btn small danger" onclick="App.delItem()">מחק</button>':'')
   +'</div>'
   +'<div class="preview-wrap" id="preview"></div>'
@@ -810,17 +811,16 @@ function viewExport(p){
     let head = "";
     if(pi===0){
       if(internal){
-        head = '<div class="sheet-head"><h2>דף מדידות — '+esc(p.name||"")+'</h2><div class="meta">'
+        head = '<div class="sheet-head"><h2>דף מדידות — '+esc(pname(p))+'</h2><div class="meta">'
           +(p.client?'<span>לקוח: <b>'+esc(p.client)+'</b></span>':'')
           +(p.phone?'<span>טל׳: <b class="num">'+esc(p.phone)+'</b></span>':'')
-          +(p.address?'<span>כתובת: <b>'+esc(p.address)+'</b></span>':'')
           +'<span>תאריך: <b class="num">'+esc(p.date||"")+'</b></span>'
           +(p.measurer?'<span>מודד: <b>'+esc(p.measurer)+'</b></span>':'')
           +'<span>סה"כ פריטים: <b class="num">'+p.items.length+'</b></span>'
           +(p.notes?'<span>הערות: '+esc(p.notes)+'</span>':'')
           +'</div></div>';
       } else {
-        head = '<div class="sheet-head"><h2>הזמנת ייצור'+(expOpts.showName&&p.name?" — "+esc(p.name):"")+'</h2><div class="meta">'
+        head = '<div class="sheet-head"><h2>הזמנת ייצור'+(expOpts.showName?" — "+esc(pname(p)):"")+'</h2><div class="meta">'
           +'<span>תאריך: <b class="num">'+esc(p.date||today())+'</b></span>'
           +'<span>סה"כ פריטים: <b class="num">'+p.items.length+'</b></span>'
           +'</div></div>';
@@ -863,7 +863,7 @@ function viewExport(p){
   return ''
   +'<div class="exp-tools no-print">'
   +'<div class="rowline" style="margin-bottom:10px"><button class="backbtn" onclick="nav(\'/p/'+p.id+'\')">→</button>'
-  +'<div class="grow"><h1 style="font-size:1.1rem">קובץ ליצוא — '+esc(p.name||"")+'</h1></div>'
+  +'<div class="grow"><h1 style="font-size:1.1rem">קובץ ליצוא — '+esc(pname(p))+'</h1></div>'
   +(blocked
     ? '<button class="btn" disabled style="opacity:.45">🖨 הדפס / שמור PDF</button>'
     : '<button class="btn primary" onclick="window.print()">🖨 הדפס / שמור PDF</button>')
@@ -880,8 +880,8 @@ function viewExport(p){
   +'</div></div></div>'
   +(expOpts.mode==="factory"
     ? '<div style="margin-top:8px"><label class="chip '+(expOpts.showName?"on":"")+'" style="display:inline-flex;align-items:center" onclick="App.eo(\'showName\','+(!expOpts.showName)+')">'
-      +(expOpts.showName?"✓ ":"")+'הצג שם פרויקט בכותרת</label>'
-      +' <span class="muted">בקובץ ליצרן לא מופיעים פרטי לקוח, טלפון וכתובת.</span></div>'
+      +(expOpts.showName?"✓ ":"")+'הצג כתובת (שם הפרויקט) בכותרת</label>'
+      +' <span class="muted">היצרן רואה רק את הכתובת — בלי שם לקוח, טלפון ותמונות.</span></div>'
     : '<div class="muted" style="margin-top:8px">הקובץ הפנימי כולל את כל פרטי הלקוח והתמונות.</div>')
   +'</div>'
   +(problems.length
