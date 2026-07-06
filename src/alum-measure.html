@@ -230,6 +230,33 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 
 .exp-tools{position:sticky;top:0;z-index:25;background:var(--paper);padding:12px 0;border-bottom:1px solid var(--line2);margin-bottom:14px}
 
+.menu-card{display:flex;align-items:center;gap:16px;padding:20px 18px;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:14px;cursor:pointer}
+.menu-card .mc-ic{flex:none;width:58px;height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:1.7rem}
+.menu-card .mc-t{font-weight:800;font-size:1.15rem}
+.menu-card .mc-s{color:var(--ink2);font-size:.85rem;margin-top:2px}
+.menu-card .mc-arrow{font-size:1.4rem;color:var(--ink2)}
+.fab-left{left:18px;right:auto;inset-inline-start:auto;transform:none;min-width:0;width:auto;padding:12px 20px}
+.searchbar{position:relative;margin-bottom:14px}
+.searchbar input{padding-inline-start:42px}
+.searchbar .si{position:absolute;inset-inline-start:14px;top:50%;transform:translateY(-50%);color:var(--ink2);font-size:1.05rem;pointer-events:none}
+.price-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.price-line .pl-price{width:120px;flex:none}
+.totals{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.totals .tr{display:flex;justify-content:space-between;padding:5px 0;font-variant-numeric:tabular-nums}
+.totals .tr.grand{border-top:2px solid var(--line);margin-top:6px;padding-top:12px;font-weight:800;font-size:1.15rem}
+
+.qtable{width:100%;border-collapse:collapse;direction:rtl}
+.qtable th,.qtable td{border:1px solid #cfd4de;padding:5px 7px;font-size:.8rem;text-align:right;vertical-align:top}
+.qtable th{background:#eef1f7;font-weight:800;color:#161a20;text-align:center}
+.qtable td.num{text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+.qtable .qdesc{font-weight:700;color:#161a20}
+.qtable .qsub{font-size:.72rem;color:#555}
+.qtable tr{break-inside:avoid}
+.qtot{margin-top:10px;margin-inline-start:auto;width:min(300px,70%)}
+.qtot .qr{display:flex;justify-content:space-between;padding:4px 2px;font-size:.9rem;font-variant-numeric:tabular-nums}
+.qtot .qr.grand{border-top:2px solid #233f80;margin-top:4px;padding-top:8px;font-weight:800;font-size:1.1rem;color:#161a20}
+.qterms{margin-top:14px;font-size:.72rem;color:#555;line-height:1.6;border-top:1px dashed #ccc;padding-top:8px}
+
 @media print{
   body{background:#fff}
   #app{max-width:none;padding:0}
@@ -338,6 +365,8 @@ function load(){
   catch(e){ d = {projects:[]}; }
   if(!d.projects) d.projects=[];
   if(!d.settings) d.settings={logo:null};
+  if(d.settings.vatRate==null) d.settings.vatRate=18;
+  d.projects.forEach(p=>{ if(!p.kind) p.kind="production"; });
   return d;
 }
 let DB = load();
@@ -350,6 +379,32 @@ const esc = s => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
 const proj = pid => DB.projects.find(p=>p.id===pid);
 /* הכתובת היא שם הפרויקט */
 const pname = p => String(p.address||p.name||"").trim() || "פרויקט ללא כתובת";
+
+/* ---- הצעת מחיר: שטח, מחיר וסיכום ---- */
+function itemAreaM2(it){
+  const w=parseFloat(it.width)||0, h=parseFloat(it.height)||0;
+  if(!w||!h) return 0;
+  return it.unit==="mm" ? w*h/1e6 : w*h/1e4;
+}
+function itemUnitPrice(it, rate){
+  if(it.priceOverride!==undefined && it.priceOverride!==null && String(it.priceOverride).trim()!=="")
+    return Math.round(Number(it.priceOverride)||0);
+  return Math.round(itemAreaM2(it)*(Number(rate)||0));
+}
+function money(n){ return "₪" + Math.round(Number(n)||0).toLocaleString("en-US"); }
+function quoteTotals(p){
+  const rate=Number(p.pricePerM2)||0;
+  let sub=0;
+  (p.items||[]).forEach(it=>{ sub += itemUnitPrice(it,rate)*(Number(it.qty)||1); });
+  sub=Math.round(sub);
+  const vatRate = p.vatEnabled===false ? 0 : (p.vatRate!=null?Number(p.vatRate):(DB.settings.vatRate!=null?Number(DB.settings.vatRate):18));
+  const vat = Math.round(sub*vatRate/100);
+  return {sub, vatRate, vat, total: sub+vat};
+}
+function dimsText(it){
+  if(!it.width && !it.height) return "—";
+  return (it.height||"?")+" × "+(it.width||"?")+" "+unitName(it.unit);
+}
 
 function newItem(typeId){
   const t = TYPE(typeId||1);
@@ -612,35 +667,108 @@ function render(){
     if(!p){ nav("/"); return; }
     if(parts[2]==="item"){ app.innerHTML = viewItem(p, parts[3]); afterItemRender(); }
     else if(parts[2]==="export"){ app.innerHTML = viewExport(p); }
+    else if(parts[2]==="pricing"){ app.innerHTML = viewPricing(p); afterPricingRender(); }
+    else if(parts[2]==="quote-export"){ app.innerHTML = viewQuoteExport(p); }
     else app.innerHTML = viewProject(p);
-  } else {
+  } else if(parts[0]==="projects"){ app.innerHTML = viewList("production"); afterListRender(); }
+  else if(parts[0]==="quotes"){ app.innerHTML = viewList("quote"); afterListRender(); }
+  else if(parts[0]==="pricing"){ app.innerHTML = viewPricingList(); afterListRender(); }
+  else if(parts[0]==="settings"){ app.innerHTML = viewSettings(); }
+  else {
     app.innerHTML = viewHome();
   }
   window.scrollTo(0,0);
 }
 
 /* ================= VIEWS ================= */
+function countKind(k){ return DB.projects.filter(p=>(p.kind||"production")===k).length; }
+
 function viewHome(){
-  let cards = DB.projects.map((p,i)=>{
-    return '<div class="card tap" onclick="nav(\'/p/'+p.id+'\')">'
-      +'<div class="rowline">'
-      +'<div class="pchip pc'+(i%4)+'">🏠</div>'
-      +'<div class="grow">'
-      +'<div class="title-md">'+esc(pname(p))+'</div>'
-      +'<div class="muted">'+esc(p.client||"")+(p.client&&p.date?" · ":"")+esc(fmtDate(p.date))+' · <span class="num">'+p.items.length+'</span> פריטים</div>'
-      +'</div><div style="font-size:1.3rem;color:var(--ink2)">‹</div></div></div>';
-  }).join("");
-  if(!DB.projects.length) cards = '<div class="empty">עדיין אין פרויקטים.<br>לוחצים על "פרויקט חדש" ומתחילים למדוד.</div>';
   const showInstall = !isStandalone() && (installEvt || location.hostname.indexOf("github.io") >= 0);
+  const menuItem = (icon,cls,title,sub,route)=>
+    '<div class="menu-card" onclick="nav(\''+route+'\')">'
+    +'<div class="mc-ic '+cls+'">'+icon+'</div>'
+    +'<div class="grow"><div class="mc-t">'+title+'</div><div class="mc-s">'+sub+'</div></div>'
+    +'<div class="mc-arrow">‹</div></div>';
   return ''
-  +'<div class="topbar"><div><h1>פנקס מדידות אלומיניום</h1><div class="sub">מדידה בשטח → קובץ מסודר ליצרן</div></div></div>'
+  +'<div class="topbar"><div><h1>אלום אלבז</h1><div class="sub">פנקס מדידות והצעות מחיר</div></div></div>'
   +(showInstall
     ? '<div class="card banner"><div class="rowline">'
       +'<div class="grow"><b>📲 התקנת האפליקציה בטלפון</b><div class="muted">אייקון במסך הבית, מסך מלא, עובד גם בלי אינטרנט</div></div>'
       +'<button class="btn" onclick="App.install()">התקן</button>'
       +'</div></div>'
     : '')
-  + cards
+  +menuItem("📐","pc3","פרויקטים","מדידות ייצור לשליחה ליצרן · "+countKind("production")+" פרויקטים","/projects")
+  +menuItem("💰","pc1","מידות להצעת מחיר","מדידה מהירה לתמחור · "+countKind("quote")+" הצעות","/quotes")
+  +menuItem("📄","pc0","הצעת מחיר ללקוח","תמחור והפקת הצעה ללקוח","/pricing")
+  +'<button class="btn primary fab fab-left" onclick="nav(\'/settings\')">⚙️ הגדרות</button>';
+}
+
+/* ---------- רשימות (פרויקטים / מידות-הצעה) עם חיפוש ---------- */
+let listKind="production", searchQ="", listSuffix="";
+function matchSearch(p,q){
+  if(!q) return true;
+  q=q.toLowerCase();
+  return String(p.address||"").toLowerCase().includes(q)
+    || String(p.client||"").toLowerCase().includes(q)
+    || String(p.phone||"").includes(q);
+}
+function projCardHTML(p,i){
+  const extra = (listSuffix==="/pricing") ? '<div style="font-weight:800;color:var(--acc)">'+money(quoteTotals(p).total)+'</div>' : '';
+  return '<div class="card tap" onclick="nav(\'/p/'+p.id+listSuffix+'\')">'
+    +'<div class="rowline">'
+    +'<div class="pchip pc'+(i%4)+'">'+(listKind==="quote"?"💰":"🏠")+'</div>'
+    +'<div class="grow">'
+    +'<div class="title-md">'+esc(pname(p))+'</div>'
+    +'<div class="muted">'+esc(p.client||"")+(p.client&&p.date?" · ":"")+esc(fmtDate(p.date))+' · <span class="num">'+p.items.length+'</span> פריטים</div>'
+    +'</div>'+(extra||'<div style="font-size:1.3rem;color:var(--ink2)">‹</div>')+'</div></div>';
+}
+function viewList(kind){
+  listKind=kind; searchQ=""; listSuffix="";
+  const title = kind==="quote" ? "מידות להצעת מחיר" : "פרויקטים";
+  const addLabel = kind==="quote" ? "+ מדידת הצעה חדשה" : "+ פרויקט חדש";
+  const addFn = kind==="quote" ? "App.newQuote()" : "App.newProject()";
+  return ''
+  +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
+  +'<div class="grow"><h1>'+title+'</h1></div></div>'
+  +'<div class="searchbar"><span class="si">🔍</span>'
+  +'<input type="search" placeholder="חיפוש לפי כתובת, שם לקוח או טלפון" oninput="App.search(this.value)"></div>'
+  +'<div id="listbox"></div>'
+  +'<button class="btn primary fab" onclick="'+addFn+'">'+addLabel+'</button>';
+}
+function afterListRender(){ renderList(); }
+function renderList(){
+  const box=document.getElementById("listbox"); if(!box) return;
+  const q=searchQ.trim();
+  const arr=DB.projects.filter(p=>(p.kind||"production")===listKind && matchSearch(p,q));
+  if(!arr.length){
+    box.innerHTML = q
+      ? '<div class="empty">לא נמצאו תוצאות ל"'+esc(q)+'".</div>'
+      : (listKind==="quote"
+          ? '<div class="empty">אין עדיין מדידות להצעת מחיר.<br>לוחצים על הכפתור למטה ומתחילים.</div>'
+          : '<div class="empty">עדיין אין פרויקטים.<br>לוחצים על "פרויקט חדש" ומתחילים למדוד.</div>');
+    return;
+  }
+  box.innerHTML = arr.map((p,i)=>projCardHTML(p,i)).join("");
+}
+
+/* ---------- רשימת הצעות מחיר (תמחור) ---------- */
+function viewPricingList(){
+  listKind="quote"; searchQ=""; listSuffix="/pricing";
+  return ''
+  +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
+  +'<div class="grow"><h1>הצעת מחיר ללקוח</h1><div class="sub">בחר מדידת הצעה לתמחור</div></div></div>'
+  +'<div class="searchbar"><span class="si">🔍</span>'
+  +'<input type="search" placeholder="חיפוש לפי כתובת, שם לקוח או טלפון" oninput="App.search(this.value)"></div>'
+  +'<div id="listbox"></div>'
+  +'<button class="btn primary fab" onclick="App.newQuote()">+ מדידת הצעה חדשה</button>';
+}
+
+/* ---------- מסך הגדרות ---------- */
+function viewSettings(){
+  return ''
+  +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
+  +'<div class="grow"><h1>הגדרות</h1></div></div>'
   +'<div class="card"><label>לוגו החברה — מופיע בכל קובץ מיוצא (לצד בס״ד)</label>'
   +'<div class="rowline" style="margin-top:8px">'
   +'<img src="'+(DB.settings.logo||DEFAULT_LOGO)+'" alt="לוגו" style="max-height:60px;max-width:150px;object-fit:contain;border-radius:8px">'
@@ -650,16 +778,22 @@ function viewHome(){
   +'<label class="btn small" style="margin:0"><input type="file" accept="image/*" style="display:none" onchange="App.logoUpload(this)">החלף לוגו</label>'
   +(DB.settings.logo?'<button class="btn small" onclick="App.logoRemove()">חזרה ללוגו המובנה</button>':'')
   +'</div></div>'
-  +'<div class="card"><div class="rowline">'
+  +'<div class="card"><label>הצעות מחיר</label>'
+  +'<div class="two" style="margin-top:8px">'
+  +'<div class="field" style="margin:0"><label>מחיר ברירת מחדל למ״ר (₪)</label><input class="num" inputmode="decimal" value="'+esc(DB.settings.pricePerM2||"")+'" oninput="App.sf(\'pricePerM2\',this.value)" placeholder="למשל 1200"></div>'
+  +'<div class="field" style="margin:0"><label>מע״מ (%)</label><input class="num" inputmode="decimal" value="'+esc(DB.settings.vatRate)+'" oninput="App.sf(\'vatRate\',this.value)"></div>'
+  +'</div>'
+  +'<div class="muted" style="margin-top:6px">אלה ברירות מחדל למדידת-הצעה חדשה. אפשר לשנות בכל הצעה בנפרד.</div></div>'
+  +'<div class="card"><label>גיבוי ושחזור</label>'
+  +'<div class="rowline" style="margin-top:8px">'
   +'<button class="btn small" onclick="App.backup()">⬇ גיבוי לקובץ</button>'
   +'<label class="btn small" style="margin:0"><input type="file" accept=".json" style="display:none" onchange="App.restore(this)">⬆ שחזור מגיבוי</label>'
   +'</div><div class="muted" style="margin-top:8px">הנתונים נשמרים בדפדפן במכשיר הזה. מומלץ לייצא גיבוי מדי פעם.</div></div>'
-  +'<div class="card"><div class="rowline">'
+  +'<div class="card"><label>אפליקציה</label>'
+  +'<div class="rowline" style="margin-top:8px">'
   +'<button class="btn small" onclick="App.shareApp()">📤 שתף את האפליקציה</button>'
   +'<button class="btn small" onclick="App.checkUpdate(this)">🔄 בדוק עדכונים</button>'
-  +'<div class="muted grow">גרסה: <span class="num">'+APP_VERSION+'</span></div>'
-  +'</div></div>'
-  +'<button class="btn primary fab" onclick="App.newProject()">+ פרויקט חדש</button>';
+  +'</div><div class="muted" style="margin-top:8px">גרסה מותקנת: <span class="num">'+APP_VERSION+'</span></div></div>';
 }
 
 function viewProject(p){
@@ -683,10 +817,15 @@ function viewProject(p){
       +'</div></div></div>';
   }).join("");
 
+  const isQuote = p.kind==="quote";
+  const back = isQuote ? "/quotes" : "/projects";
+  const actionBtn = isQuote
+    ? '<button class="btn small primary" '+(p.items.length?'':'disabled style="opacity:.5"')+' onclick="nav(\'/p/'+p.id+'/pricing\')">💰 תמחור</button>'
+    : '<button class="btn small primary" '+(p.items.length?'':'disabled style="opacity:.5"')+' onclick="nav(\'/p/'+p.id+'/export\')">📄 קובץ ליצוא</button>';
   return ''
-  +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
-  +'<div class="grow"><h1>'+esc(pname(p))+'</h1><div class="sub"><span class="num">'+p.items.length+'</span> פריטים</div></div>'
-  +'<button class="btn small primary" '+(p.items.length?'':'disabled style="opacity:.5"')+' onclick="nav(\'/p/'+p.id+'/export\')">📄 קובץ ליצוא</button></div>'
+  +'<div class="topbar"><button class="backbtn" onclick="nav(\''+back+'\')">→</button>'
+  +'<div class="grow"><h1>'+esc(pname(p))+'</h1><div class="sub">'+(isQuote?"מדידת הצעה · ":"")+'<span class="num">'+p.items.length+'</span> פריטים</div></div>'
+  +actionBtn+'</div>'
 
   +'<div class="card"><details'+(p.items.length?'':' open')+'><summary style="font-weight:700;cursor:pointer">פרטי הפרויקט (לשימוש פנימי)</summary>'
   +'<div style="margin-top:12px">'
@@ -700,7 +839,8 @@ function viewProject(p){
   +'<div class="field"><label>שם המודד</label><input value="'+esc(p.measurer)+'" oninput="App.pf(\''+p.id+'\',\'measurer\',this.value)"></div>'
   +'</div>'
   +'<div class="field"><label>הערות פרויקט</label><textarea rows="2" oninput="App.pf(\''+p.id+'\',\'notes\',this.value)">'+esc(p.notes)+'</textarea></div>'
-  +'<button class="btn small danger" onclick="App.delProject(\''+p.id+'\')">מחק פרויקט</button>'
+  +(isQuote?'<button class="btn small" style="margin-bottom:8px" onclick="App.convertToProduction(\''+p.id+'\')">📐 העתק לפרויקט ייצור</button><br>':'')
+  +'<button class="btn small danger" onclick="App.delProject(\''+p.id+'\')">מחק '+(isQuote?"מדידת הצעה":"פרויקט")+'</button>'
   +'</div></details></div>'
 
   +(items || '<div class="empty">אין פריטים עדיין.<br>מוסיפים את החלון או הדלת הראשונים.</div>')
@@ -1016,17 +1156,140 @@ function viewExport(p){
   + sheets;
 }
 
+/* ---------- תמחור (הצעת מחיר) ---------- */
+let pricingPid=null;
+function viewPricing(p){
+  pricingPid=p.id;
+  const vatOn = p.vatEnabled!==false;
+  return ''
+  +'<div class="topbar"><button class="backbtn" onclick="nav(\'/p/'+p.id+'\')">→</button>'
+  +'<div class="grow"><h1>תמחור</h1><div class="sub">'+esc(pname(p))+'</div></div>'
+  +'<button class="btn small primary" '+(p.items.length?'':'disabled style="opacity:.5"')+' onclick="nav(\'/p/'+p.id+'/quote-export\')">📄 הצעה ללקוח</button></div>'
+  +'<div class="card"><div class="two">'
+  +'<div class="field" style="margin:0"><label>מחיר למ״ר (₪)</label><input class="num" inputmode="decimal" value="'+esc(p.pricePerM2||"")+'" oninput="App.qf(\''+p.id+'\',\'pricePerM2\',this.value)" placeholder="למשל 1200"></div>'
+  +'<div class="field" style="margin:0"><label>מע״מ</label><div class="seg">'
+  +segBtn(vatOn,"עם מע״מ","App.qf('"+p.id+"','vatEnabled',true)")
+  +segBtn(!vatOn,"בלי","App.qf('"+p.id+"','vatEnabled',false)")
+  +'</div></div>'
+  +'</div>'
+  +(vatOn?'<div class="field" style="margin:10px 0 0;max-width:140px"><label>אחוז מע״מ</label><input class="num" inputmode="decimal" value="'+esc(p.vatRate!=null?p.vatRate:DB.settings.vatRate)+'" oninput="App.qf(\''+p.id+'\',\'vatRate\',this.value)"></div>':'')
+  +'<div class="muted" style="margin-top:8px">המחיר לכל פריט מחושב אוטומטית לפי השטח × מחיר למ״ר. אפשר להזין מחיר ידני לכל פריט — הוא יגבר על החישוב.</div>'
+  +'</div>'
+  +'<div id="pricebox"></div>';
+}
+function afterPricingRender(){ renderPricing(); }
+function renderPricing(){
+  const box=document.getElementById("pricebox"); if(!box) return;
+  const p=proj(pricingPid); if(!p) return;
+  const rate=Number(p.pricePerM2)||0;
+  const rows = p.items.map((it,i)=>{
+    const T=TYPE(it.type);
+    const area=itemAreaM2(it);
+    const suggested=Math.round(area*rate);
+    const unit=itemUnitPrice(it,rate);
+    const qty=Number(it.qty)||1;
+    const line=unit*qty;
+    const overridden = it.priceOverride!==undefined && it.priceOverride!==null && String(it.priceOverride).trim()!=="";
+    return '<div class="card"><div class="itemrow">'
+      +'<div class="thumb">'+sketchSVG(it,70)+'</div>'
+      +'<div class="grow">'
+      +'<div class="title-md"><span class="num">'+(i+1)+'.</span> '+esc(it.location||T.name)+'</div>'
+      +'<div class="muted">'+T.name+' · '+esc(dimsText(it))+(area?' · <span class="num">'+area.toFixed(2)+'</span> מ״ר':'')+(qty>1?' · <span class="num">×'+qty+'</span>':'')+'</div>'
+      +'<div class="price-line" style="margin-top:8px">'
+      +'<div class="pl-price"><input class="num" inputmode="decimal" value="'+(overridden?esc(it.priceOverride):"")+'" placeholder="'+suggested+'" onchange="App.setOverride(\''+p.id+'\',\''+it.id+'\',this.value)"></div>'
+      +'<div class="muted">₪ ליחידה'+(overridden?' (ידני)':' (מחושב)')+'</div>'
+      +'<div class="grow" style="text-align:left;font-weight:800">'+money(line)+'</div>'
+      +'</div></div></div></div>';
+  }).join("");
+  const t=quoteTotals(p);
+  const totals = '<div class="totals">'
+    +'<div class="tr"><span>סכום ביניים</span><span>'+money(t.sub)+'</span></div>'
+    +(t.vatRate?'<div class="tr"><span>מע״מ ('+t.vatRate+'%)</span><span>'+money(t.vat)+'</span></div>':'')
+    +'<div class="tr grand"><span>סה״כ ללקוח</span><span>'+money(t.total)+'</span></div>'
+    +'</div>';
+  box.innerHTML = (rows||'<div class="empty">אין פריטים לתמחר.</div>') + (p.items.length?totals:'');
+}
+
+/* ---------- הצעת מחיר ללקוח (PDF) ---------- */
+function viewQuoteExport(p){
+  const rate=Number(p.pricePerM2)||0;
+  const t=quoteTotals(p);
+  const rows = p.items.map((it,i)=>{
+    const T=TYPE(it.type);
+    const unit=itemUnitPrice(it,rate);
+    const qty=Number(it.qty)||1;
+    const sub=[profileText(it),it.color,it.glass].filter(Boolean).join(" · ");
+    return '<tr>'
+      +'<td class="num">'+(i+1)+'</td>'
+      +'<td><div class="qdesc">'+(it.location?esc(it.location)+' — ':'')+esc(T.name)+'</div>'+(sub?'<div class="qsub">'+esc(sub)+'</div>':'')+'</td>'
+      +'<td class="num">'+esc(dimsText(it))+'</td>'
+      +'<td class="num">'+qty+'</td>'
+      +'<td class="num">'+money(unit)+'</td>'
+      +'<td class="num">'+money(unit*qty)+'</td>'
+      +'</tr>';
+  }).join("");
+  const strip='<div class="sheet-top"><span class="bsd">בס״ד</span><img class="sheet-logo" src="'+(DB.settings.logo||DEFAULT_LOGO)+'" alt="לוגו"></div>';
+  const head='<div class="sheet-head"><h2>הצעת מחיר</h2><div class="meta">'
+    +(p.client?'<span>לקוח: <b>'+esc(p.client)+'</b></span>':'')
+    +(p.phone?'<span>טל׳: <b class="num">'+esc(p.phone)+'</b></span>':'')
+    +(p.address?'<span>כתובת: <b>'+esc(p.address)+'</b></span>':'')
+    +'<span>תאריך: <b class="num">'+esc(fmtDate(p.date||todayISO()))+'</b></span>'
+    +'</div></div>';
+  const table='<table class="qtable"><thead><tr>'
+    +'<th>#</th><th>תיאור</th><th>מידות</th><th>כמות</th><th>מחיר יח׳</th><th>סה״כ</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div class="qtot">'
+    +'<div class="qr"><span>סכום ביניים</span><span>'+money(t.sub)+'</span></div>'
+    +(t.vatRate?'<div class="qr"><span>מע״מ ('+t.vatRate+'%)</span><span>'+money(t.vat)+'</span></div>':'')
+    +'<div class="qr grand"><span>סה״כ לתשלום</span><span>'+money(t.total)+'</span></div>'
+    +'</div>'
+    +'<div class="qterms">ההצעה בתוקף ל-14 יום. המחירים כוללים ייצור והתקנה סטנדרטית, אלא אם צוין אחרת. ט.ל.ח.</div>';
+  const sheet='<div class="sheet">'+strip+head+table+'</div>';
+  const zeroWarn = t.total===0
+    ? '<div class="errbanner no-print">⚠ המחיר יוצא 0 — הזן מחיר למ״ר במסך התמחור, או מחיר ידני לפריטים.</div>'
+    : '';
+  return ''
+  +'<div class="exp-tools no-print">'
+  +'<div class="rowline"><button class="backbtn" onclick="nav(\'/p/'+p.id+'/pricing\')">→</button>'
+  +'<div class="grow"><h1 style="font-size:1.1rem">הצעת מחיר — '+esc(pname(p))+'</h1></div>'
+  +'<button class="btn primary" onclick="window.print()">🖨 הדפס / שמור PDF</button></div>'
+  +'<div class="muted" style="margin-top:6px">מסמך זה מיועד ללקוח וכולל מחירים. לקובץ הטכני ליצרן — חזרה לפרויקט.</div>'
+  +'</div>'
+  +zeroWarn
+  +sheet;
+}
+
 /* ================= ACTIONS ================= */
 const App = {
-  newProject(){
-    const p = {id:uid(), name:"", client:"", phone:"", address:"", date:todayISO(), measurer:"", notes:"", items:[]};
+  newProject(){ this._newContainer("production","/p/"); },
+  newQuote(){ this._newContainer("quote","/p/"); },
+  _newContainer(kind){
+    const p = {id:uid(), kind:kind, name:"", client:"", phone:"", address:"", date:todayISO(), measurer:"", notes:"", items:[]};
+    if(kind==="quote"){ p.pricePerM2=DB.settings.pricePerM2||""; p.vatEnabled=true; p.vatRate=DB.settings.vatRate; }
     DB.projects.unshift(p); save(); nav("/p/"+p.id);
   },
+  sf(k,v){ DB.settings[k]=v; save(); },
+  qf(pid,k,v){ const p=proj(pid); if(!p) return; p[k]=v; save(); if(k==="vatEnabled"){ render(); } else { renderPricing(); } },
+  setOverride(pid,iid,v){ const p=proj(pid); const it=p&&p.items.find(x=>x.id===iid); if(it){ it.priceOverride=v; save(); renderPricing(); } },
+  convertToProduction(pid){
+    const src=proj(pid); if(!src) return;
+    uiConfirm("להעתיק את המדידות לפרויקט ייצור חדש? מדידת ההצעה המקורית תישאר כפי שהיא.",{title:"העתקה לייצור",ok:"העתק"}).then(ok=>{
+      if(!ok) return;
+      const cp=JSON.parse(JSON.stringify(src));
+      cp.id=uid(); cp.kind="production";
+      delete cp.pricePerM2; delete cp.vatEnabled; delete cp.vatRate;
+      (cp.items||[]).forEach(it=>{ delete it.priceOverride; });
+      DB.projects.unshift(cp); save(); nav("/p/"+cp.id);
+    });
+  },
+  search(v){ searchQ=v; renderList(); },
   pf(pid,k,v){ const p=proj(pid); if(p){ p[k]=v; save(); } },
   delProject(pid){
-    uiConfirm("למחוק את הפרויקט על כל הפריטים שלו? אין דרך חזרה.",{title:"מחיקת פרויקט",ok:"מחק",danger:true}).then(ok=>{
+    const cur=proj(pid);
+    const back = cur && cur.kind==="quote" ? "/quotes" : "/projects";
+    uiConfirm("למחוק את הפריט על כל הפריטים שלו? אין דרך חזרה.",{title:"מחיקה",ok:"מחק",danger:true}).then(ok=>{
       if(!ok) return;
-      DB.projects = DB.projects.filter(p=>p.id!==pid); save(); nav("/");
+      DB.projects = DB.projects.filter(p=>p.id!==pid); save(); nav(back);
     });
   },
   move(pid,i,dir){
