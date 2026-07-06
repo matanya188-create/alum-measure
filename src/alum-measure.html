@@ -270,7 +270,7 @@ const TYPES = [
   {id:11, name:"2 כנפיים גלילה חשמלי + רשת",       sashes:2, slide:true, rollerBox:true, mesh:true, opSel:true, defOp:"electric"},
   {id:12, name:"קיפ קבוע תחתון",                    hinge:"kipp", fixedBottom:true},
   {id:13, name:"דריי קיפ קבוע תחתון",               hinge:"dreikipp", fixedBottom:true},
-  {id:14, name:"ויטרינה הזזה",                      sashes:2, slide:true, noHalBottom:true},
+  {id:14, name:"ויטרינה הזזה",                      sashes:2, slide:true, noHalBottom:true, rail:true},
 ];
 /* ברירת מחדל הלבשות לפי סוג: הכל דלוק, חוץ מתריסים/גלילה (בלי בכלל) וויטרינה (בלי למטה — מסילה) */
 function halDefaults(t){
@@ -354,7 +354,7 @@ const pname = p => String(p.address||p.name||"").trim() || "פרויקט ללא 
 function newItem(typeId){
   const t = TYPE(typeId||1);
   return {
-    id:uid(), type:t.id, location:"", width:"", height:"", wallDepth:"", unit:"mm",
+    id:uid(), type:t.id, location:"", width:"", height:"", wallDepth:"", railH:"", unit:"mm",
     measureType:"production", qty:1,
     openDir: t.sashes===3 ? "std" : "center",
     handleSide:"right",
@@ -548,6 +548,7 @@ function missingList(it){
   if(!String(it.width||"").trim())  m.push("רוחב");
   if(!String(it.height||"").trim()) m.push("גובה");
   if(needsWall(it) && !String(it.wallDepth||"").trim()) m.push("עובי קיר (לארגז התריס)");
+  if(TYPE(it.type).rail && !it.railH) m.push("גובה מסילה");
   return m;
 }
 function todayISO(){
@@ -834,6 +835,12 @@ function renderItemForm(){
       +segBtn(draft.handleSide==="left","שמאל","App.f('handleSide','left')")
       +'</div></div>';
   }
+  if(T.rail){
+    cond += '<div class="field"><label style="color:var(--danger)">גובה מסילה — חובה</label><div class="seg">'
+      +segBtn(draft.railH==="2.8","2.8 ס\"מ","App.f('railH','2.8')")
+      +segBtn(draft.railH==="1.8","1.8 ס\"מ","App.f('railH','1.8')")
+      +'</div></div>';
+  }
   if(T.opSel){
     cond += '<div class="field"><label>הפעלת הגלילה</label><div class="seg">'
       +segBtn(draft.op==="electric","חשמל","App.f('op','electric')")
@@ -945,6 +952,7 @@ function viewExport(p){
       const pt = profileText(it); if(pt) info.push("<b>"+esc(pt)+"</b>");
       if(it.color) info.push("גוון: <b>"+esc(it.color)+"</b>");
       if(it.glass) info.push("זכוכית: "+esc(it.glass));
+      if(T.rail && it.railH) info.push('גובה מסילה: <b class="num">'+esc(it.railH)+' ס"מ</b>');
       info.push(it.mesh ? "רשת: כן" : "רשת: אין");
       const ot=opText(it); if(ot) info.push(ot);
       info.push(halText(it));
@@ -1038,7 +1046,7 @@ const App = {
     draft[k]=v;
     persistDraft();
     if(k==="type"||k==="op"||k==="mesh"||k==="profile"||k==="photo") renderItemForm();
-    if(k==="unit"||k==="measureType"||k==="openDir"||k==="handleSide"||k==="elecSide") renderItemForm();
+    if(k==="unit"||k==="measureType"||k==="openDir"||k==="handleSide"||k==="elecSide"||k==="railH") renderItemForm();
     renderPreview();
   },
   hal(side){ draft.hal[side]=!draft.hal[side]; persistDraft(); renderItemForm(); renderPreview(); },
