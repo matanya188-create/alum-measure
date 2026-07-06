@@ -934,7 +934,6 @@ function viewExport(p){
       }
     }
     const cells = chunk.map(it=>{
-      const idx = p.items.indexOf(it)+1;
       const T = TYPE(it.type);
       const info = [];
       const pt = profileText(it); if(pt) info.push("<b>"+esc(pt)+"</b>");
@@ -945,7 +944,7 @@ function viewExport(p){
       info.push(halText(it));
       if(Number(it.qty)>1) info.push('כמות: <b class="num">×'+esc(it.qty)+"</b>");
       return '<div class="cell">'
-        +'<div class="cellhead"><span class="cnum num">'+idx+'</span><span class="cloc">'+esc(it.location||"")+'</span></div>'
+        +'<div class="cellhead"><span class="cloc">מיקום בבית: <b class="num">'+esc(it.location||"—")+'</b></span></div>'
         +'<div class="ctype">'+T.name+'</div>'
         +'<div class="csk">'+sketchSVG(it,skW)+'</div>'
         +'<div class="cdims">'+dimsHTML(it)+'</div>'
