@@ -259,10 +259,10 @@ const DEFAULT_LOGO = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAU
 const TYPES = [
   {id:1,  name:"הזזה 2 זכוכית + רשת",              sashes:2, slide:true,  mesh:true},
   {id:2,  name:"הזזה 3 זכוכית + רשת",              sashes:3, slide:true,  mesh:true},
-  {id:3,  name:"גלילה חיצוני",                      roller:true, opSel:true, defOp:"electric"},
+  {id:3,  name:"גלילה חיצוני",                      roller:true, opSel:true, defOp:"electric", noHal:true},
   {id:4,  name:"פתיחה ציר",                         hinge:"side"},
   {id:5,  name:"הזזה 2 כנפיים קבוע תחתון + רשת",   sashes:2, slide:true, fixedBottom:true, mesh:true},
-  {id:6,  name:"תריס הזזה 2 כנף",                   sashes:2, slide:true, slats:true},
+  {id:6,  name:"תריס הזזה 2 כנף",                   sashes:2, slide:true, slats:true, noHal:true},
   {id:7,  name:"חלון דריי קיפ",                     hinge:"dreikipp"},
   {id:8,  name:"חלון קבוע",                         fixedAll:true},
   {id:9,  name:"גלילה 2 כנפיים + רשת (חבל)",        sashes:2, slide:true, rollerBox:true, mesh:true, opSel:true, defOp:"rope"},
@@ -270,7 +270,13 @@ const TYPES = [
   {id:11, name:"2 כנפיים גלילה חשמלי + רשת",       sashes:2, slide:true, rollerBox:true, mesh:true, opSel:true, defOp:"electric"},
   {id:12, name:"קיפ קבוע תחתון",                    hinge:"kipp", fixedBottom:true},
   {id:13, name:"דריי קיפ קבוע תחתון",               hinge:"dreikipp", fixedBottom:true},
+  {id:14, name:"ויטרינה הזזה",                      sashes:2, slide:true, noHalBottom:true},
 ];
+/* ברירת מחדל הלבשות לפי סוג: הכל דלוק, חוץ מתריסים/גלילה (בלי בכלל) וויטרינה (בלי למטה — מסילה) */
+function halDefaults(t){
+  if(t.noHal) return {top:false,bottom:false,right:false,left:false};
+  return {top:true,bottom:!t.noHalBottom,right:true,left:true};
+}
 const TYPE = id => TYPES.find(t=>t.id===Number(id)) || TYPES[0];
 
 /* סדרות קליל — kind: slide/hinge, style קובע את מראה הפרופיל בשרטוט
@@ -354,7 +360,7 @@ function newItem(typeId){
     handleSide:"right",
     op: t.defOp || "electric", elecSide:"right",
     mesh: !!t.mesh,
-    hal:{top:false,bottom:false,right:false,left:false},
+    hal: halDefaults(t),
     profile:"", profileOther:"", color:"", glass:"", notes:"", photo:null
   };
 }
@@ -1043,6 +1049,7 @@ const App = {
     draft.op = t.defOp || draft.op;
     draft.mesh = !!t.mesh;
     draft.openDir = t.sashes===3 ? "std" : "center";
+    draft.hal = halDefaults(t);
     typeOpen=false; persistDraft(); renderItemForm(); renderPreview();
   },
   colorFilter(q){
