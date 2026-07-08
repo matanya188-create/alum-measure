@@ -355,7 +355,15 @@ const KLIL_COLORS = [
     ["פלדה חלודה","74I"],["חום אגוז","75I"],["סוכר קינמון","76I"],["דיונת מדבר","77I"],["דמדומי סתיו","79F"]]},
 ];
 
-const GLASS_SUGGEST = ["בידודית","בידודית שקוף","שקוף","חלבי","טריפלקס","זכוכית ביטחון","רפלקטיבי","סאטן"];
+/* זכוכית — 4 הנפוצים בראש, ואז השאר (חופשי גם) */
+const GLASS_SUGGEST = [
+  "בידודית שקופה","בידודית חלבית","טריפלקס שקופה","טריפלקס חלבית",
+  "שקופה רגילה","אקסטרא קליר","מחוסמת שקופה","מחוסמת חלבית","טריפלקס אקוסטית",
+  "בידודית טריפלקס","סבתא (אורנמנטית)","מנומרת","צ'ינצ'ילה",
+  "טינטד ברונזה","טינטד אפור (גרפיט)","טינטד כחול","רפלקטיבית (מראה)","Low-E (לואי)"
+];
+/* עובי זיגוג נפוץ במ״מ (בודדת / טריפלקס / בידודית) */
+const GLAZE_THICK = ["4","5","6","8","10","6.38","8.38","10.38","20","22","24","26","28"];
 const LOC_SUGGEST = ["סלון","מטבח","ממ\"ד","חדר שינה הורים","חדר ילדים","חדר רחצה","שירותים","מרפסת","פינת אוכל","חדר עבודה","מסדרון","כניסה"];
 
 /* ================= STORE ================= */
@@ -417,7 +425,7 @@ function newItem(typeId){
     mesh: !!t.mesh,
     cols:1, rows:1, box:false,
     hal: halDefaults(t),
-    profile:"", profileOther:"", color:"", glass:"", notes:"", photo:null
+    profile:"", profileOther:"", color:"", glass:"", glazeThick:"", notes:"", photo:null
   };
 }
 
@@ -1137,8 +1145,11 @@ function renderItemForm(){
     +' oninput="App.colorFilter(this.value)" onfocus="App.colorFilter(this.value)">'
     +'<div class="colorlist" id="colorList" style="display:none"></div></div>'
     +'<div class="field"><label>זכוכית</label>'
-    +'<input list="glasses" value="'+esc(draft.glass)+'" oninput="App.f(\'glass\',this.value)">'
+    +'<input list="glasses" value="'+esc(draft.glass)+'" oninput="App.f(\'glass\',this.value)" placeholder="בחר או הקלד...">'
     +'<datalist id="glasses">'+GLASS_SUGGEST.map(g=>'<option value="'+g+'">').join("")+'</datalist></div>'
+    +'<div class="field" style="max-width:220px"><label>עובי זיגוג (מ״מ)</label>'
+    +'<input list="glazes" class="num" inputmode="decimal" value="'+esc(draft.glazeThick)+'" oninput="App.f(\'glazeThick\',this.value)" placeholder="למשל 24">'
+    +'<datalist id="glazes">'+GLAZE_THICK.map(g=>'<option value="'+g+'">').join("")+'</datalist></div>'
     +'</div>';
 
   /* notes + photo */
@@ -1198,6 +1209,7 @@ function viewExport(p){
       const pt = profileText(it); if(pt) info.push("<b>"+esc(pt)+"</b>");
       if(it.color) info.push("גוון: <b>"+esc(it.color)+"</b>");
       if(it.glass) info.push("זכוכית: "+esc(it.glass));
+      if(it.glazeThick) info.push("עובי זיגוג: "+esc(it.glazeThick)+" מ\"מ");
       if(T.rail && it.railH) info.push('גובה מסילה: <b class="num">'+esc(it.railH)+' ס"מ</b>');
       const dv=divText(it); if(dv) info.push("<b>"+dv+"</b>");
       info.push(it.mesh ? "רשת: כן" : "רשת: אין");
