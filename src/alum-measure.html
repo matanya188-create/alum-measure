@@ -561,18 +561,27 @@ function sketchSVG(it, w){
     for(let j=1;j<dRows;j++){ const y=top+(areaBot-top)*j/dRows; ln(FX, y, FX+FW, y, dAttr); }
   }
 
-  // rails (מסילות) + mesh (רשת) notation, top-right — mesh centered above the rails
+  // rails (מסילות) + mesh (רשת) notation, top-right — mesh centered above the rails.
+  // stays clear of the centered top-halbashot caret even when the frame is narrow.
   const railN = T.sashes||0;
-  const dw=11, gp=4, thick=' stroke-width="2.6"';
-  const rEdge=FX+FW-13;
-  if(railN>0){
-    const y=FY-7;
-    for(let k=0;k<railN;k++){ const x2=rEdge-k*(dw+gp); ln(x2-dw,y,x2,y,thick); }
-  }
-  if(it.mesh){
-    const railLeft = rEdge-(railN-1)*(dw+gp)-dw;
-    const cx = railN>0 ? (rEdge+railLeft)/2 : FX+FW-20;
-    ln(cx-dw/2, FY-16, cx+dw/2, FY-16, thick);
+  if(railN>0 || it.mesh){
+    const dw=11, gp=4, thick=' stroke-width="2.6"';
+    const total = railN>0 ? railN*dw+(railN-1)*gp : dw;
+    let rEdge = FX+FW-13;
+    if(it.hal && it.hal.top){          // keep the whole mark right of the caret
+      const minRight = (FX+FW/2)+9+6+total;
+      if(rEdge < minRight) rEdge = minRight;
+    }
+    rEdge = Math.min(rEdge, W-6);      // never leave the drawing
+    const railLeft = rEdge - total;
+    if(railN>0){
+      const y=FY-7;
+      for(let k=0;k<railN;k++){ const x2=rEdge-k*(dw+gp); ln(x2-dw,y,x2,y,thick); }
+    }
+    if(it.mesh){
+      const cx = railN>0 ? (rEdge+railLeft)/2 : rEdge-dw/2;
+      ln(cx-dw/2, FY-16, cx+dw/2, FY-16, thick);
+    }
   }
 
   // halbashot carets
