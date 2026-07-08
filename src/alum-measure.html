@@ -415,6 +415,7 @@ function newItem(typeId){
     handleSide:"right",
     op: t.defOp || "electric", elecSide:"right",
     mesh: !!t.mesh,
+    cols:1, rows:1, box:false,
     hal: halDefaults(t),
     profile:"", profileOther:"", color:"", glass:"", notes:"", photo:null
   };
@@ -450,6 +451,13 @@ function sketchSVG(it, w){
     ln(FX, FY+bh, FX+FW, FY+bh);
     top = FY+bh;
   }
+  // universal shutter box (add-on to any non-roller type)
+  const userBox = it.box && !T.roller && !T.rollerBox;
+  if(userBox){
+    const bh=28;
+    ln(FX, FY+bh, FX+FW, FY+bh);
+    top = FY+bh;
+  }
 
   let areaBot = bot;
   if(T.fixedBottom){
@@ -459,8 +467,8 @@ function sketchSVG(it, w){
     xmark(P, FX+FW/2, (areaBot+bot)/2, 11);
   }
 
-  // electric X in roller band
-  if((T.roller||T.rollerBox) && it.op==="electric"){
+  // electric X in roller/shutter band
+  if((T.roller||T.rollerBox||userBox) && it.op==="electric"){
     const bx = it.elecSide==="left" ? FX+18 : FX+FW-18;
     const by = FY + (T.roller?38:28)/2;
     xmark(P, bx, by, 7);
@@ -528,6 +536,15 @@ function sketchSVG(it, w){
     ln(FX+FW, FY, FX, FY+FH);
   }
 
+  // universal division grid (extra mullions) — cols x rows
+  const dCols=Math.max(1,Math.min(8,Number(it.cols)||1));
+  const dRows=Math.max(1,Math.min(6,Number(it.rows)||1));
+  if(dCols>1 || dRows>1){
+    const dAttr=' stroke-width="'+pst.div+'"';
+    for(let i=1;i<dCols;i++){ const x=FX+FW*i/dCols; ln(x, top, x, areaBot, dAttr); }
+    for(let j=1;j<dRows;j++){ const y=top+(areaBot-top)*j/dRows; ln(FX, y, FX+FW, y, dAttr); }
+  }
+
   // halbashot carets
   const h=it.hal||{};
   if(h.top)   P.push('<polyline points="'+(FX+FW/2-9)+','+(FY-4)+' '+(FX+FW/2)+','+(FY-13)+' '+(FX+FW/2+9)+','+(FY-4)+'" fill="none"/>');
@@ -581,21 +598,24 @@ function profileText(it){
   if(!pr) return it.profile ? "סדרה "+it.profile : "";
   return "סדרה "+pr.code+" ("+pr.desc.split("—")[0].trim()+")";
 }
+function hasBox(it){ const T=TYPE(it.type); return !!(T.roller || T.rollerBox || it.box); }
 function opText(it){
-  const T=TYPE(it.type);
-  if(!(T.roller||T.rollerBox)) return "";
-  if(it.op==="rope") return "גלילה: חבל";
-  return "גלילה: חשמל · צד "+(it.elecSide==="left"?"שמאל":"ימין");
+  if(!hasBox(it)) return "";
+  const pre = TYPE(it.type).roller||TYPE(it.type).rollerBox ? "גלילה" : "ארגז תריס";
+  if(it.op==="rope") return pre+": חבל";
+  return pre+": חשמל · צד "+(it.elecSide==="left"?"שמאל":"ימין");
 }
 function halText(it){
   const h=it.hal||{}, arr=[];
   if(h.top)arr.push("למעלה"); if(h.bottom)arr.push("למטה"); if(h.right)arr.push("ימין"); if(h.left)arr.push("שמאל");
   return arr.length ? "הלבשות: "+arr.join(", ") : "ללא הלבשות";
 }
-/* פריטי גלילה (ארגז תריס) מחייבים עובי קיר */
-function needsWall(it){
-  const T=TYPE(it.type);
-  return !!(T.roller || T.rollerBox);
+/* פריטי גלילה / ארגז תריס מחייבים עובי קיר */
+function needsWall(it){ return hasBox(it); }
+/* טקסט חלוקה */
+function divText(it){
+  const c=Math.max(1,Number(it.cols)||1), r=Math.max(1,Number(it.rows)||1);
+  return (c>1||r>1) ? "חלוקה: "+c+"×"+r+" (רוחב×גובה)" : "";
 }
 /* אילו נתוני חובה חסרים בפריט */
 function missingList(it){
@@ -901,6 +921,14 @@ function renderPreview(){
 function segBtn(on, label, fn){
   return '<button type="button" class="'+(on?"on":"")+'" onclick="'+fn+'">'+label+'</button>';
 }
+function stepper(label, val, min, max, key){
+  val=Math.max(min,Math.min(max,Number(val)||min));
+  return '<div class="field"><label>'+label+'</label><div class="rowline">'
+    +'<button type="button" class="iconbtn" onclick="App.step(\''+key+'\',-1,'+min+','+max+')">−</button>'
+    +'<div class="num grow" style="text-align:center;font-weight:800;font-size:1.2rem">'+val+'</div>'
+    +'<button type="button" class="iconbtn" onclick="App.step(\''+key+'\',1,'+min+','+max+')">+</button>'
+    +'</div></div>';
+}
 
 function renderItemForm(){
   const T = TYPE(draft.type);
@@ -998,6 +1026,32 @@ function renderItemForm(){
     +segBtn(!draft.mesh,"בלי רשת","App.f('mesh',false)")
     +'</div></div>';
 
+  /* universal shutter box — for any type that isn't already a roller */
+  if(!T.roller && !T.rollerBox){
+    cond += '<div class="field"><label>ארגז תריס</label><div class="seg">'
+      +segBtn(!draft.box,"בלי","App.f('box',false)")
+      +segBtn(!!draft.box,"עם ארגז","App.f('box',true)")
+      +'</div></div>';
+    if(draft.box){
+      cond += '<div class="field"><label>הפעלת התריס</label><div class="seg">'
+        +segBtn(draft.op==="electric","חשמל","App.f('op','electric')")
+        +segBtn(draft.op==="rope","חבל","App.f('op','rope')")
+        +'</div></div>';
+      if(draft.op==="electric"){
+        cond += '<div class="field"><label>צד החשמל (מסומן X בשרטוט)</label><div class="seg">'
+          +segBtn(draft.elecSide==="right","ימין","App.f('elecSide','right')")
+          +segBtn(draft.elecSide==="left","שמאל","App.f('elecSide','left')")
+          +'</div></div>';
+      }
+    }
+  }
+
+  /* universal division (mullion grid) */
+  cond += '<div class="two">'
+    +stepper("חלוקה לרוחב (עמודות)",draft.cols,1,8,"cols")
+    +stepper("חלוקה לגובה (שורות)",draft.rows,1,6,"rows")
+    +'</div>';
+
   cond += '<div class="field"><label>הלבשות (חיצים בשרטוט)</label><div class="chips">'
     +'<button type="button" class="chip '+(draft.hal.top?"on":"")+'" onclick="App.hal(\'top\')">למעלה</button>'
     +'<button type="button" class="chip '+(draft.hal.bottom?"on":"")+'" onclick="App.hal(\'bottom\')">למטה</button>'
@@ -1093,6 +1147,7 @@ function viewExport(p){
       if(it.color) info.push("גוון: <b>"+esc(it.color)+"</b>");
       if(it.glass) info.push("זכוכית: "+esc(it.glass));
       if(T.rail && it.railH) info.push('גובה מסילה: <b class="num">'+esc(it.railH)+' ס"מ</b>');
+      const dv=divText(it); if(dv) info.push("<b>"+dv+"</b>");
       info.push(it.mesh ? "רשת: כן" : "רשת: אין");
       const ot=opText(it); if(ot) info.push(ot);
       info.push(halText(it));
@@ -1308,9 +1363,13 @@ const App = {
   f(k,v){
     draft[k]=v;
     persistDraft();
-    if(k==="type"||k==="op"||k==="mesh"||k==="profile"||k==="photo") renderItemForm();
+    if(k==="type"||k==="op"||k==="mesh"||k==="profile"||k==="photo"||k==="box") renderItemForm();
     if(k==="unit"||k==="measureType"||k==="openDir"||k==="handleSide"||k==="elecSide"||k==="railH") renderItemForm();
     renderPreview();
+  },
+  step(key,delta,min,max){
+    const v=Math.max(min,Math.min(max,(Number(draft[key])||min)+delta));
+    draft[key]=v; persistDraft(); renderItemForm(); renderPreview();
   },
   hal(side){ draft.hal[side]=!draft.hal[side]; persistDraft(); renderItemForm(); renderPreview(); },
   openTypes(){ typeOpen=true; renderItemForm(); },
