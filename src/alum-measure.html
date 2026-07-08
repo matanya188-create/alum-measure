@@ -413,7 +413,7 @@ function newItem(typeId){
     measureType:"production", qty:1,
     openDir: t.sashes===3 ? "std" : "center",
     handleSide:"right",
-    op: t.defOp || "electric", elecSide:"right",
+    op: t.defOp || "electric", elecSide:"right", ropeSide:"right",
     mesh: !!t.mesh,
     cols:1, rows:1, box:false,
     hal: halDefaults(t),
@@ -467,11 +467,17 @@ function sketchSVG(it, w){
     xmark(P, FX+FW/2, (areaBot+bot)/2, 11);
   }
 
-  // electric X in roller/shutter band
-  if((T.roller||T.rollerBox||userBox) && it.op==="electric"){
-    const bx = it.elecSide==="left" ? FX+18 : FX+FW-18;
+  // electric X / rope O in roller/shutter band, on the chosen side
+  if(T.roller||T.rollerBox||userBox){
     const by = FY + (T.roller?38:28)/2;
-    xmark(P, bx, by, 7);
+    if(it.op==="electric"){
+      const bx = it.elecSide==="left" ? FX+18 : FX+FW-18;
+      xmark(P, bx, by, 7);
+    } else if(it.op==="rope"){
+      const bx = it.ropeSide==="left" ? FX+16 : FX+FW-16;
+      P.push('<circle cx="'+bx+'" cy="'+by+'" r="6" fill="none"/>');
+      ln(bx, by+6, bx, by+16);
+    }
   }
 
   // slats
@@ -545,6 +551,14 @@ function sketchSVG(it, w){
     for(let j=1;j<dRows;j++){ const y=top+(areaBot-top)*j/dRows; ln(FX, y, FX+FW, y, dAttr); }
   }
 
+  // sashes + mesh shorthand dashes above the top edge (the hand notation)
+  const dashN = (T.sashes||0) + (it.mesh?1:0);
+  if(dashN>0){
+    const dw=9, gp=6, total=dashN*dw+(dashN-1)*gp;
+    const x0=FX+FW-4-total, yd=FY-10;
+    for(let k=0;k<dashN;k++){ const x=x0+k*(dw+gp); ln(x,yd,x+dw,yd,' stroke-width="2"'); }
+  }
+
   // halbashot carets
   const h=it.hal||{};
   if(h.top)   P.push('<polyline points="'+(FX+FW/2-9)+','+(FY-4)+' '+(FX+FW/2)+','+(FY-13)+' '+(FX+FW/2+9)+','+(FY-4)+'" fill="none"/>');
@@ -602,7 +616,7 @@ function hasBox(it){ const T=TYPE(it.type); return !!(T.roller || T.rollerBox ||
 function opText(it){
   if(!hasBox(it)) return "";
   const pre = TYPE(it.type).roller||TYPE(it.type).rollerBox ? "גלילה" : "ארגז תריס";
-  if(it.op==="rope") return pre+": חבל";
+  if(it.op==="rope") return pre+": חבל · צד "+(it.ropeSide==="left"?"שמאל":"ימין");
   return pre+": חשמל · צד "+(it.elecSide==="left"?"שמאל":"ימין");
 }
 function halText(it){
@@ -1020,6 +1034,12 @@ function renderItemForm(){
         +segBtn(draft.elecSide==="left","שמאל","App.f('elecSide','left')")
         +'</div></div>';
     }
+    if(draft.op==="rope"){
+      cond += '<div class="field"><label>צד החבל (מסומן בשרטוט)</label><div class="seg">'
+        +segBtn(draft.ropeSide!=="left","ימין","App.f('ropeSide','right')")
+        +segBtn(draft.ropeSide==="left","שמאל","App.f('ropeSide','left')")
+        +'</div></div>';
+    }
   }
   cond += '<div class="field"><label>רשת</label><div class="seg">'
     +segBtn(!!draft.mesh,"עם רשת","App.f('mesh',true)")
@@ -1041,6 +1061,12 @@ function renderItemForm(){
         cond += '<div class="field"><label>צד החשמל (מסומן X בשרטוט)</label><div class="seg">'
           +segBtn(draft.elecSide==="right","ימין","App.f('elecSide','right')")
           +segBtn(draft.elecSide==="left","שמאל","App.f('elecSide','left')")
+          +'</div></div>';
+      }
+      if(draft.op==="rope"){
+        cond += '<div class="field"><label>צד החבל (מסומן בשרטוט)</label><div class="seg">'
+          +segBtn(draft.ropeSide!=="left","ימין","App.f('ropeSide','right')")
+          +segBtn(draft.ropeSide==="left","שמאל","App.f('ropeSide','left')")
           +'</div></div>';
       }
     }
@@ -1364,7 +1390,7 @@ const App = {
     draft[k]=v;
     persistDraft();
     if(k==="type"||k==="op"||k==="mesh"||k==="profile"||k==="photo"||k==="box") renderItemForm();
-    if(k==="unit"||k==="measureType"||k==="openDir"||k==="handleSide"||k==="elecSide"||k==="railH") renderItemForm();
+    if(k==="unit"||k==="measureType"||k==="openDir"||k==="handleSide"||k==="elecSide"||k==="ropeSide"||k==="railH") renderItemForm();
     renderPreview();
   },
   step(key,delta,min,max){
