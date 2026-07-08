@@ -551,12 +551,16 @@ function sketchSVG(it, w){
     for(let j=1;j<dRows;j++){ const y=top+(areaBot-top)*j/dRows; ln(FX, y, FX+FW, y, dAttr); }
   }
 
-  // sashes + mesh shorthand dashes above the top edge (the hand notation)
-  const dashN = (T.sashes||0) + (it.mesh?1:0);
-  if(dashN>0){
-    const dw=9, gp=6, total=dashN*dw+(dashN-1)*gp;
-    const x0=FX+FW-4-total, yd=FY-10;
-    for(let k=0;k<dashN;k++){ const x=x0+k*(dw+gp); ln(x,yd,x+dw,yd,' stroke-width="2"'); }
+  // rails (מסילות) + mesh (רשת) notation, top-right — staggered like the hand marking
+  const railN = T.sashes||0;
+  const dw=11, gp=4, thick=' stroke-width="2.6"';
+  if(railN>0){
+    const y=FY-6, rEdge=FX+FW-13;
+    for(let k=0;k<railN;k++){ const x2=rEdge-k*(dw+gp); ln(x2-dw,y,x2,y,thick); }
+  }
+  if(it.mesh){
+    const y=FY-15, x2=FX+FW-3;
+    ln(x2-dw,y,x2,y,thick);
   }
 
   // halbashot carets
@@ -584,7 +588,7 @@ function xmark(P,x,y,s){
   P.push('<line x1="'+(x+s)+'" y1="'+(y-s)+'" x2="'+(x-s)+'" y2="'+(y+s)+'"/>');
 }
 function arrow(P,cx,cy,dir){
-  const len=38, x1=cx-len/2, x2=cx+len/2, a=7;
+  const len=26, x1=cx-len/2, x2=cx+len/2, a=5;
   P.push('<line x1="'+x1+'" y1="'+cy+'" x2="'+x2+'" y2="'+cy+'"/>');
   if(dir==="r"||dir==="lr"){
     P.push('<polyline points="'+(x2-a)+','+(cy-a)+' '+x2+','+cy+' '+(x2-a)+','+(cy+a)+'" fill="none"/>');
