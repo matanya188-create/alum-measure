@@ -551,16 +551,18 @@ function sketchSVG(it, w){
     for(let j=1;j<dRows;j++){ const y=top+(areaBot-top)*j/dRows; ln(FX, y, FX+FW, y, dAttr); }
   }
 
-  // rails (מסילות) + mesh (רשת) notation, top-right — staggered like the hand marking
+  // rails (מסילות) + mesh (רשת) notation, top-right — mesh centered above the rails
   const railN = T.sashes||0;
   const dw=11, gp=4, thick=' stroke-width="2.6"';
+  const rEdge=FX+FW-13;
   if(railN>0){
-    const y=FY-6, rEdge=FX+FW-13;
+    const y=FY-7;
     for(let k=0;k<railN;k++){ const x2=rEdge-k*(dw+gp); ln(x2-dw,y,x2,y,thick); }
   }
   if(it.mesh){
-    const y=FY-15, x2=FX+FW-3;
-    ln(x2-dw,y,x2,y,thick);
+    const railLeft = rEdge-(railN-1)*(dw+gp)-dw;
+    const cx = railN>0 ? (rEdge+railLeft)/2 : FX+FW-20;
+    ln(cx-dw/2, FY-16, cx+dw/2, FY-16, thick);
   }
 
   // halbashot carets
