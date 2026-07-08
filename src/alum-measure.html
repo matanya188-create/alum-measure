@@ -1202,7 +1202,6 @@ function viewExport(p){
       const dv=divText(it); if(dv) info.push("<b>"+dv+"</b>");
       info.push(it.mesh ? "רשת: כן" : "רשת: אין");
       const ot=opText(it); if(ot) info.push(ot);
-      info.push(halText(it));
       if(Number(it.qty)>1) info.push('כמות: <b class="num">×'+esc(it.qty)+"</b>");
       return '<div class="cell">'
         +'<div class="cellhead"><span class="cloc">מיקום בבית: <b class="num">'+esc(it.location||"—")+'</b></span></div>'
