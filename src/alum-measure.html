@@ -426,7 +426,17 @@ function sketchSVG(it, w){
   w = w || 250;
   const T = TYPE(it.type);
   const pst = PSTYLE[(PROF(it.profile)||{}).style] || PSTYLE.standard;
-  const W=274, H=250, FX=34, FY=24, FW=192, FH=182;
+  const W=274, H=250;
+  // frame proportions follow the real width:height ratio, centered in a fixed box
+  const boxX=34, boxW=192, boxY=28, boxH=182;
+  const rw=parseFloat(it.width), rh=parseFloat(it.height);
+  let FW=boxW, FH=boxH;
+  if(rw>0 && rh>0){
+    const aspect=Math.max(0.4,Math.min(2.5, rw/rh));
+    if(aspect >= boxW/boxH){ FW=boxW; FH=Math.round(boxW/aspect); }
+    else { FH=boxH; FW=Math.round(boxH*aspect); }
+  }
+  const FX=Math.round(boxX+(boxW-FW)/2), FY=Math.round(boxY+(boxH-FH)/2);
   const P=[];
   const ln=(x1,y1,x2,y2,extra)=>P.push('<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'"'+(extra||"")+'/>');
   const faint=' stroke-width="1.4" opacity="0.75"';
@@ -572,13 +582,14 @@ function sketchSVG(it, w){
   if(h.right) P.push('<polyline points="'+(FX+FW+4)+','+(FY+FH/2-9)+' '+(FX+FW+13)+','+(FY+FH/2)+' '+(FX+FW+4)+','+(FY+FH/2+9)+'" fill="none"/>');
   if(h.left)  P.push('<polyline points="'+(FX-4)+','+(FY+FH/2-9)+' '+(FX-13)+','+(FY+FH/2)+' '+(FX-4)+','+(FY+FH/2+9)+'" fill="none"/>');
 
-  // dimension labels — width bottom-center, height right-middle vertical (like the paper sketch)
+  // dimension labels — width below frame, height right of frame (vertical), hugging the frame edge
   if(String(it.width||"").trim()){
-    P.push('<text x="'+(FX+FW/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="16" font-weight="700" fill="currentColor" stroke="none">'+esc(it.width)+' '+esc(unitName(it.unit))+'</text>');
+    const wy = Math.min(H-4, FY+FH + (h.bottom?26:13) + 12);
+    P.push('<text x="'+(FX+FW/2)+'" y="'+wy+'" text-anchor="middle" font-size="15" font-weight="700" fill="currentColor" stroke="none">'+esc(it.width)+' '+esc(unitName(it.unit))+'</text>');
   }
   if(String(it.height||"").trim()){
-    const hy = FY+FH/2;
-    P.push('<text transform="rotate(-90 '+(W-10)+' '+hy+')" x="'+(W-10)+'" y="'+hy+'" text-anchor="middle" font-size="16" font-weight="700" fill="currentColor" stroke="none">'+esc(it.height)+' '+esc(unitName(it.unit))+'</text>');
+    const hy = FY+FH/2, hx = Math.min(W-4, FX+FW + (h.right?26:14) + 8);
+    P.push('<text transform="rotate(-90 '+hx+' '+hy+')" x="'+hx+'" y="'+hy+'" text-anchor="middle" font-size="15" font-weight="700" fill="currentColor" stroke="none">'+esc(it.height)+' '+esc(unitName(it.unit))+'</text>');
   }
 
   return '<span class="sk"><svg viewBox="0 0 '+W+' '+H+'" width="'+w+'" height="'+Math.round(w*H/W)+'" '
