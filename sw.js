@@ -1,5 +1,5 @@
 /* Service Worker — עבודה אופליין מלאה. להעלאת גרסה חדשה: להעלות את VERSION. */
-const VERSION = "v22";
+const VERSION = "v23";
 const CACHE = "alum-measure-" + VERSION;
 const ASSETS = [
   "./",
@@ -8,7 +8,8 @@ const ASSETS = [
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png",
-  "./apple-touch-icon.png"
+  "./apple-touch-icon.png",
+  "./three.min.js"
 ];
 
 self.addEventListener("install", e => {
