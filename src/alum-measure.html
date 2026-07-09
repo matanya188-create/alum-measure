@@ -1416,8 +1416,9 @@ function viewQuoteExport(p){
 
 /* ================= הדמיה ללקוח (2D בנייה + 3D) ================= */
 const SIM_KEY="alum_sim_v1";
-function newSim(){ return {w:120,h:100,profile:"7000",color:"",glass:"clear",handleSide:"right",handleType:"lever",vLines:[],hLines:[]}; }
+function newSim(){ return {w:120,h:100,profile:"7000",color:"",glass:"clear",handleSide:"right",handleType:"lever",handleFinish:"chrome",vLines:[],hLines:[]}; }
 const HANDLE_TYPES=[["lever","ידית מוט"],["knob","כפתור"],["pull","ידית הזזה"],["cremone","קרמונה"]];
+const HANDLE_FINISH=[["chrome","כרום"],["black","שחור"],["brass","פליז"],["white","לבן"]];
 function loadSimState(){ try{ const s=JSON.parse(localStorage.getItem(SIM_KEY)); return (s&&Array.isArray(s.vLines))?s:newSim(); }catch(e){ return newSim(); } }
 function saveSim(){ try{ localStorage.setItem(SIM_KEY, JSON.stringify(sim)); }catch(e){} }
 let sim = loadSimState();
@@ -1566,6 +1567,9 @@ function renderSimControls(){
   +'<div class="field" style="margin:12px 0 0"><label>סוג ידית</label><div class="seg">'
   +HANDLE_TYPES.map(([v,l])=>segBtn((sim.handleType||"lever")===v,l,"App.simSet('handleType','"+v+"')")).join("")
   +'</div></div>'
+  +'<div class="field" style="margin:12px 0 0"><label>גימור ידית</label><div class="seg">'
+  +HANDLE_FINISH.map(([v,l])=>segBtn((sim.handleFinish||"chrome")===v,l,"App.simSet('handleFinish','"+v+"')")).join("")
+  +'</div></div>'
   +'<div class="field" style="margin:12px 0 0"><label>צד ידית</label><div class="seg">'
   +segBtn(sim.handleSide!=="left","ימין","App.simSet('handleSide','right')")
   +segBtn(sim.handleSide==="left","שמאל","App.simSet('handleSide','left')")
@@ -1688,22 +1692,31 @@ function buildSimWindow(){
       sashCell((x0+x1)/2,(y0+y1)/2,x1-x0,y1-y0,0);
     }
   }
-  // ----- ידית אמיתית לפי סוג -----
-  const hz=(kind==="slide"?Math.min(0.06,D*0.22):0)+D*0.32;
-  const hx=sim.handleSide==="left"?-iW/2+ss+0.06:iW/2-ss-0.06;
-  const inX=sim.handleSide==="left"?1:-1;   // כיוון פנימה
+  // ----- ידית מעוגלת אמיתית לפי סוג + גימור -----
+  const FIN={chrome:{c:0xd7dade,m:0.95,r:0.14},black:{c:0x1c1c1e,m:0.5,r:0.5},brass:{c:0xb98a4c,m:0.85,r:0.3},white:{c:0xf2f2f0,m:0.25,r:0.6}}[sim.handleFinish||"chrome"]||{c:0xd7dade,m:0.95,r:0.14};
+  const fin=new THREE.MeshStandardMaterial({color:new THREE.Color(FIN.c),metalness:FIN.m,roughness:FIN.r});
+  const hz=(kind==="slide"?Math.min(0.06,D*0.22):0)+D*0.30;
+  const hx=sim.handleSide==="left"?-iW/2+ss+0.07:iW/2-ss-0.07;
+  const cyl=(r,len,axis,x,y,z)=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,20),fin); if(axis==="x")m.rotation.z=Math.PI/2; if(axis==="z")m.rotation.x=Math.PI/2; m.position.set(x,y,z); g.add(m); };
+  const sph=(r,x,y,z)=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(r,20,16),fin); m.position.set(x,y,z); g.add(m); };
   const ht=sim.handleType||"lever";
   if(ht==="knob"){
-    box(0.055,0.13,0.05,hx,0,hz,steel);
-    const k=new THREE.Mesh(new THREE.SphereGeometry(0.058,18,14),steel); k.position.set(hx,0,hz+0.06); g.add(k);
+    cyl(0.055,0.03,"z",hx,0,hz);            // רוזטה
+    cyl(0.022,0.05,"z",hx,0,hz+0.04);       // צוואר
+    sph(0.055,hx,0,hz+0.09);                // כפתור
   } else if(ht==="pull"){
-    box(0.05,Math.min(0.6,iH*0.5),0.05,hx,0,hz+0.02,steel);   // מוט אנכי (הזזה)
+    const L=Math.min(0.5,iH*0.5);
+    cyl(0.022,0.07,"z",hx,L/2-0.03,hz+0.02); cyl(0.022,0.07,"z",hx,-L/2+0.03,hz+0.02); // מרווחנים
+    cyl(0.024,L,"y",hx,0,hz+0.06);          // מוט אנכי (הזזה)
   } else if(ht==="cremone"){
-    box(0.05,Math.min(0.75,iH*0.72),0.045,hx,0,hz,steel);      // מוט קרמונה ארוך
-    box(0.035,0.05,0.17,hx+inX*0.02,-0.14,hz+0.05,steel);      // ידית לחיצה
+    cyl(0.052,0.03,"z",hx,0,hz);            // רוזטה
+    cyl(0.02,Math.min(0.34,iH*0.34),"y",hx,-0.17,hz+0.05); // מוט ארוך יורד
+    sph(0.042,hx,-0.35,hz+0.05);            // כפתור קצה (מראה בלגי-ארט)
   } else {
-    box(0.05,0.14,0.05,hx,0,hz,steel);                          // רוזטה
-    box(0.035,0.045,0.19,hx+inX*0.02,-0.09,hz+0.05,steel);      // מוט לחיצה
+    cyl(0.055,0.03,"z",hx,0,hz);            // רוזטה
+    cyl(0.022,0.05,"z",hx,0,hz+0.035);      // צוואר קדימה
+    cyl(0.019,0.17,"y",hx,-0.1,hz+0.06);    // מוט יורד
+    sph(0.026,hx,-0.185,hz+0.06);           // קצה מעוגל
   }
   sim3d.needs=true;
 }
