@@ -1416,7 +1416,8 @@ function viewQuoteExport(p){
 
 /* ================= הדמיה ללקוח (2D בנייה + 3D) ================= */
 const SIM_KEY="alum_sim_v1";
-function newSim(){ return {w:120,h:100,profile:"7000",color:"",glass:"clear",handleSide:"right",vLines:[],hLines:[]}; }
+function newSim(){ return {w:120,h:100,profile:"7000",color:"",glass:"clear",handleSide:"right",handleType:"lever",vLines:[],hLines:[]}; }
+const HANDLE_TYPES=[["lever","ידית מוט"],["knob","כפתור"],["pull","ידית הזזה"],["cremone","קרמונה"]];
 function loadSimState(){ try{ const s=JSON.parse(localStorage.getItem(SIM_KEY)); return (s&&Array.isArray(s.vLines))?s:newSim(); }catch(e){ return newSim(); } }
 function saveSim(){ try{ localStorage.setItem(SIM_KEY, JSON.stringify(sim)); }catch(e){} }
 let sim = loadSimState();
@@ -1562,6 +1563,9 @@ function renderSimControls(){
   +segBtn(sim.glass==="frost","חלבית","App.simSet('glass','frost')")
   +segBtn(sim.glass==="tint","טינטד","App.simSet('glass','tint')")
   +'</div></div>'
+  +'<div class="field" style="margin:12px 0 0"><label>סוג ידית</label><div class="seg">'
+  +HANDLE_TYPES.map(([v,l])=>segBtn((sim.handleType||"lever")===v,l,"App.simSet('handleType','"+v+"')")).join("")
+  +'</div></div>'
   +'<div class="field" style="margin:12px 0 0"><label>צד ידית</label><div class="seg">'
   +segBtn(sim.handleSide!=="left","ימין","App.simSet('handleSide','right')")
   +segBtn(sim.handleSide==="left","שמאל","App.simSet('handleSide','left')")
@@ -1584,9 +1588,21 @@ function initSim3D(canvas){
   const renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
   renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
   renderer.setSize(canvas.clientWidth||300, 340, false);
-  scene.add(new THREE.AmbientLight(0xffffff,0.8));
-  const d1=new THREE.DirectionalLight(0xffffff,0.9); d1.position.set(3,4,6); scene.add(d1);
-  const d2=new THREE.DirectionalLight(0xffffff,0.35); d2.position.set(-4,2,-4); scene.add(d2);
+  // סביבה משתקפת — ברק אמיתי למתכת ולזכוכית
+  try{
+    const pmrem=new THREE.PMREMGenerator(renderer);
+    const cv2=document.createElement("canvas"); cv2.width=16; cv2.height=64;
+    const cx2=cv2.getContext("2d");
+    const grd=cx2.createLinearGradient(0,0,0,64);
+    grd.addColorStop(0,"#eef4fb"); grd.addColorStop(0.55,"#c2cede"); grd.addColorStop(1,"#868f9c");
+    cx2.fillStyle=grd; cx2.fillRect(0,0,16,64);
+    const tex=new THREE.CanvasTexture(cv2); tex.mapping=THREE.EquirectangularReflectionMapping;
+    scene.environment=pmrem.fromEquirectangular(tex).texture; tex.dispose(); pmrem.dispose();
+  }catch(e){}
+  scene.add(new THREE.HemisphereLight(0xffffff,0x8a8f96,0.55));
+  scene.add(new THREE.AmbientLight(0xffffff,0.35));
+  const d1=new THREE.DirectionalLight(0xffffff,0.95); d1.position.set(3,4,6); scene.add(d1);
+  const d2=new THREE.DirectionalLight(0xffffff,0.3); d2.position.set(-4,2,-4); scene.add(d2);
   const group=new THREE.Group(); scene.add(group);
   sim3d={renderer,scene,camera,group,rot:{x:0.15,y:-0.55},dist:5.2,needs:true};
   let drag=false,px=0,py=0,pinch=0;
@@ -1602,30 +1618,93 @@ function initSim3D(canvas){
   return sim3d;
 }
 function simDisposeGroup(g){ g.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.dispose()); } }); while(g.children.length) g.remove(g.children[0]); }
+/* פרמטרים ריאליים לכל משפחת פרופיל: face=קו-ראייה, depth=עומק, sash=מסגרת-כנף */
+const FAM3D={
+  minimal:  {face:0.055, depth:0.16, sash:0.05, bead:0.02},
+  standard: {face:0.10,  depth:0.20, sash:0.075,bead:0.025},
+  heavy:    {face:0.15,  depth:0.28, sash:0.11, bead:0.03},
+  belgian:  {face:0.05,  depth:0.15, sash:0.045,bead:0.02, bars:true}
+};
 function buildSimWindow(){
   if(!sim3d) return;
   const g=sim3d.group; simDisposeGroup(g);
-  const aspect=(sim.w>0&&sim.h>0)?sim.w/sim.h:1.2;
-  let Wd,Hd; if(aspect>=1){ Wd=2.3; Hd=2.3/aspect; } else { Hd=2.3; Wd=2.3*aspect; }
-  const D=0.15, ft=0.12, mt=0.06;
-  const frameMat=new THREE.MeshStandardMaterial({color:new THREE.Color(colorToHex(sim.color)),metalness:0.55,roughness:0.45});
-  const box=(w,h,d,x,y,z,mat)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); g.add(m); };
-  box(Wd,ft,D,0,Hd/2-ft/2,0,frameMat);
-  box(Wd,ft,D,0,-Hd/2+ft/2,0,frameMat);
-  box(ft,Hd-2*ft,D,-Wd/2+ft/2,0,0,frameMat);
-  box(ft,Hd-2*ft,D,Wd/2-ft/2,0,0,frameMat);
-  const innerW=Wd-2*ft, innerH=Hd-2*ft;
-  sim.vLines.forEach(f=>box(mt,innerH,D*0.7,(f-0.5)*Wd,0,0,frameMat));
-  sim.hLines.forEach(f=>box(innerW,mt,D*0.7,0,(0.5-f)*Hd,0,frameMat));
+  const P=PROF(sim.profile)||{};
+  const fam=P.style||"standard", kind=P.kind||"slide";
+  const FP=FAM3D[fam]||FAM3D.standard;
+  const aspect=(sim.w>0&&sim.h>0)?(sim.w/sim.h):1.2;
+  let Wd,Hd; if(aspect>=1){ Wd=2.4; Hd=2.4/aspect; } else { Hd=2.4; Wd=2.4*aspect; }
+  const D=FP.depth, ff=FP.face, ss=FP.sash;
+  const base=new THREE.Color(colorToHex(sim.color));
+  const alu=new THREE.MeshStandardMaterial({color:base.clone(),metalness:0.62,roughness:0.4});
+  const aluD=new THREE.MeshStandardMaterial({color:base.clone().multiplyScalar(0.78),metalness:0.62,roughness:0.5});
+  const steel=new THREE.MeshStandardMaterial({color:0xb8b8bc,metalness:0.9,roughness:0.28});
   let gcol=0xbfe0e8,gop=0.24,grough=0.06;
-  if(sim.glass==="frost"){ gcol=0xeaf0f0; gop=0.66; grough=0.7; }
-  else if(sim.glass==="tint"){ gcol=0x53636f; gop=0.55; grough=0.12; }
-  const glassMat=new THREE.MeshStandardMaterial({color:gcol,transparent:true,opacity:gop,metalness:0.25,roughness:grough,side:THREE.DoubleSide});
-  const glass=new THREE.Mesh(new THREE.PlaneGeometry(innerW,innerH),glassMat); glass.position.z=-0.02; g.add(glass);
-  const hx=sim.handleSide==="left"?-Wd/2+ft+0.07:Wd/2-ft-0.07;
-  const hmat=new THREE.MeshStandardMaterial({color:0x9a9a9a,metalness:0.85,roughness:0.3});
-  box(0.055,0.17,0.05,hx,-0.02,D/2+0.02,hmat);
-  box(0.04,0.05,0.17,hx,-0.09,D/2+0.07,hmat);
+  if(sim.glass==="frost"){ gcol=0xeaf0f0; gop=0.68; grough=0.75; }
+  else if(sim.glass==="tint"){ gcol=0x51616d; gop=0.58; grough=0.12; }
+  const glassMat=new THREE.MeshStandardMaterial({color:gcol,transparent:true,opacity:gop,metalness:0.3,roughness:grough,side:THREE.DoubleSide});
+  const box=(w,h,d,x,y,z,m)=>{ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.012,w),Math.max(0.012,h),Math.max(0.012,d)),m||alu); me.position.set(x,y,z); g.add(me); };
+  // ----- מסגרת חיצונית עם קצה מדורג -----
+  box(Wd,ff,D,0,Hd/2-ff/2,0,alu); box(Wd,ff,D,0,-Hd/2+ff/2,0,alu);
+  box(ff,Hd-2*ff,D,-Wd/2+ff/2,0,0,alu); box(ff,Hd-2*ff,D,Wd/2-ff/2,0,0,alu);
+  // שפה קדמית מדורגת (בליטת bead) — נותנת עומק אמיתי לקצה
+  const bd=FP.bead, iW=Wd-2*ff, iH=Hd-2*ff;
+  box(iW+bd*2,bd,0.05,0,iH/2+bd/2,D/2-0.03,aluD);
+  box(iW+bd*2,bd,0.05,0,-iH/2-bd/2,D/2-0.03,aluD);
+  box(bd,iH,0.05,-iW/2-bd/2,0,D/2-0.03,aluD);
+  box(bd,iH,0.05,iW/2+bd/2,0,D/2-0.03,aluD);
+  const X=f=>-iW/2+f*iW, Y=f=>iH/2-f*iH;
+  const vs=[0].concat(sim.vLines.slice().sort((a,b)=>a-b)).concat([1]);
+  const hs=[0].concat(sim.hLines.slice().sort((a,b)=>a-b)).concat([1]);
+  // מסגרת-כנף + זכוכית לתא
+  function sashCell(cx,cy,w,h,z){
+    box(w,ss,D*0.62,cx,cy+h/2-ss/2,z,alu);
+    box(w,ss,D*0.62,cx,cy-h/2+ss/2,z,alu);
+    box(ss,h-2*ss,D*0.62,cx-w/2+ss/2,cy,z,alu);
+    box(ss,h-2*ss,D*0.62,cx+w/2-ss/2,cy,z,alu);
+    const gl=new THREE.Mesh(new THREE.PlaneGeometry(Math.max(0.02,w-2*ss),Math.max(0.02,h-2*ss)),glassMat);
+    gl.position.set(cx,cy,z-0.015); g.add(gl);
+  }
+  if(kind==="slide"){
+    // מסילות בראש ובסף (שני מפלסי עומק)
+    const off=Math.min(0.06,D*0.22);
+    [off,-off].forEach(zz=>{
+      box(iW,ss*0.45,0.03,0,iH/2-ss*0.28,zz,aluD);
+      box(iW,ss*0.45,0.03,0,-iH/2+ss*0.28,zz,aluD);
+    });
+    // כל עמודה = כנף (חופפת בעומק לסירוגין)
+    for(let c=0;c<vs.length-1;c++){
+      let a=X(vs[c]), b=X(vs[c+1]);
+      if(c>0) a-=ss*0.55; if(c<vs.length-2) b+=ss*0.55;
+      const z=(c%2===0?off:-off);
+      sashCell((a+b)/2,0,b-a,iH,z);
+    }
+    // חלוקות אופקיות = חוצצים על הזכוכית
+    sim.hLines.forEach(f=>box(iW,ss*0.7,D*0.45,0,Y(f),off+0.03,alu));
+    if(FP.bars) sim.vLines.forEach(f=>0); // הבלגי מטופל דרך העמודות
+  } else {
+    // ציר/קבוע — כל תא באותו מישור
+    for(let c=0;c<vs.length-1;c++) for(let r=0;r<hs.length-1;r++){
+      const x0=X(vs[c]),x1=X(vs[c+1]),y0=Y(hs[r+1]),y1=Y(hs[r]);
+      sashCell((x0+x1)/2,(y0+y1)/2,x1-x0,y1-y0,0);
+    }
+  }
+  // ----- ידית אמיתית לפי סוג -----
+  const hz=(kind==="slide"?Math.min(0.06,D*0.22):0)+D*0.32;
+  const hx=sim.handleSide==="left"?-iW/2+ss+0.06:iW/2-ss-0.06;
+  const inX=sim.handleSide==="left"?1:-1;   // כיוון פנימה
+  const ht=sim.handleType||"lever";
+  if(ht==="knob"){
+    box(0.055,0.13,0.05,hx,0,hz,steel);
+    const k=new THREE.Mesh(new THREE.SphereGeometry(0.058,18,14),steel); k.position.set(hx,0,hz+0.06); g.add(k);
+  } else if(ht==="pull"){
+    box(0.05,Math.min(0.6,iH*0.5),0.05,hx,0,hz+0.02,steel);   // מוט אנכי (הזזה)
+  } else if(ht==="cremone"){
+    box(0.05,Math.min(0.75,iH*0.72),0.045,hx,0,hz,steel);      // מוט קרמונה ארוך
+    box(0.035,0.05,0.17,hx+inX*0.02,-0.14,hz+0.05,steel);      // ידית לחיצה
+  } else {
+    box(0.05,0.14,0.05,hx,0,hz,steel);                          // רוזטה
+    box(0.035,0.045,0.19,hx+inX*0.02,-0.09,hz+0.05,steel);      // מוט לחיצה
+  }
   sim3d.needs=true;
 }
 
