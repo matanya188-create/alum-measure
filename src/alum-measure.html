@@ -1500,7 +1500,9 @@ function renderSim2D(){
   const FX=Math.round(bx+(bw-FW)/2), FY=Math.round(by+(bh-FH)/2);
   simGeo={FX,FY,FW,FH,W,H};
   const PF=PROF(sim.profile)||{}, fam=PF.style||"standard";
-  const sw={minimal:7,standard:11,heavy:16,belgian:8}[fam]||11;
+  /* רוחב קו-ראייה לחזית, מכויל לאופי הסדרות בקטלוג קליל (יחסי, לא מ"מ מדויק) */
+  const SW={"1400":6,"9400":6,"2600":8,"5600":8,"7600":8,"1700":8,"4100":8,"4300":8,"4350":9,"7100":8,"7300":9,"4500":11,"5500":11,"7000":11,"9000":12,"2200":16,"9200":16};
+  const sw=SW[sim.profile]||{minimal:7,standard:11,heavy:16,belgian:8}[fam]||11;
   const col=colorToHex(sim.color), colL=shade(col,1.35), colD=shade(col,0.6);
   const gx=FX+sw, gy=FY+sw, gw=FW-2*sw, gh=FH-2*sw;
   const tint = sim.glass==="frost" ? "rgba(236,240,240,0.80)" : sim.glass==="tint" ? "rgba(50,64,76,0.5)" : "rgba(150,190,210,0.13)";
