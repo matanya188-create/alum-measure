@@ -1528,12 +1528,15 @@ function renderSim2D(){
   A.push('<rect x="'+(FX+FW-1.5)+'" y="'+FY+'" width="1.5" height="'+FH+'" fill="'+colD+'"/>');
   A.push('<rect x="'+gx+'" y="'+gy+'" width="'+gw+'" height="1.2" fill="'+colD+'"/>');
   A.push('<rect x="'+gx+'" y="'+gy+'" width="1.2" height="'+gh+'" fill="'+colD+'"/>');
-  // real handle photo on the sash
-  const hm=HANDLE(sim.handleModel), hw=Math.min(FW*0.34,118), hh=hw*hm.ar, hy=FY+FH/2-hh/2;
+  // real handle photo — קטן, הרוזטה על מסגרת הצד, הידית מציצה פנימה
+  const hm=HANDLE(sim.handleModel);
+  const hw=Math.max(26,Math.min(FW*0.15,50)), hh=hw*hm.ar, hy=FY+FH/2-hh/2;
   let hx;
-  if(sim.handleSide==="left"){ hx=gx+3;
+  if(sim.handleSide==="left"){
+    hx=FX+sw*0.5-hw*0.18;
     A.push('<image href="'+handleImg(hm.id)+'" x="'+hx+'" y="'+hy+'" width="'+hw+'" height="'+hh+'"/>');
-  } else { hx=gx+gw-hw-3;
+  } else {
+    hx=FX+FW-sw*0.5-hw*0.82;
     A.push('<g transform="translate('+(2*hx+hw)+',0) scale(-1,1)"><image href="'+handleImg(hm.id)+'" x="'+hx+'" y="'+hy+'" width="'+hw+'" height="'+hh+'"/></g>');
   }
   svg.innerHTML=A.join("");
