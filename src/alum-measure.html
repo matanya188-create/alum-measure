@@ -1430,6 +1430,9 @@ const HANDLE_MODELS=[
   {id:"snonit",name:"סנונית",ar:0.52},{id:"chuchit",name:"חוחית",ar:0.58}
 ];
 const HANDLE=id=>HANDLE_MODELS.find(h=>h.id===id)||HANDLE_MODELS[0];
+/* עמוד הקטלוג לכל סדרה (מופה מקטלוג קליל; סדרה ללא עמוד ייעודי → עמוד 1) */
+const PROFILE_PAGE={"5500":10,"7000":11,"7300":13,"9000":18,"9200":19,"9400":20,"4500":7};
+const catalogPage=code=>PROFILE_PAGE[code]||1;
 const handleImg=id=>"handles/"+id+".png";
 const VIEW_IMG="view.jpg";
 /* הבהרה/הכהה של צבע hex */
@@ -1598,7 +1601,8 @@ function renderSimControls(){
   +'<div class="field" style="margin:12px 0 0"><label>סדרת פרופיל</label>'
   +'<select onchange="App.simSet(\'profile\',this.value)">'
   +PROFILES.map(pr=>'<option value="'+pr.code+'"'+(sim.profile===pr.code?" selected":"")+'>'+pr.code+' — '+pr.desc.split("—")[0].trim()+'</option>').join("")
-  +'</select></div>'
+  +'</select>'
+  +'<a class="btn small" style="margin-top:8px;display:inline-flex" href="profiles-catalog.pdf#page='+catalogPage(sim.profile)+'" target="_blank" rel="noopener">📖 חתך הפרופיל בקטלוג קליל</a></div>'
   +'<div class="field" style="margin:12px 0 0"><label>זכוכית</label><div class="seg">'
   +segBtn(sim.glass==="clear","שקופה","App.simSet('glass','clear')")
   +segBtn(sim.glass==="frost","חלבית","App.simSet('glass','frost')")

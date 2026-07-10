@@ -1,5 +1,5 @@
 /* Service Worker — עבודה אופליין מלאה. להעלאת גרסה חדשה: להעלות את VERSION. */
-const VERSION = "v33";
+const VERSION = "v34";
 const CACHE = "alum-measure-" + VERSION;
 const ASSETS = [
   "./",
@@ -11,6 +11,7 @@ const ASSETS = [
   "./apple-touch-icon.png",
   "./three.min.js",
   "./view.jpg",
+  "./profiles-catalog.pdf",
   "./handles/zamir.png","./handles/dror.png","./handles/doxifet.png","./handles/nachliieli.png",
   "./handles/pshuosh.png","./handles/ofroni.png","./handles/snonit.png","./handles/chuchit.png"
 ];
