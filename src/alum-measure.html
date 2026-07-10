@@ -1592,21 +1592,32 @@ function initSim3D(canvas){
   const renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
   renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
   renderer.setSize(canvas.clientWidth||300, 340, false);
-  // סביבה משתקפת — ברק אמיתי למתכת ולזכוכית
+  if(THREE.sRGBEncoding) renderer.outputEncoding=THREE.sRGBEncoding;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=0.95;
+  renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  // רקע סטודיו מדורג (כהה מספיק כדי שמסגרת בהירה תבלוט)
+  try{ const cb=document.createElement("canvas"); cb.width=8; cb.height=128; const bx=cb.getContext("2d");
+    const bg=bx.createLinearGradient(0,0,0,128); bg.addColorStop(0,"#c8cfd9"); bg.addColorStop(0.6,"#aeb6c2"); bg.addColorStop(1,"#8f97a4");
+    bx.fillStyle=bg; bx.fillRect(0,0,8,128); scene.background=new THREE.CanvasTexture(cb); }catch(e){}
+  // סביבה משתקפת — ברק/השתקפות אמיתיים למתכת ולזכוכית
   try{
     const pmrem=new THREE.PMREMGenerator(renderer);
     const cv2=document.createElement("canvas"); cv2.width=16; cv2.height=64;
     const cx2=cv2.getContext("2d");
     const grd=cx2.createLinearGradient(0,0,0,64);
-    grd.addColorStop(0,"#eef4fb"); grd.addColorStop(0.55,"#c2cede"); grd.addColorStop(1,"#868f9c");
+    grd.addColorStop(0,"#ffffff"); grd.addColorStop(0.5,"#ccd5e1"); grd.addColorStop(1,"#7c8894");
     cx2.fillStyle=grd; cx2.fillRect(0,0,16,64);
     const tex=new THREE.CanvasTexture(cv2); tex.mapping=THREE.EquirectangularReflectionMapping;
     scene.environment=pmrem.fromEquirectangular(tex).texture; tex.dispose(); pmrem.dispose();
   }catch(e){}
-  scene.add(new THREE.HemisphereLight(0xffffff,0x8a8f96,0.55));
-  scene.add(new THREE.AmbientLight(0xffffff,0.35));
-  const d1=new THREE.DirectionalLight(0xffffff,0.95); d1.position.set(3,4,6); scene.add(d1);
-  const d2=new THREE.DirectionalLight(0xffffff,0.3); d2.position.set(-4,2,-4); scene.add(d2);
+  scene.add(new THREE.HemisphereLight(0xffffff,0x9aa0a8,0.4));
+  const key=new THREE.DirectionalLight(0xffffff,1.25); key.position.set(3.5,5,4.5); key.castShadow=true;
+  key.shadow.mapSize.set(1024,1024); key.shadow.camera.near=1; key.shadow.camera.far=22;
+  key.shadow.camera.left=-3.2; key.shadow.camera.right=3.2; key.shadow.camera.top=3.2; key.shadow.camera.bottom=-3.2; key.shadow.bias=-0.0007; scene.add(key);
+  const fill=new THREE.DirectionalLight(0xffffff,0.4); fill.position.set(-4,2.5,-3); scene.add(fill);
+  // רצפת סטודיו לקבלת צל רך
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(24,24), new THREE.ShadowMaterial({opacity:0.26}));
+  ground.rotation.x=-Math.PI/2; ground.position.y=-1.55; ground.receiveShadow=true; scene.add(ground);
   const group=new THREE.Group(); scene.add(group);
   sim3d={renderer,scene,camera,group,rot:{x:0.15,y:-0.55},dist:5.2,needs:true};
   let drag=false,px=0,py=0,pinch=0;
@@ -1639,14 +1650,15 @@ function buildSimWindow(){
   let Wd,Hd; if(aspect>=1){ Wd=2.4; Hd=2.4/aspect; } else { Hd=2.4; Wd=2.4*aspect; }
   const D=FP.depth, ff=FP.face, ss=FP.sash;
   const base=new THREE.Color(colorToHex(sim.color));
-  const alu=new THREE.MeshStandardMaterial({color:base.clone(),metalness:0.62,roughness:0.4});
-  const aluD=new THREE.MeshStandardMaterial({color:base.clone().multiplyScalar(0.78),metalness:0.62,roughness:0.5});
-  const steel=new THREE.MeshStandardMaterial({color:0xb8b8bc,metalness:0.9,roughness:0.28});
-  let gcol=0xbfe0e8,gop=0.24,grough=0.06;
-  if(sim.glass==="frost"){ gcol=0xeaf0f0; gop=0.68; grough=0.75; }
-  else if(sim.glass==="tint"){ gcol=0x51616d; gop=0.58; grough=0.12; }
-  const glassMat=new THREE.MeshStandardMaterial({color:gcol,transparent:true,opacity:gop,metalness:0.3,roughness:grough,side:THREE.DoubleSide});
-  const box=(w,h,d,x,y,z,m)=>{ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.012,w),Math.max(0.012,h),Math.max(0.012,d)),m||alu); me.position.set(x,y,z); g.add(me); };
+  const alu=new THREE.MeshStandardMaterial({color:base.clone(),metalness:0.8,roughness:0.36,envMapIntensity:1.1});
+  const aluD=new THREE.MeshStandardMaterial({color:base.clone().multiplyScalar(0.76),metalness:0.8,roughness:0.46,envMapIntensity:1.0});
+  const steel=new THREE.MeshStandardMaterial({color:0xc2c4c8,metalness:0.95,roughness:0.22,envMapIntensity:1.3});
+  // זכוכית — שקופה ומשקפת סביבה (בלי transmission, לרינדור אמין בכל מכשיר)
+  let glassMat;
+  if(sim.glass==="frost") glassMat=new THREE.MeshStandardMaterial({color:0xeef2f2,transparent:true,opacity:0.74,metalness:0.1,roughness:0.72,envMapIntensity:0.5,side:THREE.DoubleSide});
+  else if(sim.glass==="tint") glassMat=new THREE.MeshStandardMaterial({color:0x3a4750,transparent:true,opacity:0.6,metalness:0.5,roughness:0.08,envMapIntensity:1.2,side:THREE.DoubleSide});
+  else glassMat=new THREE.MeshStandardMaterial({color:0xdfeef1,transparent:true,opacity:0.34,metalness:0.55,roughness:0.05,envMapIntensity:1.3,side:THREE.DoubleSide});
+  const box=(w,h,d,x,y,z,m)=>{ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.012,w),Math.max(0.012,h),Math.max(0.012,d)),m||alu); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; g.add(me); };
   // ----- מסגרת חיצונית עם קצה מדורג -----
   box(Wd,ff,D,0,Hd/2-ff/2,0,alu); box(Wd,ff,D,0,-Hd/2+ff/2,0,alu);
   box(ff,Hd-2*ff,D,-Wd/2+ff/2,0,0,alu); box(ff,Hd-2*ff,D,Wd/2-ff/2,0,0,alu);
@@ -1666,7 +1678,7 @@ function buildSimWindow(){
     box(ss,h-2*ss,D*0.62,cx-w/2+ss/2,cy,z,alu);
     box(ss,h-2*ss,D*0.62,cx+w/2-ss/2,cy,z,alu);
     const gl=new THREE.Mesh(new THREE.PlaneGeometry(Math.max(0.02,w-2*ss),Math.max(0.02,h-2*ss)),glassMat);
-    gl.position.set(cx,cy,z-0.015); g.add(gl);
+    gl.position.set(cx,cy,z-0.015); gl.castShadow=false; gl.receiveShadow=false; g.add(gl);
   }
   if(kind==="slide"){
     // מסילות בראש ובסף (שני מפלסי עומק)
