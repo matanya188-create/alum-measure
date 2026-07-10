@@ -1,5 +1,5 @@
 /* Service Worker — עבודה אופליין מלאה. להעלאת גרסה חדשה: להעלות את VERSION. */
-const VERSION = "v29";
+const VERSION = "v31";
 const CACHE = "alum-measure-" + VERSION;
 const ASSETS = [
   "./",
@@ -9,7 +9,10 @@ const ASSETS = [
   "./icon-512.png",
   "./icon-maskable-512.png",
   "./apple-touch-icon.png",
-  "./three.min.js"
+  "./three.min.js",
+  "./view.jpg",
+  "./handles/zamir.png","./handles/dror.png","./handles/doxifet.png","./handles/nachliieli.png",
+  "./handles/pshuosh.png","./handles/ofroni.png","./handles/snonit.png","./handles/chuchit.png"
 ];
 
 self.addEventListener("install", e => {

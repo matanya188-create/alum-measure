@@ -272,6 +272,11 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .swatches{display:flex;flex-wrap:wrap;gap:8px;max-height:150px;overflow-y:auto;padding:4px 0}
 .swatch{width:34px;height:34px;border-radius:9px;border:2px solid transparent;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 .swatch.on{border-color:var(--acc);transform:scale(1.08)}
+.hmodels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.hmodel{border:2px solid transparent;border-radius:12px;background:var(--line2);padding:6px 4px;text-align:center;cursor:pointer}
+.hmodel.on{border-color:var(--acc);background:var(--pen-soft)}
+.hmodel img{width:100%;height:38px;object-fit:contain;display:block}
+.hmodel span{font-size:.7rem;color:var(--ink2);display:block;margin-top:2px}
 
 @media print{
   body{background:#fff}
@@ -1416,9 +1421,22 @@ function viewQuoteExport(p){
 
 /* ================= הדמיה ללקוח (2D בנייה + 3D) ================= */
 const SIM_KEY="alum_sim_v1";
-function newSim(){ return {w:120,h:100,profile:"7000",color:"",glass:"clear",handleSide:"right",handleType:"lever",handleFinish:"chrome",vLines:[],hLines:[]}; }
-const HANDLE_TYPES=[["lever","ידית מוט"],["knob","כפתור"],["pull","ידית הזזה"],["cremone","קרמונה"]];
-const HANDLE_FINISH=[["chrome","כרום"],["black","שחור"],["brass","פליז"],["white","לבן"]];
+function newSim(){ return {w:120,h:100,profile:"7000",color:"",glass:"clear",handleSide:"right",handleModel:"zamir",vLines:[],hLines:[]}; }
+/* ידיות אמיתיות של קליל (בלגי) — תמונה + יחס גובה/רוחב */
+const HANDLE_MODELS=[
+  {id:"zamir",name:"זמיר",ar:0.42},{id:"dror",name:"דרור",ar:0.31},
+  {id:"doxifet",name:"דוכיפת",ar:0.45},{id:"nachliieli",name:"נחליאלי",ar:0.41},
+  {id:"pshuosh",name:"פשוש",ar:0.36},{id:"ofroni",name:"עפרוני",ar:0.29},
+  {id:"snonit",name:"סנונית",ar:0.52},{id:"chuchit",name:"חוחית",ar:0.58}
+];
+const HANDLE=id=>HANDLE_MODELS.find(h=>h.id===id)||HANDLE_MODELS[0];
+const handleImg=id=>"handles/"+id+".png";
+const VIEW_IMG="view.jpg";
+/* הבהרה/הכהה של צבע hex */
+function shade(hex,f){ hex=(hex||"#cfd0cd").replace("#",""); if(hex.length===3)hex=hex.split("").map(c=>c+c).join("");
+  let r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
+  r=Math.max(0,Math.min(255,Math.round(r*f)));g=Math.max(0,Math.min(255,Math.round(g*f)));b=Math.max(0,Math.min(255,Math.round(b*f)));
+  return "#"+[r,g,b].map(x=>x.toString(16).padStart(2,"0")).join(""); }
 function loadSimState(){ try{ const s=JSON.parse(localStorage.getItem(SIM_KEY)); return (s&&Array.isArray(s.vLines))?s:newSim(); }catch(e){ return newSim(); } }
 function saveSim(){ try{ localStorage.setItem(SIM_KEY, JSON.stringify(sim)); }catch(e){} }
 let sim = loadSimState();
@@ -1447,10 +1465,10 @@ function viewSim(){
   const has3D = (typeof THREE!=="undefined");
   return ''
   +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
-  +'<div class="grow"><h1>הדמיה ללקוח</h1><div class="sub">בונים חלון ורואים בתלת־ממד</div></div>'
+  +'<div class="grow"><h1>הדמיה ללקוח</h1><div class="sub">מרכיבים חלון ורואים חזית ריאליסטית</div></div>'
   +'<button class="btn small primary" onclick="App.simShare()">📤 שתף</button></div>'
   +'<div class="sim-stage">'
-  +'<svg id="sim2d" class="sim-2d" viewBox="0 0 300 260"></svg>'
+  +'<svg id="sim2d" class="sim-2d" viewBox="0 0 360 300"></svg>'
   +'<div class="sim-hint">מעבירים אצבע/עט על החלון כדי להוסיף חלוקה — הקו מתיישר לבד. אפשר לגרור קו, או לבחור אותו ולמחוק.</div>'
   +'<div class="sim-tools">'
   +'<button class="btn small" onclick="App.simAdd(\'v\')">➕ חלוקה אנכית</button>'
@@ -1458,11 +1476,6 @@ function viewSim(){
   +'<button class="btn small danger" onclick="App.simDelSel()">🗑 מחק קו נבחר</button>'
   +'<button class="btn small" onclick="App.simClear()">נקה הכל</button>'
   +'</div></div>'
-  +'<div class="sim-3d-wrap">'
-  +(has3D
-    ? '<span class="sim-3d-badge">גררו לסובב · צביטה לזום</span><canvas id="sim3d" class="sim-3d"></canvas>'
-    : '<div class="sim-3d-fallback">התצוגה התלת־ממדית זמינה באפליקציה המותקנת בטלפון.<br>פותחים את הקישור בכרום ולוחצים "התקן".</div>')
-  +'</div>'
   +'<div id="simcontrols"></div>';
 }
 
@@ -1470,8 +1483,6 @@ function afterSimRender(){
   renderSim2D();
   attachSim2DHandlers();
   renderSimControls();
-  const cv=document.getElementById("sim3d");
-  if(cv && typeof THREE!=="undefined"){ initSim3D(cv); buildSimWindow(); }
 }
 
 /* ---------- 2D builder ---------- */
@@ -1482,30 +1493,54 @@ function simSnap(f){
 }
 function renderSim2D(){
   const svg=document.getElementById("sim2d"); if(!svg) return;
-  const W=300,H=260, bx=24,by=20,bw=252,bh=220;
+  const W=360,H=300, bx=28,by=22,bw=304,bh=256;
   const aspect=(sim.w>0&&sim.h>0)?sim.w/sim.h:1.2;
   let FW=bw,FH=bh;
   if(aspect>=bw/bh){ FW=bw; FH=Math.round(bw/aspect); } else { FH=bh; FW=Math.round(bh*aspect); }
   const FX=Math.round(bx+(bw-FW)/2), FY=Math.round(by+(bh-FH)/2);
   simGeo={FX,FY,FW,FH,W,H};
-  const col=colorToHex(sim.color);
-  const glass = sim.glass==="frost" ? "#e6eeee" : sim.glass==="tint" ? "#8a99a6" : "#cfe6ee";
-  const P=[];
-  P.push('<rect x="'+FX+'" y="'+FY+'" width="'+FW+'" height="'+FH+'" rx="4" fill="'+glass+'" stroke="'+col+'" stroke-width="10"/>');
-  // mullions
-  sim.vLines.forEach((f,i)=>{ const x=FX+f*FW; const on=simSel&&simSel.dir==="v"&&simSel.idx===i;
-    P.push('<line x1="'+x+'" y1="'+FY+'" x2="'+x+'" y2="'+(FY+FH)+'" stroke="'+(on?"#e04f3f":col)+'" stroke-width="'+(on?9:7)+'"/>'); });
-  sim.hLines.forEach((f,i)=>{ const y=FY+f*FH; const on=simSel&&simSel.dir==="h"&&simSel.idx===i;
-    P.push('<line x1="'+FX+'" y1="'+y+'" x2="'+(FX+FW)+'" y2="'+y+'" stroke="'+(on?"#e04f3f":col)+'" stroke-width="'+(on?9:7)+'"/>'); });
-  // handle marker
-  const hx = sim.handleSide==="left" ? FX+10 : FX+FW-10;
-  P.push('<circle cx="'+hx+'" cy="'+(FY+FH/2)+'" r="4" fill="#555"/>');
-  P.push('<rect x="'+(hx-2)+'" y="'+(FY+FH/2)+'" width="4" height="20" rx="2" fill="#555"/>');
-  svg.innerHTML=P.join("");
+  const PF=PROF(sim.profile)||{}, fam=PF.style||"standard";
+  const sw={minimal:7,standard:11,heavy:16,belgian:8}[fam]||11;
+  const col=colorToHex(sim.color), colL=shade(col,1.35), colD=shade(col,0.6);
+  const gx=FX+sw, gy=FY+sw, gw=FW-2*sw, gh=FH-2*sw;
+  const tint = sim.glass==="frost" ? "rgba(236,240,240,0.80)" : sim.glass==="tint" ? "rgba(50,64,76,0.5)" : "rgba(150,190,210,0.13)";
+  const barW=Math.max(4,sw*0.7);
+  const A=[];
+  A.push('<defs><clipPath id="gclip"><rect x="'+gx+'" y="'+gy+'" width="'+gw+'" height="'+gh+'" rx="2"/></clipPath>'
+    +'<linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.30"/><stop offset="0.4" stop-color="#fff" stop-opacity="0.05"/><stop offset="0.75" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>');
+  A.push('<g clip-path="url(#gclip)">');
+  A.push('<image href="'+VIEW_IMG+'" x="'+gx+'" y="'+gy+'" width="'+gw+'" height="'+gh+'" preserveAspectRatio="xMidYMid slice"/>');
+  A.push('<rect x="'+gx+'" y="'+gy+'" width="'+gw+'" height="'+gh+'" fill="'+tint+'"/>');
+  A.push('<rect x="'+gx+'" y="'+gy+'" width="'+gw+'" height="'+gh+'" fill="url(#sheen)"/>');
+  sim.vLines.forEach((f,i)=>{ const x=FX+f*FW, on=simSel&&simSel.dir==="v"&&simSel.idx===i;
+    A.push('<rect x="'+(x-barW/2)+'" y="'+gy+'" width="'+barW+'" height="'+gh+'" fill="'+(on?"#e04f3f":col)+'"/>');
+    if(!on) A.push('<rect x="'+(x-barW/2)+'" y="'+gy+'" width="'+Math.max(1,barW*0.28)+'" height="'+gh+'" fill="'+colL+'" opacity="0.7"/>'); });
+  sim.hLines.forEach((f,i)=>{ const y=FY+f*FH, on=simSel&&simSel.dir==="h"&&simSel.idx===i;
+    A.push('<rect x="'+gx+'" y="'+(y-barW/2)+'" width="'+gw+'" height="'+barW+'" fill="'+(on?"#e04f3f":col)+'"/>');
+    if(!on) A.push('<rect x="'+gx+'" y="'+(y-barW/2)+'" width="'+gw+'" height="'+Math.max(1,barW*0.28)+'" fill="'+colL+'" opacity="0.7"/>'); });
+  A.push('</g>');
+  // frame members + bevel
+  const fm=(x,y,w,h)=>A.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+col+'"/>');
+  fm(FX,FY,FW,sw); fm(FX,FY+FH-sw,FW,sw); fm(FX,FY,sw,FH); fm(FX+FW-sw,FY,sw,FH);
+  A.push('<rect x="'+FX+'" y="'+FY+'" width="'+FW+'" height="1.5" fill="'+colL+'"/>');
+  A.push('<rect x="'+FX+'" y="'+FY+'" width="1.5" height="'+FH+'" fill="'+colL+'"/>');
+  A.push('<rect x="'+FX+'" y="'+(FY+FH-1.5)+'" width="'+FW+'" height="1.5" fill="'+colD+'"/>');
+  A.push('<rect x="'+(FX+FW-1.5)+'" y="'+FY+'" width="1.5" height="'+FH+'" fill="'+colD+'"/>');
+  A.push('<rect x="'+gx+'" y="'+gy+'" width="'+gw+'" height="1.2" fill="'+colD+'"/>');
+  A.push('<rect x="'+gx+'" y="'+gy+'" width="1.2" height="'+gh+'" fill="'+colD+'"/>');
+  // real handle photo on the sash
+  const hm=HANDLE(sim.handleModel), hw=Math.min(FW*0.34,118), hh=hw*hm.ar, hy=FY+FH/2-hh/2;
+  let hx;
+  if(sim.handleSide==="left"){ hx=gx+3;
+    A.push('<image href="'+handleImg(hm.id)+'" x="'+hx+'" y="'+hy+'" width="'+hw+'" height="'+hh+'"/>');
+  } else { hx=gx+gw-hw-3;
+    A.push('<g transform="translate('+(2*hx+hw)+',0) scale(-1,1)"><image href="'+handleImg(hm.id)+'" x="'+hx+'" y="'+hy+'" width="'+hw+'" height="'+hh+'"/></g>');
+  }
+  svg.innerHTML=A.join("");
 }
 function simToLocal(e){
   const svg=document.getElementById("sim2d"); const r=svg.getBoundingClientRect();
-  const x=(e.clientX-r.left)/r.width*300, y=(e.clientY-r.top)/r.height*260;
+  const x=(e.clientX-r.left)/r.width*360, y=(e.clientY-r.top)/r.height*300;
   return {x,y};
 }
 function attachSim2DHandlers(){
@@ -1564,11 +1599,8 @@ function renderSimControls(){
   +segBtn(sim.glass==="frost","חלבית","App.simSet('glass','frost')")
   +segBtn(sim.glass==="tint","טינטד","App.simSet('glass','tint')")
   +'</div></div>'
-  +'<div class="field" style="margin:12px 0 0"><label>סוג ידית</label><div class="seg">'
-  +HANDLE_TYPES.map(([v,l])=>segBtn((sim.handleType||"lever")===v,l,"App.simSet('handleType','"+v+"')")).join("")
-  +'</div></div>'
-  +'<div class="field" style="margin:12px 0 0"><label>גימור ידית</label><div class="seg">'
-  +HANDLE_FINISH.map(([v,l])=>segBtn((sim.handleFinish||"chrome")===v,l,"App.simSet('handleFinish','"+v+"')")).join("")
+  +'<div class="field" style="margin:12px 0 0"><label>ידית (דגמי קליל אמיתיים)</label><div class="hmodels">'
+  +HANDLE_MODELS.map(h=>'<div class="hmodel'+(sim.handleModel===h.id?" on":"")+'" onclick="App.simSet(\'handleModel\',\''+h.id+'\')"><img src="'+handleImg(h.id)+'" alt="'+esc(h.name)+'"><span>'+esc(h.name)+'</span></div>').join("")
   +'</div></div>'
   +'<div class="field" style="margin:12px 0 0"><label>צד ידית</label><div class="seg">'
   +segBtn(sim.handleSide!=="left","ימין","App.simSet('handleSide','right')")
@@ -1781,19 +1813,30 @@ const App = {
     sim=simFromItem(it); simSel=null; saveSim(); nav("/sim");
   },
   simShare(){
-    const cv=document.getElementById("sim3d");
-    if(!cv || typeof THREE==="undefined"){ uiAlert("התצוגה התלת־ממדית זמינה באפליקציה המותקנת בטלפון.","הדמיה"); return; }
-    if(sim3d){ sim3d.needs=true; sim3d.renderer.render(sim3d.scene,sim3d.camera); }
-    cv.toBlob(blob=>{
-      if(!blob){ uiAlert("לא הצלחתי לייצר תמונה, נסה שוב.","שיתוף"); return; }
-      const file=new File([blob],"alum-hadmaya.png",{type:"image/png"});
-      if(navigator.canShare && navigator.canShare({files:[file]})){
-        navigator.share({files:[file],title:"הדמיה — אלום אלבז"}).catch(()=>{});
-      } else {
-        const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="alum-hadmaya.png"; a.click();
-        setTimeout(()=>URL.revokeObjectURL(a.href),3000);
-      }
-    },"image/png");
+    const svg=document.getElementById("sim2d"); if(!svg) return;
+    const fail=()=>uiAlert("לא הצלחתי לייצר תמונה — אפשר לצלם מסך ולשלוח.","שיתוף");
+    const toData=url=>fetch(url).then(r=>r.blob()).then(b=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}));
+    const hm=HANDLE(sim.handleModel);
+    Promise.all([toData(VIEW_IMG),toData(handleImg(hm.id))]).then(([viewD,handD])=>{
+      let s=svg.outerHTML
+        .replace('<svg','<svg xmlns="http://www.w3.org/2000/svg" width="720" height="600"')
+        .split('href="'+VIEW_IMG+'"').join('href="'+viewD+'"')
+        .split('href="'+handleImg(hm.id)+'"').join('href="'+handD+'"');
+      const img=new Image();
+      img.onload=()=>{
+        const cv=document.createElement("canvas"); cv.width=720; cv.height=600;
+        const ctx=cv.getContext("2d"); ctx.fillStyle="#eef1f5"; ctx.fillRect(0,0,720,600);
+        ctx.drawImage(img,0,0,720,600);
+        cv.toBlob(blob=>{
+          if(!blob){ fail(); return; }
+          const file=new File([blob],"alum-hadmaya.png",{type:"image/png"});
+          if(navigator.canShare && navigator.canShare({files:[file]})) navigator.share({files:[file],title:"הדמיה — אלום אלבז"}).catch(()=>{});
+          else { const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="alum-hadmaya.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); }
+        },"image/png");
+      };
+      img.onerror=fail;
+      img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(s);
+    }).catch(fail);
   },
   pf(pid,k,v){ const p=proj(pid); if(p){ p[k]=v; save(); } },
   delProject(pid){
