@@ -304,6 +304,8 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .hmodel.on{border-color:var(--acc);background:var(--pen-soft)}
 .hmodel img{width:100%;height:38px;object-fit:contain;display:block}
 .hmodel span{font-size:.7rem;color:var(--ink2);display:block;margin-top:2px}
+.hpick{margin-top:4px;width:100%;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:.68rem;padding:3px 2px;cursor:pointer;color:var(--ink);font-family:inherit}
+.hpick.on{background:var(--acc);border-color:var(--acc);color:#fff}
 
 @media print{
   body{background:#fff}
@@ -1721,6 +1723,31 @@ function renderSim2D(){
     A.push('<rect x="'+FX+'" y="'+(FY-boxPx)+'" width="'+FW+'" height="'+boxPx+'" fill="none" stroke="'+cDD+'" stroke-width="1" stroke-opacity="0.55"/>');
     A.push('<rect x="'+FX+'" y="'+(FY-1.2)+'" width="'+FW+'" height="1.2" fill="rgba(0,0,0,0.3)"/>');
   }
+  /* ידית נבחרת — תמונה אמיתית במקום ובכיוון הנכונים לסוג הפתיחה */
+  if(sim.handleOn && sim.handleModel && nW!==0){
+    const kindH = (sim.kind==="door") ? "hinge" : (sim.kind==="vitrina") ? "slide" : (PF.kind||"slide");
+    const hImg=handleImg(sim.handleModel);
+    const hw2=Math.max(22,Math.min(FW*0.11,34)), hh2=hw2*0.62, cyH=gy+gh/2;
+    const put=(cx2,ori)=>{
+      let tr='translate('+cx2+','+cyH+')';
+      if(ori==="down") tr+=' rotate(90)';
+      if(ori==="left") tr+=' scale(-1,1)';
+      A.push('<g filter="url(#hsh)" transform="'+tr+'"><image href="'+hImg+'" x="'+(-hw2*0.18)+'" y="'+(-hh2/2)+'" width="'+hw2+'" height="'+hh2+'" preserveAspectRatio="xMidYMid meet"/></g>');
+    };
+    if(kindH==="slide"){
+      /* הזזה: שתי ידיות אנכיות על הזקפים הצדדיים */
+      put(gx-ssw/2,"down");
+      put(gx+gw+ssw/2,"down");
+    } else if(nW>=2){
+      /* פתיחה: זוג ידיות במפגש האמצעי, כל אחת מופנית לכנף שלה */
+      const meetW=Math.max(7,ssw*1.5), cxm=gx+gw/2;
+      put(cxm-meetW*0.55,"left");
+      put(cxm+meetW*0.55,"right");
+    } else {
+      /* דלת כנף אחת — ידית על הזקף הימני */
+      put(gx+gw+ssw/2,"left");
+    }
+  }
   A.push('</g>');
   /* ידיות פינה לצורה נבחרת — גרירה משנה גודל, גרירת הגוף מזיזה */
   if(simSel&&simSel.dir==="s"&&(sim.shapes||[])[simSel.idx]){
@@ -1949,8 +1976,15 @@ function renderSimControls(){
   +PROFILES.map(pr=>'<option value="'+pr.code+'"'+(sim.profile===pr.code?" selected":"")+'>'+pr.code+' — '+pr.desc.split("—")[0].trim()+'</option>').join("")
   +'</select></div>'
   +(function(){ const hs=handleSetFor(sim.profile);
-    return '<div class="field" style="margin:12px 0 0"><label>'+hs.title+' — לחיצה מגדילה</label><div class="hmodels">'
-    +hs.list.map(h=>'<div class="hmodel" onclick="App.handleView(\''+esc(h[0]).replace(/'/g,"\\'")+'\',\''+h[1]+'\')"><img src="'+handleImg(h[1])+'" alt="'+esc(h[0])+'" loading="lazy"><span>'+esc(h[0])+'</span></div>').join("")
+    return '<div class="field" style="margin:12px 0 0"><label>'+hs.title+' — לחיצה על תמונה מגדילה, ״בחר״ מציב בהדמיה</label><div class="hmodels">'
+    +hs.list.map(h=>{
+      const on = !!sim.handleOn && sim.handleModel===h[1];
+      return '<div class="hmodel'+(on?" on":"")+'">'
+      +'<img src="'+handleImg(h[1])+'" alt="'+esc(h[0])+'" loading="lazy" onclick="App.handleView(\''+esc(h[0]).replace(/'/g,"\\'")+'\',\''+h[1]+'\')">'
+      +'<span>'+esc(h[0])+'</span>'
+      +'<button class="hpick'+(on?" on":"")+'" onclick="App.handlePick(\''+(on?"":h[1])+'\')">'+(on?"✓ בהדמיה — הסר":"בחר")+'</button>'
+      +'</div>';
+    }).join("")
     +'</div></div>'; })()
   +'<div class="field" style="margin:12px 0 0"><label>כל מניפת הגוונים של קליל</label><div class="swatches">'+swatches+'</div>'
   +'<div class="muted" style="margin-top:4px">'+(sim.color?esc(sim.color):"אלומיניום (ברירת מחדל)")+'</div></div>'
@@ -2257,6 +2291,12 @@ const App = {
   simBox(b){
     sim.box=!!b;
     saveSim(); renderSimControls(); renderSim2D(); buildSimWindow();
+  },
+  /* בחירת ידית להדמיה (כפתור ״בחר״ בגלריה); מחרוזת ריקה = הסרה */
+  handlePick(id){
+    if(id){ sim.handleModel=id; sim.handleOn=true; }
+    else { sim.handleOn=false; }
+    saveSim(); renderSimControls(); renderSim2D();
   },
   /* תצוגה מוגדלת של ידית — כמו באתר קליל */
   handleView(name,id){
