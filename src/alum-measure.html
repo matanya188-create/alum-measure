@@ -1496,8 +1496,8 @@ function simSnap(f){
 }
 function renderSim2D(){
   const svg=document.getElementById("sim2d"); if(!svg) return;
-  const W=360,H=300, bx=28,by=22,bw=304,bh=256;
-  const aspect=(sim.w>0&&sim.h>0)?sim.w/sim.h:1.2;
+  const W=360,H=300, bx=30,by=24,bw=300,bh=248;
+  const aspect=Math.max(0.25,Math.min(4,(sim.w>0&&sim.h>0)?sim.w/sim.h:1.2));
   let FW=bw,FH=bh;
   if(aspect>=bw/bh){ FW=bw; FH=Math.round(bw/aspect); } else { FH=bh; FW=Math.round(bh*aspect); }
   const FX=Math.round(bx+(bw-FW)/2), FY=Math.round(by+(bh-FH)/2);
@@ -1505,45 +1505,83 @@ function renderSim2D(){
   const PF=PROF(sim.profile)||{}, fam=PF.style||"standard";
   /* רוחב קו-ראייה לחזית, מכויל לאופי הסדרות בקטלוג קליל (יחסי, לא מ"מ מדויק) */
   const SW={"1400":6,"9400":6,"2600":8,"5600":8,"7600":8,"1700":8,"4100":8,"4300":8,"4350":9,"7100":8,"7300":9,"4500":11,"5500":11,"7000":11,"9000":12,"2200":16,"9200":16};
-  const sw=SW[sim.profile]||{minimal:7,standard:11,heavy:16,belgian:8}[fam]||11;
-  const col=colorToHex(sim.color), colL=shade(col,1.35), colD=shade(col,0.6);
-  const gx=FX+sw, gy=FY+sw, gw=FW-2*sw, gh=FH-2*sw;
-  const tint = sim.glass==="frost" ? "rgba(236,240,240,0.80)" : sim.glass==="tint" ? "rgba(50,64,76,0.5)" : "rgba(150,190,210,0.13)";
-  const barW=Math.max(4,sw*0.7);
+  let fw=SW[sim.profile]||{minimal:7,standard:11,heavy:16,belgian:8}[fam]||11;
+  const gap=2;
+  let ssw=Math.max(5,Math.round(fw*0.85));
+  /* בחלון צר/נמוך מכווצים את הפרופיל כדי שלא יבלע את הזכוכית */
+  const k=Math.min(1,(Math.min(FW,FH)*0.22)/(fw+gap+ssw));
+  fw=Math.max(4,fw*k); ssw=Math.max(4,ssw*k);
+  const S=fw+gap+ssw;
+  const col=colorToHex(sim.color);
+  const cLL=shade(col,1.26), cL=shade(col,1.1), cD=shade(col,0.88), cDD=shade(col,0.62);
+  const gx=FX+S, gy=FY+S, gw=FW-2*S, gh=FH-2*S;
+  const tint = sim.glass==="frost" ? "rgba(236,240,240,0.82)" : sim.glass==="tint" ? "rgba(50,64,76,0.5)" : "rgba(150,190,210,0.12)";
+  const barW=Math.max(5,ssw*0.9);
   const A=[];
-  A.push('<defs><clipPath id="gclip"><rect x="'+gx+'" y="'+gy+'" width="'+gw+'" height="'+gh+'" rx="2"/></clipPath>'
-    +'<linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.30"/><stop offset="0.4" stop-color="#fff" stop-opacity="0.05"/><stop offset="0.75" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>');
+  const face='<stop offset="0" stop-color="'+cLL+'"/><stop offset="0.28" stop-color="'+cL+'"/><stop offset="0.6" stop-color="'+col+'"/><stop offset="0.92" stop-color="'+cD+'"/><stop offset="1" stop-color="'+cDD+'"/>';
+  A.push('<defs>'
+    +'<clipPath id="gclip"><rect x="'+gx+'" y="'+gy+'" width="'+gw+'" height="'+gh+'"/></clipPath>'
+    +'<linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3f1ec"/><stop offset="1" stop-color="#ddd8cf"/></linearGradient>'
+    +'<linearGradient id="mh" x1="0" y1="0" x2="0" y2="1">'+face+'</linearGradient>'
+    +'<linearGradient id="mv" x1="0" y1="0" x2="1" y2="0">'+face+'</linearGradient>'
+    +'<linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.22"/><stop offset="0.35" stop-color="#fff" stop-opacity="0.04"/><stop offset="0.7" stop-color="#fff" stop-opacity="0"/></linearGradient>'
+    +'<linearGradient id="eT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0.34"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>'
+    +'<linearGradient id="eL" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.30"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>'
+    +'<linearGradient id="eB" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.20"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>'
+    +'<linearGradient id="eR" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.20"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>'
+    +'<filter id="winsh" x="-15%" y="-15%" width="130%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#000" flood-opacity="0.28"/></filter>'
+    +'<filter id="barsh" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="1.4" dy="2.2" stdDeviation="1.4" flood-color="#000" flood-opacity="0.38"/></filter>'
+    +'<filter id="hsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.1" flood-color="#000" flood-opacity="0.35"/></filter>'
+    +'</defs>');
+  /* קיר רקע — החלון מותקן, לא צף */
+  A.push('<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="url(#wall)"/>');
+  A.push('<g filter="url(#winsh)">');
+  /* חריץ כהה בין המשקוף לכנף */
+  A.push('<rect x="'+(FX+fw)+'" y="'+(FY+fw)+'" width="'+(FW-2*fw)+'" height="'+(FH-2*fw)+'" fill="#15181b"/>');
+  /* זכוכית: נוף + גוון + צל-שקע (הזכוכית מאחורי הכנף) + חלוקות מודבקות */
   A.push('<g clip-path="url(#gclip)">');
   A.push('<image href="'+VIEW_IMG+'" x="'+gx+'" y="'+gy+'" width="'+gw+'" height="'+gh+'" preserveAspectRatio="xMidYMid slice"/>');
   A.push('<rect x="'+gx+'" y="'+gy+'" width="'+gw+'" height="'+gh+'" fill="'+tint+'"/>');
+  const ei=Math.max(4,Math.min(8,ssw*0.7));
+  A.push('<rect x="'+gx+'" y="'+gy+'" width="'+gw+'" height="'+ei+'" fill="url(#eT)"/>');
+  A.push('<rect x="'+gx+'" y="'+gy+'" width="'+ei+'" height="'+gh+'" fill="url(#eL)"/>');
+  A.push('<rect x="'+gx+'" y="'+(gy+gh-ei)+'" width="'+gw+'" height="'+ei+'" fill="url(#eB)"/>');
+  A.push('<rect x="'+(gx+gw-ei)+'" y="'+gy+'" width="'+ei+'" height="'+gh+'" fill="url(#eR)"/>');
   A.push('<rect x="'+gx+'" y="'+gy+'" width="'+gw+'" height="'+gh+'" fill="url(#sheen)"/>');
-  sim.vLines.forEach((f,i)=>{ const x=FX+f*FW, on=simSel&&simSel.dir==="v"&&simSel.idx===i;
-    A.push('<rect x="'+(x-barW/2)+'" y="'+gy+'" width="'+barW+'" height="'+gh+'" fill="'+(on?"#e04f3f":col)+'"/>');
-    if(!on) A.push('<rect x="'+(x-barW/2)+'" y="'+gy+'" width="'+Math.max(1,barW*0.28)+'" height="'+gh+'" fill="'+colL+'" opacity="0.7"/>'); });
   sim.hLines.forEach((f,i)=>{ const y=FY+f*FH, on=simSel&&simSel.dir==="h"&&simSel.idx===i;
-    A.push('<rect x="'+gx+'" y="'+(y-barW/2)+'" width="'+gw+'" height="'+barW+'" fill="'+(on?"#e04f3f":col)+'"/>');
-    if(!on) A.push('<rect x="'+gx+'" y="'+(y-barW/2)+'" width="'+gw+'" height="'+Math.max(1,barW*0.28)+'" fill="'+colL+'" opacity="0.7"/>'); });
+    A.push('<g filter="url(#barsh)"><rect x="'+gx+'" y="'+(y-barW/2)+'" width="'+gw+'" height="'+barW+'" fill="'+(on?"#e04f3f":"url(#mh)")+'"/></g>'); });
+  sim.vLines.forEach((f,i)=>{ const x=FX+f*FW, on=simSel&&simSel.dir==="v"&&simSel.idx===i;
+    A.push('<g filter="url(#barsh)"><rect x="'+(x-barW/2)+'" y="'+gy+'" width="'+barW+'" height="'+gh+'" fill="'+(on?"#e04f3f":"url(#mv)")+'"/></g>'); });
   A.push('</g>');
-  // frame members + bevel
-  const fm=(x,y,w,h)=>A.push('<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+col+'"/>');
-  fm(FX,FY,FW,sw); fm(FX,FY+FH-sw,FW,sw); fm(FX,FY,sw,FH); fm(FX+FW-sw,FY,sw,FH);
-  A.push('<rect x="'+FX+'" y="'+FY+'" width="'+FW+'" height="1.5" fill="'+colL+'"/>');
-  A.push('<rect x="'+FX+'" y="'+FY+'" width="1.5" height="'+FH+'" fill="'+colL+'"/>');
-  A.push('<rect x="'+FX+'" y="'+(FY+FH-1.5)+'" width="'+FW+'" height="1.5" fill="'+colD+'"/>');
-  A.push('<rect x="'+(FX+FW-1.5)+'" y="'+FY+'" width="1.5" height="'+FH+'" fill="'+colD+'"/>');
-  A.push('<rect x="'+gx+'" y="'+gy+'" width="'+gw+'" height="1.2" fill="'+colD+'"/>');
-  A.push('<rect x="'+gx+'" y="'+gy+'" width="1.2" height="'+gh+'" fill="'+colD+'"/>');
-  // real handle photo — קטן, הרוזטה על מסגרת הצד, הידית מציצה פנימה
+  /* טבעת פרופיל ממוזוות 45° — משקוף/כנף עם תאורת-פנים של אלומיניום */
+  const ring=(x,y,w,h,t)=>{
+    A.push('<polygon points="'+x+','+y+' '+(x+w)+','+y+' '+(x+w-t)+','+(y+t)+' '+(x+t)+','+(y+t)+'" fill="url(#mh)"/>');
+    A.push('<polygon points="'+x+','+(y+h)+' '+(x+t)+','+(y+h-t)+' '+(x+w-t)+','+(y+h-t)+' '+(x+w)+','+(y+h)+'" fill="url(#mh)"/>');
+    A.push('<polygon points="'+x+','+y+' '+(x+t)+','+(y+t)+' '+(x+t)+','+(y+h-t)+' '+x+','+(y+h)+'" fill="url(#mv)"/>');
+    A.push('<polygon points="'+(x+w)+','+y+' '+(x+w)+','+(y+h)+' '+(x+w-t)+','+(y+h-t)+' '+(x+w-t)+','+(y+t)+'" fill="url(#mv)"/>');
+    const ml='stroke="#000" stroke-opacity="0.22" stroke-width="0.8"';
+    A.push('<line x1="'+x+'" y1="'+y+'" x2="'+(x+t)+'" y2="'+(y+t)+'" '+ml+'/>');
+    A.push('<line x1="'+(x+w)+'" y1="'+y+'" x2="'+(x+w-t)+'" y2="'+(y+t)+'" '+ml+'/>');
+    A.push('<line x1="'+x+'" y1="'+(y+h)+'" x2="'+(x+t)+'" y2="'+(y+h-t)+'" '+ml+'/>');
+    A.push('<line x1="'+(x+w)+'" y1="'+(y+h)+'" x2="'+(x+w-t)+'" y2="'+(y+h-t)+'" '+ml+'/>');
+  };
+  /* כנף פנימית + פס זיגוג סביב הזכוכית */
+  ring(FX+fw+gap, FY+fw+gap, FW-2*(fw+gap), FH-2*(fw+gap), ssw);
+  A.push('<rect x="'+(gx-0.6)+'" y="'+(gy-0.6)+'" width="'+(gw+1.2)+'" height="'+(gh+1.2)+'" fill="none" stroke="'+cDD+'" stroke-width="1" stroke-opacity="0.8"/>');
+  /* משקוף חיצוני + קו תיחום */
+  ring(FX, FY, FW, FH, fw);
+  A.push('<rect x="'+(FX+0.5)+'" y="'+(FY+0.5)+'" width="'+(FW-1)+'" height="'+(FH-1)+'" fill="none" stroke="'+cDD+'" stroke-width="1" stroke-opacity="0.55"/>');
+  /* ידית אמיתית — הרוזטה יושבת על זקף הכנף */
   const hm=HANDLE(sim.handleModel);
-  const hw=Math.max(26,Math.min(FW*0.15,50)), hh=hw*hm.ar, hy=FY+FH/2-hh/2;
-  let hx;
+  const hw=Math.max(24,Math.min(FW*0.14,44)), hh=hw*hm.ar, hy=FY+FH/2-hh/2;
   if(sim.handleSide==="left"){
-    hx=FX+sw*0.5-hw*0.18;
-    A.push('<image href="'+handleImg(hm.id)+'" x="'+hx+'" y="'+hy+'" width="'+hw+'" height="'+hh+'"/>');
+    const hx=(gx-ssw/2)-hw*0.18;
+    A.push('<g filter="url(#hsh)"><image href="'+handleImg(hm.id)+'" x="'+hx+'" y="'+hy+'" width="'+hw+'" height="'+hh+'"/></g>');
   } else {
-    hx=FX+FW-sw*0.5-hw*0.82;
-    A.push('<g transform="translate('+(2*hx+hw)+',0) scale(-1,1)"><image href="'+handleImg(hm.id)+'" x="'+hx+'" y="'+hy+'" width="'+hw+'" height="'+hh+'"/></g>');
+    const hx=(gx+gw+ssw/2)-hw*0.82;
+    A.push('<g filter="url(#hsh)"><g transform="translate('+(2*hx+hw)+',0) scale(-1,1)"><image href="'+handleImg(hm.id)+'" x="'+hx+'" y="'+hy+'" width="'+hw+'" height="'+hh+'"/></g></g>');
   }
+  A.push('</g>');
   svg.innerHTML=A.join("");
 }
 function simToLocal(e){
