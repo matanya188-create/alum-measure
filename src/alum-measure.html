@@ -2229,6 +2229,42 @@ function buildSimWindow(){
   }
   const off=Math.min(0.06,D*0.22);
   const wings=simWingCount();
+  /* ידית תלת-ממדית אמיתית — באותם מיקומים כמו בחזית, בגימור לפי הדגם שנבחר */
+  function buildHandles3D(){
+    if(!sim.handleOn || !sim.handleModel || wings===0) return;
+    const hsSet=handleSetFor(sim.profile);
+    let hcol=0xc6c9cd;
+    if(/black/.test(sim.handleModel)) hcol=0x232426;
+    else if(/white/.test(sim.handleModel)) hcol=0xf1f1ee;
+    else if(/brass/.test(sim.handleModel)) hcol=0xa5824f;
+    else if(hsSet===HANDLE_SETS.belgian||hsSet===HANDLE_SETS.art) hcol=0x8f7350;
+    else if(hsSet===HANDLE_SETS.bauhaus||hsSet===HANDLE_SETS.bold) hcol=0x2a2b2e;
+    const hmat=new THREE.MeshStandardMaterial({color:new THREE.Color(hcol),metalness:0.85,roughness:0.3,envMapIntensity:1.1});
+    const hy = simKind==="door" ? Math.max(-iH/2+0.2, 1.0-sill-Hd/2) : 0;
+    const mk=(hx,zFace,ori)=>{
+      const add=m=>{ m.castShadow=true; win.add(m); };
+      let m=new THREE.Mesh(new THREE.CylinderGeometry(0.027,0.027,0.012,18),hmat);
+      m.rotation.x=Math.PI/2; m.position.set(hx,hy,zFace+0.006); add(m);
+      m=new THREE.Mesh(new THREE.CylinderGeometry(0.011,0.011,0.032,14),hmat);
+      m.rotation.x=Math.PI/2; m.position.set(hx,hy,zFace+0.026); add(m);
+      const L=0.13, zL=zFace+0.044;
+      const dx=ori==="left"?-1:ori==="right"?1:0, dy=ori==="down"?-1:0;
+      m=new THREE.Mesh(new THREE.CylinderGeometry(0.0105,0.0105,L,14),hmat);
+      if(dx!==0) m.rotation.z=Math.PI/2;
+      m.position.set(hx+dx*L/2,hy+dy*L/2,zL); add(m);
+      m=new THREE.Mesh(new THREE.SphereGeometry(0.0135,14,10),hmat);
+      m.position.set(hx+dx*(L-0.006),hy+dy*(L-0.006),zL); add(m);
+    };
+    if(kind==="slide"){
+      mk(-iW/2+ss*0.5, off+sashD/2, "down");
+      mk(iW/2-ss*0.5, ((wings-1)%2===0?off:-off)+sashD/2, "down");
+    } else if(wings>=2){
+      mk(-ss*0.9, sashD/2, "left");
+      mk(ss*0.9, sashD/2, "right");
+    } else {
+      mk(iW/2-ss*0.9, sashD/2, "left");
+    }
+  }
   if(wings===0){
     // קבוע — זכוכית אחת, בלי קו מפגש
     sashCell(0,0,iW,iH,0,0);
@@ -2248,6 +2284,7 @@ function buildSimWindow(){
       sashCell(-iW/2+c*pw+pw/2,0,pw+(c<wings-1?0.004:0),iH,0,c);
     }
   }
+  buildHandles3D();
   sim3d.needs=true;
 }
 
@@ -2296,7 +2333,7 @@ const App = {
   handlePick(id){
     if(id){ sim.handleModel=id; sim.handleOn=true; }
     else { sim.handleOn=false; }
-    saveSim(); renderSimControls(); renderSim2D();
+    saveSim(); renderSimControls(); renderSim2D(); buildSimWindow();
   },
   /* תצוגה מוגדלת של ידית — כמו באתר קליל */
   handleView(name,id){
