@@ -1442,17 +1442,40 @@ function viewQuoteExport(p){
 /* ================= הדמיה ללקוח (2D בנייה + 3D) ================= */
 const SIM_KEY="alum_sim_v1";
 function newSim(){ return {w:120,h:100,profile:"7000",color:"",glass:"clear",handleSide:"right",handleModel:"zamir",vLines:[],hLines:[]}; }
-/* ידיות אמיתיות של קליל (בלגי) — תמונה + יחס גובה/רוחב */
-const HANDLE_MODELS=[
-  {id:"zamir",name:"זמיר",ar:0.42},{id:"dror",name:"דרור",ar:0.31},
-  {id:"doxifet",name:"דוכיפת",ar:0.45},{id:"nachliieli",name:"נחליאלי",ar:0.41},
-  {id:"pshuosh",name:"פשוש",ar:0.36},{id:"ofroni",name:"עפרוני",ar:0.29},
-  {id:"snonit",name:"סנונית",ar:0.52},{id:"chuchit",name:"חוחית",ar:0.58}
-];
-const HANDLE=id=>HANDLE_MODELS.find(h=>h.id===id)||HANDLE_MODELS[0];
-/* עמוד הקטלוג לכל סדרה (מופה מקטלוג קליל; סדרה ללא עמוד ייעודי → עמוד 1) */
-const PROFILE_PAGE={"5500":10,"7000":11,"7300":13,"9000":18,"9200":19,"9400":20,"4500":7};
-const catalogPage=code=>PROFILE_PAGE[code]||1;
+/* גלריות ידיות אמיתיות של קליל, לפי הסגנון הרשמי של כל סדרה (מהאתר של קליל) */
+const HANDLE_SETS={
+  belgian:{title:"ידיות מומלצות לסגנון הבלגי",list:[
+    ["נחליאלי","nachliieli"],["דוכיפת","doxifet"],["דרור","dror"],["זמיר","zamir"],
+    ["חוחית","chuchit"],["סנונית","snonit"],["עפרוני","ofroni"],["פשוש","pshuosh"],
+    ["צופית","tzufit"],["חוחית 4356","chuchit4356"],["זמיר 4357","zamir4357"],
+    ["דרור 4358","dror4358"],["בובה 4364","buba4364"]]},
+  art:{title:"ידיות בלגי ארט (בלגי פלוס)",list:[
+    ["כסוף עתיק","art_silver_antique"],["פליז מט","art_brass_mat"],["פליז עתיק","art_brass_antique"],
+    ["כסוף מוברש","art_silver"],["לבן","art_white"],["שחור","art_black"]]},
+  basic:{title:"ידיות בסגנון בייסיק",list:[
+    ["אסטרא","astra"],["באוהאוס","bauhaus_h"],["גלורי","glory"],["זד","zed"],["לפייה","lapia"],
+    ["מרים","miriam"],["סאשה","sasha"],["עלמה","alma"],["פלאו","flow"],["קוסי","cosi"],
+    ["קיו 10","q10"],["קיי 1","k1"],["קיי 2","k2"],["קלאודיה","claudia"],["רומבו","rombo"],
+    ["רוסיטא","rostia"],["תריס","tris"]]},
+  bauhaus:{title:"ידיות בסגנון באוהאוס",list:[
+    ["BAU 99","bau99"],["BAU 18","bau18"],["BAU 33","bau33"],["BAU 66","bau66"],["BAU 10","bau10"],
+    ["BAU 76","bau76"],["BAU 77","bau77"],["BAU 5","bau5"],["BAU 56","bau56"],
+    ["3479 להזזה","bau3479"],["BAU 05 XL","bau05xl"],["BAU 56 XL","bau56xl"],["BAU 33 XL","bau33xl"]]},
+  bold:{title:"ידיות בסגנון BOLD",list:[
+    ["BAU 05 XL","bau05xl"],["BAU 33 XL","bau33xl"],["BAU 56 XL","bau56xl"],
+    ["3479","bau3479"],["GU","gu"],["LASER 3478","laser3478"]]},
+  fine:{title:"ידיות FINE למערכות מינימל",list:[["קיי 1","k1"],["קיי 2","k2"]]}
+};
+function handleSetFor(code){
+  const d=(PROF(code)||{}).desc||"";
+  if(d.includes("בלגי פלוס")) return HANDLE_SETS.art;
+  if(d.includes("באוהאוס")) return HANDLE_SETS.bauhaus;
+  if(d.includes("BOLD")) return HANDLE_SETS.bold;
+  if(d.includes("ZEROLINE")||d.includes("FINE")) return HANDLE_SETS.fine;
+  if(d.includes("בייסיק")||d.includes("קלאסי")) return HANDLE_SETS.basic;
+  if(d.includes("בלגי")) return HANDLE_SETS.belgian;
+  return HANDLE_SETS.basic;
+}
 const handleImg=id=>"handles/"+id+".png";
 const VIEW_IMG="view.jpg";
 /* הבהרה/הכהה של צבע hex */
@@ -1559,7 +1582,7 @@ function renderSim2D(){
   const col=colorToHex(sim.color);
   const cLL=shade(col,1.26), cL=shade(col,1.1), cD=shade(col,0.88), cDD=shade(col,0.62);
   const gx=FX+S, gy=FY+S, gw=FW-2*S, gh=FH-2*S;
-  const tint = sim.glass==="frost" ? "rgba(236,240,240,0.82)" : sim.glass==="tint" ? "rgba(50,64,76,0.5)" : "rgba(150,190,210,0.12)";
+  const tint = "rgba(150,190,210,0.12)"; /* זכוכית שקופה — גוון זכוכית לא רלוונטי להדמיה */
   const barW=Math.max(5,ssw*0.9);
   const A=[];
   const face='<stop offset="0" stop-color="'+cLL+'"/><stop offset="0.28" stop-color="'+cL+'"/><stop offset="0.6" stop-color="'+col+'"/><stop offset="0.92" stop-color="'+cD+'"/><stop offset="1" stop-color="'+cDD+'"/>';
@@ -1615,16 +1638,6 @@ function renderSim2D(){
   /* משקוף חיצוני + קו תיחום */
   ring(FX, FY, FW, FH, fw);
   A.push('<rect x="'+(FX+0.5)+'" y="'+(FY+0.5)+'" width="'+(FW-1)+'" height="'+(FH-1)+'" fill="none" stroke="'+cDD+'" stroke-width="1" stroke-opacity="0.55"/>');
-  /* ידית אמיתית — הרוזטה יושבת על זקף הכנף */
-  const hm=HANDLE(sim.handleModel);
-  const hw=Math.max(24,Math.min(FW*0.14,44)), hh=hw*hm.ar, hy=FY+FH/2-hh/2;
-  if(sim.handleSide==="left"){
-    const hx=(gx-ssw/2)-hw*0.18;
-    A.push('<g filter="url(#hsh)"><image href="'+handleImg(hm.id)+'" x="'+hx+'" y="'+hy+'" width="'+hw+'" height="'+hh+'"/></g>');
-  } else {
-    const hx=(gx+gw+ssw/2)-hw*0.82;
-    A.push('<g filter="url(#hsh)"><g transform="translate('+(2*hx+hw)+',0) scale(-1,1)"><image href="'+handleImg(hm.id)+'" x="'+hx+'" y="'+hy+'" width="'+hw+'" height="'+hh+'"/></g></g>');
-  }
   A.push('</g>');
   svg.innerHTML=A.join("");
 }
@@ -1710,20 +1723,11 @@ function renderSimControls(){
   +'<div class="field" style="margin:12px 0 0"><label>סדרת פרופיל</label>'
   +'<select onchange="App.simSet(\'profile\',this.value)">'
   +PROFILES.map(pr=>'<option value="'+pr.code+'"'+(sim.profile===pr.code?" selected":"")+'>'+pr.code+' — '+pr.desc.split("—")[0].trim()+'</option>').join("")
-  +'</select>'
-  +'<a class="btn small" style="margin-top:8px;display:inline-flex" href="profiles-catalog.pdf#page='+catalogPage(sim.profile)+'" target="_blank" rel="noopener">📖 חתך הפרופיל בקטלוג קליל</a></div>'
-  +'<div class="field" style="margin:12px 0 0"><label>זכוכית</label><div class="seg">'
-  +segBtn(sim.glass==="clear","שקופה","App.simSet('glass','clear')")
-  +segBtn(sim.glass==="frost","חלבית","App.simSet('glass','frost')")
-  +segBtn(sim.glass==="tint","טינטד","App.simSet('glass','tint')")
-  +'</div></div>'
-  +'<div class="field" style="margin:12px 0 0"><label>ידית (דגמי קליל אמיתיים)</label><div class="hmodels">'
-  +HANDLE_MODELS.map(h=>'<div class="hmodel'+(sim.handleModel===h.id?" on":"")+'" onclick="App.simSet(\'handleModel\',\''+h.id+'\')"><img src="'+handleImg(h.id)+'" alt="'+esc(h.name)+'"><span>'+esc(h.name)+'</span></div>').join("")
-  +'</div></div>'
-  +'<div class="field" style="margin:12px 0 0"><label>צד ידית</label><div class="seg">'
-  +segBtn(sim.handleSide!=="left","ימין","App.simSet('handleSide','right')")
-  +segBtn(sim.handleSide==="left","שמאל","App.simSet('handleSide','left')")
-  +'</div></div>'
+  +'</select></div>'
+  +(function(){ const hs=handleSetFor(sim.profile);
+    return '<div class="field" style="margin:12px 0 0"><label>'+hs.title+' (תמונות אמיתיות)</label><div class="hmodels">'
+    +hs.list.map(h=>'<div class="hmodel"><img src="'+handleImg(h[1])+'" alt="'+esc(h[0])+'" loading="lazy"><span>'+esc(h[0])+'</span></div>').join("")
+    +'</div></div>'; })()
   +'<div class="field" style="margin:12px 0 0"><label>כל מניפת הגוונים של קליל</label><div class="swatches">'+swatches+'</div>'
   +'<div class="muted" style="margin-top:4px">'+(sim.color?esc(sim.color):"אלומיניום (ברירת מחדל)")+'</div></div>'
   +'</div>';
@@ -1849,11 +1853,8 @@ function buildSimWindow(){
   const alu=new THREE.MeshStandardMaterial({color:base.clone(),metalness:0.8,roughness:0.36,envMapIntensity:1.1});
   const aluD=new THREE.MeshStandardMaterial({color:base.clone().multiplyScalar(0.76),metalness:0.8,roughness:0.46,envMapIntensity:1.0});
   const steel=new THREE.MeshStandardMaterial({color:0xc2c4c8,metalness:0.95,roughness:0.22,envMapIntensity:1.3});
-  // זכוכית — שקופה ומשקפת סביבה (בלי transmission, לרינדור אמין בכל מכשיר)
-  let glassMat;
-  if(sim.glass==="frost") glassMat=new THREE.MeshStandardMaterial({color:0xeef2f2,transparent:true,opacity:0.74,metalness:0.1,roughness:0.72,envMapIntensity:0.5,side:THREE.DoubleSide});
-  else if(sim.glass==="tint") glassMat=new THREE.MeshStandardMaterial({color:0x3a4750,transparent:true,opacity:0.6,metalness:0.5,roughness:0.08,envMapIntensity:1.2,side:THREE.DoubleSide});
-  else glassMat=new THREE.MeshStandardMaterial({color:0xdfeef1,transparent:true,opacity:0.22,metalness:0.5,roughness:0.05,envMapIntensity:1.5,side:THREE.DoubleSide});
+  // זכוכית שקופה ומשקפת סביבה (בלי transmission, לרינדור אמין בכל מכשיר)
+  const glassMat=new THREE.MeshStandardMaterial({color:0xdfeef1,transparent:true,opacity:0.22,metalness:0.5,roughness:0.05,envMapIntensity:1.5,side:THREE.DoubleSide});
   const box=(w,h,d,x,y,z,m)=>{ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.012,w),Math.max(0.012,h),Math.max(0.012,d)),m||alu); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; g.add(me); };
   // ----- חדר: קיר עם פתח במידות החלון, רצפה, ונוף אמיתי בחוץ -----
   const wallMat=new THREE.MeshStandardMaterial({color:0xd9d2c4,roughness:0.92,metalness:0});
@@ -1894,32 +1895,6 @@ function buildSimWindow(){
     sashCell(iW/4+ov/2,0,iW/2+ov,iH,off);
   } else {
     sashCell(0,0,iW,iH,0);
-  }
-  // ----- ידית מעוגלת לפי סוג + גימור -----
-  const FIN={chrome:{c:0xd7dade,m:0.95,r:0.14},black:{c:0x1c1c1e,m:0.5,r:0.5},brass:{c:0xb98a4c,m:0.85,r:0.3},white:{c:0xf2f2f0,m:0.25,r:0.6}}[sim.handleFinish||"chrome"]||{c:0xd7dade,m:0.95,r:0.14};
-  const fin=new THREE.MeshStandardMaterial({color:new THREE.Color(FIN.c),metalness:FIN.m,roughness:FIN.r});
-  const hz=(kind==="slide"?off:0)+sashD*0.5;
-  const hx=sim.handleSide==="left"?(kind==="slide"?-ss*0.8:-iW/2+ss*0.55):(kind==="slide"?ss*0.8:iW/2-ss*0.55);
-  const cyl=(r,len,axis,x,y,z)=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,20),fin); if(axis==="x")m.rotation.z=Math.PI/2; if(axis==="z")m.rotation.x=Math.PI/2; m.position.set(x,y,z); g.add(m); };
-  const sph=(r,x,y,z)=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(r,20,16),fin); m.position.set(x,y,z); g.add(m); };
-  const ht=sim.handleType||"lever";
-  if(ht==="knob"){
-    cyl(0.055,0.03,"z",hx,0,hz);            // רוזטה
-    cyl(0.022,0.05,"z",hx,0,hz+0.04);       // צוואר
-    sph(0.055,hx,0,hz+0.09);                // כפתור
-  } else if(ht==="pull"){
-    const L=Math.min(0.5,iH*0.5);
-    cyl(0.022,0.07,"z",hx,L/2-0.03,hz+0.02); cyl(0.022,0.07,"z",hx,-L/2+0.03,hz+0.02); // מרווחנים
-    cyl(0.024,L,"y",hx,0,hz+0.06);          // מוט אנכי (הזזה)
-  } else if(ht==="cremone"){
-    cyl(0.052,0.03,"z",hx,0,hz);            // רוזטה
-    cyl(0.02,Math.min(0.34,iH*0.34),"y",hx,-0.17,hz+0.05); // מוט ארוך יורד
-    sph(0.042,hx,-0.35,hz+0.05);            // כפתור קצה (מראה בלגי-ארט)
-  } else {
-    cyl(0.055,0.03,"z",hx,0,hz);            // רוזטה
-    cyl(0.022,0.05,"z",hx,0,hz+0.035);      // צוואר קדימה
-    cyl(0.019,0.17,"y",hx,-0.1,hz+0.06);    // מוט יורד
-    sph(0.026,hx,-0.185,hz+0.06);           // קצה מעוגל
   }
   sim3d.needs=true;
 }
@@ -2004,12 +1979,10 @@ const App = {
     }
     const svg=document.getElementById("sim2d"); if(!svg) return;
     const toData=url=>fetch(url).then(r=>r.blob()).then(b=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}));
-    const hm=HANDLE(sim.handleModel);
-    Promise.all([toData(VIEW_IMG),toData(handleImg(hm.id))]).then(([viewD,handD])=>{
+    Promise.all([toData(VIEW_IMG)]).then(([viewD])=>{
       let s=svg.outerHTML
         .replace('<svg','<svg xmlns="http://www.w3.org/2000/svg" width="720" height="600"')
-        .split('href="'+VIEW_IMG+'"').join('href="'+viewD+'"')
-        .split('href="'+handleImg(hm.id)+'"').join('href="'+handD+'"');
+        .split('href="'+VIEW_IMG+'"').join('href="'+viewD+'"');
       const img=new Image();
       img.onload=()=>{
         const cv=document.createElement("canvas"); cv.width=720; cv.height=600;

@@ -1,5 +1,5 @@
 /* Service Worker — עבודה אופליין מלאה. להעלאת גרסה חדשה: להעלות את VERSION. */
-const VERSION = "v40";
+const VERSION = "v41";
 const CACHE = "alum-measure-" + VERSION;
 const ASSETS = [
   "./",
@@ -12,8 +12,19 @@ const ASSETS = [
   "./three.min.js",
   "./view.jpg",
   "./profiles-catalog.pdf",
-  "./handles/zamir.png","./handles/dror.png","./handles/doxifet.png","./handles/nachliieli.png",
-  "./handles/pshuosh.png","./handles/ofroni.png","./handles/snonit.png","./handles/chuchit.png"
+  "./handles/alma.png","./handles/art_black.png","./handles/art_brass_antique.png","./handles/art_brass_mat.png",
+  "./handles/art_silver.png","./handles/art_silver_antique.png","./handles/art_white.png","./handles/astra.png",
+  "./handles/bau05xl.png","./handles/bau10.png","./handles/bau18.png","./handles/bau33.png",
+  "./handles/bau33xl.png","./handles/bau3479.png","./handles/bau5.png","./handles/bau56.png",
+  "./handles/bau56xl.png","./handles/bau66.png","./handles/bau76.png","./handles/bau77.png",
+  "./handles/bau99.png","./handles/bauhaus_h.png","./handles/buba4364.png","./handles/chuchit.png",
+  "./handles/chuchit4356.png","./handles/claudia.png","./handles/cosi.png","./handles/doxifet.png",
+  "./handles/dror.png","./handles/dror4358.png","./handles/flow.png","./handles/glory.png",
+  "./handles/gu.png","./handles/k1.png","./handles/k2.png","./handles/lapia.png",
+  "./handles/laser3478.png","./handles/miriam.png","./handles/nachliieli.png","./handles/ofroni.png",
+  "./handles/pshuosh.png","./handles/q10.png","./handles/rombo.png","./handles/rostia.png",
+  "./handles/sasha.png","./handles/snonit.png","./handles/tris.png","./handles/tzufit.png",
+  "./handles/zamir.png","./handles/zamir4357.png","./handles/zed.png"
 ];
 
 self.addEventListener("install", e => {
