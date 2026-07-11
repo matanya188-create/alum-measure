@@ -260,6 +260,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 /* ===== הדמיה ללקוח ===== */
 .sim-stage{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:12px;margin-bottom:12px}
 .sim-2d{width:100%;display:block;touch-action:none;border-radius:12px;background:var(--line2)}
+.sim-3d{width:100%;height:340px;display:block;touch-action:none;border-radius:12px;background:var(--line2)}
 .sim-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .sim-hint{font-size:.8rem;color:var(--ink2);margin-top:8px;text-align:center}
 .sim-3d-wrap{position:relative;background:linear-gradient(180deg,#eef2f7,#dfe5ee);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
@@ -1464,27 +1465,42 @@ function simFromItem(it){
   };
 }
 
+let simViewMode="3d";
 function viewSim(){
   const has3D = (typeof THREE!=="undefined");
+  const in3D = simViewMode==="3d" && has3D;
   return ''
   +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
-  +'<div class="grow"><h1>הדמיה ללקוח</h1><div class="sub">מרכיבים חלון ורואים חזית ריאליסטית</div></div>'
+  +'<div class="grow"><h1>הדמיה ללקוח</h1><div class="sub">מרכיבים חלון ורואים אותו כמו במציאות</div></div>'
   +'<button class="btn small primary" onclick="App.simShare()">📤 שתף</button></div>'
   +'<div class="sim-stage">'
-  +'<svg id="sim2d" class="sim-2d" viewBox="0 0 360 300"></svg>'
-  +'<div class="sim-hint">מעבירים אצבע/עט על החלון כדי להוסיף חלוקה — הקו מתיישר לבד. אפשר לגרור קו, או לבחור אותו ולמחוק.</div>'
-  +'<div class="sim-tools">'
-  +'<button class="btn small" onclick="App.simAdd(\'v\')">➕ חלוקה אנכית</button>'
-  +'<button class="btn small" onclick="App.simAdd(\'h\')">➕ חלוקה אופקית</button>'
-  +'<button class="btn small danger" onclick="App.simDelSel()">🗑 מחק קו נבחר</button>'
-  +'<button class="btn small" onclick="App.simClear()">נקה הכל</button>'
-  +'</div></div>'
+  +'<div class="seg" style="margin-bottom:10px">'
+  +segBtn(in3D,"תלת־ממד","App.simView('3d')")
+  +segBtn(!in3D,"חזית + עריכת חלוקות","App.simView('2d')")
+  +'</div>'
+  +(in3D
+    ? '<canvas id="sim3dcv" class="sim-3d"></canvas>'
+      +'<div class="sim-hint">גוררים כדי לסובב, גלגלת או צביטה כדי להתקרב. חלוקות מוסיפים בתצוגת החזית.</div>'
+    : '<svg id="sim2d" class="sim-2d" viewBox="0 0 360 300"></svg>'
+      +'<div class="sim-hint">מעבירים אצבע/עט על החלון כדי להוסיף חלוקה — הקו מתיישר לבד. אפשר לגרור קו, או לבחור אותו ולמחוק.</div>'
+      +'<div class="sim-tools">'
+      +'<button class="btn small" onclick="App.simAdd(\'v\')">➕ חלוקה אנכית</button>'
+      +'<button class="btn small" onclick="App.simAdd(\'h\')">➕ חלוקה אופקית</button>'
+      +'<button class="btn small danger" onclick="App.simDelSel()">🗑 מחק קו נבחר</button>'
+      +'<button class="btn small" onclick="App.simClear()">נקה הכל</button>'
+      +'</div>')
+  +'</div>'
   +'<div id="simcontrols"></div>';
 }
 
 function afterSimRender(){
-  renderSim2D();
-  attachSim2DHandlers();
+  if(simViewMode==="3d" && typeof THREE!=="undefined"){
+    const cv=document.getElementById("sim3dcv");
+    if(cv){ initSim3D(cv); buildSimWindow(); }
+  } else {
+    renderSim2D();
+    attachSim2DHandlers();
+  }
   renderSimControls();
 }
 
@@ -1719,6 +1735,42 @@ const FAM3D={
   heavy:    {face:0.15,  depth:0.28, sash:0.11, bead:0.03},
   belgian:  {face:0.05,  depth:0.15, sash:0.045,bead:0.02, bars:true}
 };
+/* --- הטכניקה של קונפיגורטור קליל, בגרסה פרוצדורלית: חתך פרופיל אמיתי שנסחף
+   סביב מלבן. כל נקודת-חתך מייצרת לולאה מלבנית בהזחה שלה — פינות 45° נוצרות
+   מעצמן, וחתך הפרופיל נשאר מדויק בכל מידה (בלי מתיחה ובלי morph targets). --- */
+function sweepRing(contour,W,H,mat){
+  const pos=[];
+  const quad=(v0,v1,v2,v3)=>{ pos.push(v0[0],v0[1],v0[2],v1[0],v1[1],v1[2],v2[0],v2[1],v2[2], v0[0],v0[1],v0[2],v2[0],v2[1],v2[2],v3[0],v3[1],v3[2]); };
+  for(let i=0;i<contour.length;i++){
+    const a=contour[i], b=contour[(i+1)%contour.length];
+    const ax=W/2-a[0], ay=H/2-a[0], bx=W/2-b[0], by=H/2-b[0], za=a[1], zb=b[1];
+    quad([-ax,ay,za],[ax,ay,za],[bx,by,zb],[-bx,by,zb]);         // עליון
+    quad([ax,ay,za],[ax,-ay,za],[bx,-by,zb],[bx,by,zb]);         // ימין
+    quad([ax,-ay,za],[-ax,-ay,za],[-bx,-by,zb],[bx,-by,zb]);     // תחתון
+    quad([-ax,-ay,za],[-ax,ay,za],[-bx,by,zb],[-bx,-by,zb]);     // שמאל
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
+  geo.computeVertexNormals();
+  const mesh=new THREE.Mesh(geo,mat);
+  mesh.castShadow=true; mesh.receiveShadow=true;
+  return mesh;
+}
+/* חתך משקוף: פאה קדמית עם שיפוע, מדרגת-רובד פנימית לכנף */
+function frameContour(f,D){ const d=D/2; return [
+  [0,-d],[0,d],[f*0.16,d],[f*0.22,d*0.84],[f*0.84,d*0.84],[f*0.92,d*0.45],[f,d*0.36],[f,-d]
+];}
+/* חתך כנף: פאה עם פס-זיגוג מדורג לכיוון הזכוכית */
+function sashContour(s,D){ const d=D/2; return [
+  [0,-d],[0,d],[s*0.14,d],[s*0.2,d*0.78],[s*0.78,d*0.78],[s*0.88,d*0.28],[s,d*0.2],[s,-d]
+];}
+let simViewTex=null;
+function simGetViewTex(){
+  if(!simViewTex){
+    simViewTex=new THREE.TextureLoader().load(VIEW_IMG,function(){ if(sim3d) sim3d.needs=true; });
+  }
+  return simViewTex;
+}
 function buildSimWindow(){
   if(!sim3d) return;
   const g=sim3d.group; simDisposeGroup(g);
@@ -1738,56 +1790,51 @@ function buildSimWindow(){
   else if(sim.glass==="tint") glassMat=new THREE.MeshStandardMaterial({color:0x3a4750,transparent:true,opacity:0.6,metalness:0.5,roughness:0.08,envMapIntensity:1.2,side:THREE.DoubleSide});
   else glassMat=new THREE.MeshStandardMaterial({color:0xdfeef1,transparent:true,opacity:0.34,metalness:0.55,roughness:0.05,envMapIntensity:1.3,side:THREE.DoubleSide});
   const box=(w,h,d,x,y,z,m)=>{ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.012,w),Math.max(0.012,h),Math.max(0.012,d)),m||alu); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; g.add(me); };
-  // ----- מסגרת חיצונית עם קצה מדורג -----
-  box(Wd,ff,D,0,Hd/2-ff/2,0,alu); box(Wd,ff,D,0,-Hd/2+ff/2,0,alu);
-  box(ff,Hd-2*ff,D,-Wd/2+ff/2,0,0,alu); box(ff,Hd-2*ff,D,Wd/2-ff/2,0,0,alu);
-  // שפה קדמית מדורגת (בליטת bead) — נותנת עומק אמיתי לקצה
-  const bd=FP.bead, iW=Wd-2*ff, iH=Hd-2*ff;
-  box(iW+bd*2,bd,0.05,0,iH/2+bd/2,D/2-0.03,aluD);
-  box(iW+bd*2,bd,0.05,0,-iH/2-bd/2,D/2-0.03,aluD);
-  box(bd,iH,0.05,-iW/2-bd/2,0,D/2-0.03,aluD);
-  box(bd,iH,0.05,iW/2+bd/2,0,D/2-0.03,aluD);
+  // ----- חדר: קיר עם פתח במידות החלון, רצפה, ונוף אמיתי בחוץ -----
+  const wallMat=new THREE.MeshStandardMaterial({color:0xd9d2c4,roughness:0.92,metalness:0});
+  const wShape=new THREE.Shape();
+  wShape.moveTo(-4.2,-1.56); wShape.lineTo(4.2,-1.56); wShape.lineTo(4.2,2.6); wShape.lineTo(-4.2,2.6); wShape.closePath();
+  const hole=new THREE.Path();
+  hole.moveTo(-Wd/2,-Hd/2); hole.lineTo(Wd/2,-Hd/2); hole.lineTo(Wd/2,Hd/2); hole.lineTo(-Wd/2,Hd/2); hole.closePath();
+  wShape.holes.push(hole);
+  const wall=new THREE.Mesh(new THREE.ExtrudeGeometry(wShape,{depth:0.24,bevelEnabled:false}),wallMat);
+  wall.position.z=-0.26; wall.receiveShadow=true; g.add(wall);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(16,9),new THREE.MeshStandardMaterial({color:0xa8916c,roughness:0.8,metalness:0}));
+  floor.rotation.x=-Math.PI/2; floor.position.set(0,-1.553,1.5); floor.receiveShadow=true; g.add(floor);
+  const back=new THREE.Mesh(new THREE.PlaneGeometry(17,8.5),new THREE.MeshBasicMaterial({map:simGetViewTex()}));
+  back.position.set(0,0.6,-3.2); g.add(back);
+  // ----- משקוף: חתך אמיתי שנסחף עם פינות 45° -----
+  g.add(sweepRing(frameContour(ff,D),Wd,Hd,alu));
+  const iW=Wd-2*ff, iH=Hd-2*ff;
   const X=f=>-iW/2+f*iW, Y=f=>iH/2-f*iH;
-  const vs=[0].concat(sim.vLines.slice().sort((a,b)=>a-b)).concat([1]);
-  const hs=[0].concat(sim.hLines.slice().sort((a,b)=>a-b)).concat([1]);
-  // מסגרת-כנף + זכוכית לתא
+  // כנף עם חתך אמיתי + זכוכית + חלוקות מודבקות על הזכוכית
+  const sashD=D*0.62, barw=Math.max(0.02,ss*0.5);
   function sashCell(cx,cy,w,h,z){
-    box(w,ss,D*0.62,cx,cy+h/2-ss/2,z,alu);
-    box(w,ss,D*0.62,cx,cy-h/2+ss/2,z,alu);
-    box(ss,h-2*ss,D*0.62,cx-w/2+ss/2,cy,z,alu);
-    box(ss,h-2*ss,D*0.62,cx+w/2-ss/2,cy,z,alu);
-    const gl=new THREE.Mesh(new THREE.PlaneGeometry(Math.max(0.02,w-2*ss),Math.max(0.02,h-2*ss)),glassMat);
-    gl.position.set(cx,cy,z-0.015); gl.castShadow=false; gl.receiveShadow=false; g.add(gl);
+    const sr=sweepRing(sashContour(ss,sashD),w,h,alu);
+    sr.position.set(cx,cy,z); g.add(sr);
+    const gl=new THREE.Mesh(new THREE.PlaneGeometry(Math.max(0.02,w-2*ss+0.02),Math.max(0.02,h-2*ss+0.02)),glassMat);
+    gl.position.set(cx,cy,z-0.01); gl.castShadow=false; gl.receiveShadow=false; g.add(gl);
+    const zBar=z+sashD/2*0.78+0.012, gw=w-2*ss, gh=h-2*ss;
+    sim.vLines.forEach(f=>{ const x=X(f);
+      if(x>cx-gw/2+barw && x<cx+gw/2-barw) box(barw,gh,0.016,x,cy,zBar,alu); });
+    sim.hLines.forEach(f=>{ const y=Y(f);
+      if(y>cy-gh/2+barw && y<cy+gh/2-barw) box(gw,barw,0.016,cx,y,zBar,alu); });
   }
+  const off=Math.min(0.06,D*0.22);
   if(kind==="slide"){
-    // מסילות בראש ובסף (שני מפלסי עומק)
-    const off=Math.min(0.06,D*0.22);
-    [off,-off].forEach(zz=>{
-      box(iW,ss*0.45,0.03,0,iH/2-ss*0.28,zz,aluD);
-      box(iW,ss*0.45,0.03,0,-iH/2+ss*0.28,zz,aluD);
-    });
-    // כל עמודה = כנף (חופפת בעומק לסירוגין)
-    for(let c=0;c<vs.length-1;c++){
-      let a=X(vs[c]), b=X(vs[c+1]);
-      if(c>0) a-=ss*0.55; if(c<vs.length-2) b+=ss*0.55;
-      const z=(c%2===0?off:-off);
-      sashCell((a+b)/2,0,b-a,iH,z);
-    }
-    // חלוקות אופקיות = חוצצים על הזכוכית
-    sim.hLines.forEach(f=>box(iW,ss*0.7,D*0.45,0,Y(f),off+0.03,alu));
-    if(FP.bars) sim.vLines.forEach(f=>0); // הבלגי מטופל דרך העמודות
+    // שתי כנפיים חופפות במרכז, בשני מפלסי עומק + פסי מסילה
+    [iH/2-ss*0.26,-iH/2+ss*0.26].forEach(yy=>box(iW,ss*0.4,0.028,0,yy,0,aluD));
+    const ov=ss*0.55;
+    sashCell(-iW/4-ov/2,0,iW/2+ov,iH,-off);
+    sashCell(iW/4+ov/2,0,iW/2+ov,iH,off);
   } else {
-    // ציר/קבוע — כל תא באותו מישור
-    for(let c=0;c<vs.length-1;c++) for(let r=0;r<hs.length-1;r++){
-      const x0=X(vs[c]),x1=X(vs[c+1]),y0=Y(hs[r+1]),y1=Y(hs[r]);
-      sashCell((x0+x1)/2,(y0+y1)/2,x1-x0,y1-y0,0);
-    }
+    sashCell(0,0,iW,iH,0);
   }
-  // ----- ידית מעוגלת אמיתית לפי סוג + גימור -----
+  // ----- ידית מעוגלת לפי סוג + גימור -----
   const FIN={chrome:{c:0xd7dade,m:0.95,r:0.14},black:{c:0x1c1c1e,m:0.5,r:0.5},brass:{c:0xb98a4c,m:0.85,r:0.3},white:{c:0xf2f2f0,m:0.25,r:0.6}}[sim.handleFinish||"chrome"]||{c:0xd7dade,m:0.95,r:0.14};
   const fin=new THREE.MeshStandardMaterial({color:new THREE.Color(FIN.c),metalness:FIN.m,roughness:FIN.r});
-  const hz=(kind==="slide"?Math.min(0.06,D*0.22):0)+D*0.30;
-  const hx=sim.handleSide==="left"?-iW/2+ss+0.07:iW/2-ss-0.07;
+  const hz=(kind==="slide"?off:0)+sashD*0.5;
+  const hx=sim.handleSide==="left"?(kind==="slide"?-ss*0.8:-iW/2+ss*0.55):(kind==="slide"?ss*0.8:iW/2-ss*0.55);
   const cyl=(r,len,axis,x,y,z)=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,20),fin); if(axis==="x")m.rotation.z=Math.PI/2; if(axis==="z")m.rotation.x=Math.PI/2; m.position.set(x,y,z); g.add(m); };
   const sph=(r,x,y,z)=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(r,20,16),fin); m.position.set(x,y,z); g.add(m); };
   const ht=sim.handleType||"lever";
@@ -1837,6 +1884,7 @@ const App = {
   },
   search(v){ searchQ=v; renderList(); },
   /* הדמיה ללקוח */
+  simView(v){ simViewMode=v; render(); },
   simAdd(dir){
     if(dir==="v"){ sim.vLines.push(0.5); simSel={dir:"v",idx:sim.vLines.length-1}; }
     else { sim.hLines.push(0.5); simSel={dir:"h",idx:sim.hLines.length-1}; }
@@ -1860,8 +1908,20 @@ const App = {
     sim=simFromItem(it); simSel=null; saveSim(); nav("/sim");
   },
   simShare(){
-    const svg=document.getElementById("sim2d"); if(!svg) return;
     const fail=()=>uiAlert("לא הצלחתי לייצר תמונה — אפשר לצלם מסך ולשלוח.","שיתוף");
+    const sendBlob=blob=>{
+      if(!blob){ fail(); return; }
+      const file=new File([blob],"alum-hadmaya.png",{type:"image/png"});
+      if(navigator.canShare && navigator.canShare({files:[file]})) navigator.share({files:[file],title:"הדמיה — אלום אלבז"}).catch(()=>{});
+      else { const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="alum-hadmaya.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); }
+    };
+    const cv3=document.getElementById("sim3dcv");
+    if(cv3 && sim3d){
+      sim3d.renderer.render(sim3d.scene,sim3d.camera);
+      cv3.toBlob(sendBlob,"image/png");
+      return;
+    }
+    const svg=document.getElementById("sim2d"); if(!svg) return;
     const toData=url=>fetch(url).then(r=>r.blob()).then(b=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}));
     const hm=HANDLE(sim.handleModel);
     Promise.all([toData(VIEW_IMG),toData(handleImg(hm.id))]).then(([viewD,handD])=>{
