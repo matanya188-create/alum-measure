@@ -1874,7 +1874,7 @@ function initSim3D(canvas){
     scene.environment=pmrem.fromEquirectangular(tex).texture; tex.dispose(); pmrem.dispose();
   }catch(e){}
   scene.add(new THREE.HemisphereLight(0xffffff,0x8a8f96,0.24));
-  const key=new THREE.DirectionalLight(0xffffff,1.5); key.position.set(3.5,5,4.5); key.castShadow=true;
+  const key=new THREE.DirectionalLight(0xfff4e4,1.05); key.position.set(3.5,5,4.5); key.castShadow=true;
   key.shadow.mapSize.set(1024,1024); key.shadow.camera.near=1; key.shadow.camera.far=22;
   key.shadow.camera.left=-3.2; key.shadow.camera.right=3.2; key.shadow.camera.top=3.2; key.shadow.camera.bottom=-3.2; key.shadow.bias=-0.0007; scene.add(key);
   const fill=new THREE.DirectionalLight(0xffffff,0.3); fill.position.set(-4,2.5,-3); scene.add(fill);
@@ -1942,13 +1942,22 @@ function frameContour(f,D){ const d=D/2; return [
 function sashContour(s,D){ const d=D/2; return [
   [0,-d],[0,d],[s*0.14,d],[s*0.2,d*0.78],[s*0.78,d*0.78],[s*0.88,d*0.28],[s,d*0.2],[s,-d]
 ];}
-let simViewTex=null;
+let simViewTex=null, simWallTex=null, simFloorTex=null;
 function simGetViewTex(){
   if(!simViewTex){
     simViewTex=new THREE.TextureLoader().load(VIEW_IMG,function(){ if(sim3d) sim3d.needs=true; });
   }
   return simViewTex;
 }
+function simRepeatTex(file,rx,ry){
+  const t=new THREE.TextureLoader().load(file,function(){ if(sim3d) sim3d.needs=true; });
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(rx,ry);
+  if(THREE.sRGBEncoding) t.encoding=THREE.sRGBEncoding;
+  return t;
+}
+/* קיר טרוורטין: UV של ExtrudeGeometry = מטרים, אריח כל ~1.8מ'; רצפת פרקט: המישור 16x9 */
+function simGetWallTex(){ if(!simWallTex) simWallTex=simRepeatTex("wall.jpg",0.55,0.55); return simWallTex; }
+function simGetFloorTex(){ if(!simFloorTex) simFloorTex=simRepeatTex("floor.jpg",7,4); return simFloorTex; }
 function buildSimWindow(){
   if(!sim3d) return;
   const g=sim3d.group; simDisposeGroup(g);
@@ -1975,7 +1984,7 @@ function buildSimWindow(){
   const win=new THREE.Group(); win.position.y=yC; g.add(win);
   const box=(w,h,d,x,y,z,m)=>{ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.012,w),Math.max(0.012,h),Math.max(0.012,d)),m||alu); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; win.add(me); };
   // ----- חדר: קיר עם פתח במקום ובמידות האמיתיים, רצפה, ונוף בחוץ -----
-  const wallMat=new THREE.MeshStandardMaterial({color:0xd9d2c4,roughness:0.92,metalness:0});
+  const wallMat=new THREE.MeshStandardMaterial({color:0xffffff,map:simGetWallTex(),roughness:0.9,metalness:0,envMapIntensity:0.12});
   const wShape=new THREE.Shape();
   wShape.moveTo(-4.2,FLOOR-0.01); wShape.lineTo(4.2,FLOOR-0.01); wShape.lineTo(4.2,2.5); wShape.lineTo(-4.2,2.5); wShape.closePath();
   const yB=FLOOR+sill, yT=yB+Hd+boxH;
@@ -1984,7 +1993,7 @@ function buildSimWindow(){
   wShape.holes.push(hole);
   const wall=new THREE.Mesh(new THREE.ExtrudeGeometry(wShape,{depth:0.24,bevelEnabled:false}),wallMat);
   wall.position.z=-0.26; wall.receiveShadow=true; g.add(wall);
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(16,9),new THREE.MeshStandardMaterial({color:0xa8916c,roughness:0.8,metalness:0}));
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(16,9),new THREE.MeshStandardMaterial({color:0xffffff,map:simGetFloorTex(),roughness:0.75,metalness:0,envMapIntensity:0.12}));
   floor.rotation.x=-Math.PI/2; floor.position.set(0,FLOOR-0.004,1.5); floor.receiveShadow=true; g.add(floor);
   const back=new THREE.Mesh(new THREE.PlaneGeometry(17,8.5),new THREE.MeshBasicMaterial({map:simGetViewTex()}));
   back.position.set(0,0.6,-3.2); g.add(back);
