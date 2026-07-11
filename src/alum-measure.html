@@ -261,8 +261,21 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .sim-stage{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:12px;margin-bottom:12px}
 .sim-2d{width:100%;display:block;touch-action:none;border-radius:12px;background:var(--line2)}
 .sim-3d{width:100%;height:340px;display:block;touch-action:none;border-radius:12px;background:var(--line2)}
-.sim-klil{width:100%;height:850px;border:0;border-radius:12px;background:#fff;display:block}
-.klil-tabs{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.sim-3dwrap{position:relative}
+.sim-3dwrap:fullscreen{background:#0d0f12;display:flex;align-items:center;justify-content:center}
+.sim-3dwrap:fullscreen .sim-3d{height:100vh;width:100vw;border-radius:0}
+.sim-ovl{position:absolute;top:10px;left:10px;display:flex;gap:8px}
+.ovlbtn{width:42px;height:42px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.92);font-size:1.15rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.simdim{display:flex;align-items:center;gap:10px;margin:8px 0}
+.simdim>span{width:48px;color:var(--ink2);font-size:.9rem}
+.simdim input[type=range]{flex:1;accent-color:var(--acc)}
+.simdim .num{width:76px;text-align:center}
+.bigsws{display:flex;gap:10px;flex-wrap:wrap}
+.bigsw{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;width:56px}
+.bigsw i{display:block;width:46px;height:46px;border-radius:12px;border:2px solid var(--line);box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+.bigsw.on i{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}
+.bigsw span{font-size:.66rem;color:var(--ink2);text-align:center}
+.klil-tabs{display:flex;gap:8px;flex-wrap:wrap}
 .klil-tab{flex:1;min-width:100px;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 6px;cursor:pointer;display:flex;flex-direction:column;gap:2px;align-items:center;font-family:inherit}
 .klil-tab b{font-size:.92rem;color:var(--ink)}
 .klil-tab span{font-size:.7rem;color:var(--ink2)}
@@ -1471,28 +1484,19 @@ function simFromItem(it){
   };
 }
 
-let simViewMode="klil";
-/* ההדמיה הרשמית של קליל — אפליקציות Bimmatch שקליל עצמם מטמיעים באתר שלהם */
-const KLIL_SIMS=[
-  {id:"7300",name:"בלגי 7300",desc:"הזזה — פתחים בינוניים וגדולים"},
-  {id:"4300",name:"בלגי 4300",desc:"ציר (קיפ/רגילה) — פתחים בינוניים"},
-  {id:"1700",name:"בלגי 1700",desc:"הזזה — פתחים קטנים"}
-];
-let simKlilSeries = localStorage.getItem("alum_sim_klil") || "7300";
+let simViewMode="3d";
 function viewSim(){
   const has3D = (typeof THREE!=="undefined");
   const mode = (simViewMode==="3d"&&!has3D) ? "2d" : simViewMode;
   let stage="";
-  if(mode==="klil"){
-    stage=''
-    +'<div class="klil-tabs">'
-    +KLIL_SIMS.map(s=>'<button class="klil-tab'+(simKlilSeries===s.id?" on":"")+'" onclick="App.simKlil(\''+s.id+'\')"><b>'+s.name+'</b><span>'+s.desc+'</span></button>').join("")
-    +'</div>'
-    +'<iframe class="sim-klil" src="https://klil-belgium'+simKlilSeries+'.netlify.app/" title="הדמיית קליל — בלגי '+simKlilSeries+'" loading="eager"></iframe>'
-    +'<div class="sim-hint">מנוע ההדמיה הרשמי של קליל (סגנון בלגי, אחד לאחד כמו באתר). כפתור המצלמה שבפנים שומר תמונה. נדרש חיבור אינטרנט.</div>';
-  } else if(mode==="3d"){
-    stage='<canvas id="sim3dcv" class="sim-3d"></canvas>'
-    +'<div class="sim-hint">גוררים כדי לסובב, גלגלת או צביטה כדי להתקרב. חלוקות מוסיפים בתצוגת החזית.</div>';
+  if(mode==="3d"){
+    stage='<div class="sim-3dwrap" id="sim3dwrap">'
+    +'<canvas id="sim3dcv" class="sim-3d"></canvas>'
+    +'<div class="sim-ovl">'
+    +'<button class="ovlbtn" title="מסך מלא" onclick="App.simFull()">⛶</button>'
+    +'<button class="ovlbtn" title="שמור תמונה" onclick="App.simShare()">📷</button>'
+    +'</div></div>'
+    +'<div class="sim-hint">גוררים כדי לסובב, גלגלת או צביטה כדי להתקרב. חלוקות מציירים בתצוגת החזית.</div>';
   } else {
     stage='<svg id="sim2d" class="sim-2d" viewBox="0 0 360 300"></svg>'
     +'<div class="sim-hint">מעבירים אצבע/עט על החלון כדי להוסיף חלוקה — הקו מתיישר לבד. אפשר לגרור קו, או לבחור אותו ולמחוק.</div>'
@@ -1505,12 +1509,11 @@ function viewSim(){
   }
   return ''
   +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
-  +'<div class="grow"><h1>הדמיה ללקוח</h1><div class="sub">מרכיבים חלון ורואים אותו כמו במציאות</div></div>'
-  +(mode==="klil"?'':'<button class="btn small primary" onclick="App.simShare()">📤 שתף</button>')+'</div>'
+  +'<div class="grow"><h1>הדמיה ללקוח</h1><div class="sub">מערכת ההדמיה של אלום אלבז</div></div>'
+  +'<button class="btn small primary" onclick="App.simShare()">📤 שתף</button></div>'
   +'<div class="sim-stage">'
   +'<div class="seg" style="margin-bottom:10px">'
-  +segBtn(mode==="klil","קליל רשמי","App.simView('klil')")
-  +segBtn(mode==="3d","תלת־ממד שלנו","App.simView('3d')")
+  +segBtn(mode==="3d","תלת־ממד","App.simView('3d')")
   +segBtn(mode==="2d","חזית + חלוקות","App.simView('2d')")
   +'</div>'
   +stage
@@ -1519,7 +1522,6 @@ function viewSim(){
 }
 
 function afterSimRender(){
-  if(simViewMode==="klil"){ return; }
   if(simViewMode==="3d" && typeof THREE!=="undefined"){
     const cv=document.getElementById("sim3dcv");
     if(cv){ initSim3D(cv); buildSimWindow(); }
@@ -1673,11 +1675,38 @@ function renderSimControls(){
     const on = sim.color===n+" ("+c+")";
     return '<div class="swatch'+(on?" on":"")+'" title="'+esc(n)+'" style="background:'+(COLOR_HEX[c]||"#cfd0cd")+'" onclick="App.simColor(\''+esc(n).replace(/'/g,"\\'")+'\',\''+c+'\')"></div>';
   }).join("")).join("");
+  /* יישומים — תצורות חלוקה מוכנות, כמו אצל קליל */
+  const PRESETS=[
+    {n:"חלק",d:"בלי חלוקות",v:[],h:[]},
+    {n:"עמוד מרכזי",d:"חלוקה אחת",v:[0.5],h:[]},
+    {n:"בלגי קלאסי",d:"שלוש על שתיים",v:[1/3,2/3],h:[0.5]},
+    {n:"בלגי מלא",d:"רשת מלאה",v:[0.25,0.5,0.75],h:[1/3,2/3]}
+  ];
+  const key=a=>a.map(x=>Math.round(x*100)).join(",");
+  const curV=key(sim.vLines), curH=key(sim.hLines);
+  const presets=PRESETS.map(p=>{
+    const on = key(p.v)===curV && key(p.h)===curH;
+    return '<button class="klil-tab'+(on?" on":"")+'" onclick="App.simPreset(\''+p.v.join("|")+'\',\''+p.h.join("|")+'\')"><b>'+p.n+'</b><span>'+p.d+'</span></button>';
+  }).join("");
+  /* צבעים מומלצים — הנפוצים בשטח */
+  const RECOMMENDED=[["שחור אוניקס","38F"],["לבן קליל","K001"],["אפור פחם","34F"],["אפור בהיר","66I"],["חום","74I"],["שמנת","15I"]];
+  const bigsw=RECOMMENDED.map(([n,c])=>{
+    const on=sim.color===n+" ("+c+")";
+    return '<div class="bigsw'+(on?" on":"")+'" onclick="App.simColor(\''+n+'\',\''+c+'\')"><i style="background:'+(COLOR_HEX[c]||"#ccc")+'"></i><span>'+n+'</span></div>';
+  }).join("");
+  const dimRow=(label,k,min,max)=>''
+    +'<div class="simdim"><span>'+label+'</span>'
+    +'<input type="range" id="dimr-'+k+'" min="'+min+'" max="'+max+'" step="5" value="'+(parseFloat(sim[k])||min)+'" oninput="App.simDim(\''+k+'\',this.value)">'
+    +'<input class="num" id="dimn-'+k+'" inputmode="decimal" value="'+esc(sim[k])+'" oninput="App.simDim(\''+k+'\',this.value)">'
+    +'</div>';
   el.innerHTML = ''
-  +'<div class="card"><div class="two">'
-  +'<div class="field" style="margin:0"><label>רוחב</label><input class="num" inputmode="decimal" value="'+esc(sim.w)+'" oninput="App.simDim(\'w\',this.value)"></div>'
-  +'<div class="field" style="margin:0"><label>גובה</label><input class="num" inputmode="decimal" value="'+esc(sim.h)+'" oninput="App.simDim(\'h\',this.value)"></div>'
+  +'<div class="card">'
+  +'<div class="field" style="margin:0"><label>יישומים</label><div class="klil-tabs">'+presets+'</div></div>'
+  +'<div class="field" style="margin:12px 0 0"><label>גודל חלון (ס״מ)</label>'
+  +dimRow("רוחב","w",60,400)
+  +dimRow("גובה","h",60,280)
   +'</div>'
+  +'<div class="field" style="margin:12px 0 0"><label>צבעים מומלצים</label><div class="bigsws">'+bigsw+'</div></div>'
   +'<div class="field" style="margin:12px 0 0"><label>סדרת פרופיל</label>'
   +'<select onchange="App.simSet(\'profile\',this.value)">'
   +PROFILES.map(pr=>'<option value="'+pr.code+'"'+(sim.profile===pr.code?" selected":"")+'>'+pr.code+' — '+pr.desc.split("—")[0].trim()+'</option>').join("")
@@ -1695,7 +1724,7 @@ function renderSimControls(){
   +segBtn(sim.handleSide!=="left","ימין","App.simSet('handleSide','right')")
   +segBtn(sim.handleSide==="left","שמאל","App.simSet('handleSide','left')")
   +'</div></div>'
-  +'<div class="field" style="margin:12px 0 0"><label>צבע (מניפת קליל — קירוב)</label><div class="swatches">'+swatches+'</div>'
+  +'<div class="field" style="margin:12px 0 0"><label>כל מניפת הגוונים של קליל</label><div class="swatches">'+swatches+'</div>'
   +'<div class="muted" style="margin-top:4px">'+(sim.color?esc(sim.color):"אלומיניום (ברירת מחדל)")+'</div></div>'
   +'</div>';
 }
@@ -1709,10 +1738,10 @@ function initSim3D(canvas){
     sim3d=null;
   }
   const scene=new THREE.Scene();
-  const camera=new THREE.PerspectiveCamera(42, (canvas.clientWidth||300)/340, 0.1, 100);
+  const camera=new THREE.PerspectiveCamera(42, (canvas.clientWidth||300)/(canvas.clientHeight||340), 0.1, 100);
   const renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
   renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
-  renderer.setSize(canvas.clientWidth||300, 340, false);
+  renderer.setSize(canvas.clientWidth||300, canvas.clientHeight||340, false);
   if(THREE.sRGBEncoding) renderer.outputEncoding=THREE.sRGBEncoding;
   renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=0.95;
   renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -1731,11 +1760,11 @@ function initSim3D(canvas){
     const tex=new THREE.CanvasTexture(cv2); tex.mapping=THREE.EquirectangularReflectionMapping;
     scene.environment=pmrem.fromEquirectangular(tex).texture; tex.dispose(); pmrem.dispose();
   }catch(e){}
-  scene.add(new THREE.HemisphereLight(0xffffff,0x9aa0a8,0.4));
-  const key=new THREE.DirectionalLight(0xffffff,1.25); key.position.set(3.5,5,4.5); key.castShadow=true;
+  scene.add(new THREE.HemisphereLight(0xffffff,0x8a8f96,0.24));
+  const key=new THREE.DirectionalLight(0xffffff,1.5); key.position.set(3.5,5,4.5); key.castShadow=true;
   key.shadow.mapSize.set(1024,1024); key.shadow.camera.near=1; key.shadow.camera.far=22;
   key.shadow.camera.left=-3.2; key.shadow.camera.right=3.2; key.shadow.camera.top=3.2; key.shadow.camera.bottom=-3.2; key.shadow.bias=-0.0007; scene.add(key);
-  const fill=new THREE.DirectionalLight(0xffffff,0.4); fill.position.set(-4,2.5,-3); scene.add(fill);
+  const fill=new THREE.DirectionalLight(0xffffff,0.3); fill.position.set(-4,2.5,-3); scene.add(fill);
   // רצפת סטודיו לקבלת צל רך
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(24,24), new THREE.ShadowMaterial({opacity:0.26}));
   ground.rotation.x=-Math.PI/2; ground.position.y=-1.55; ground.receiveShadow=true; scene.add(ground);
@@ -1754,6 +1783,16 @@ function initSim3D(canvas){
   return sim3d;
 }
 function simDisposeGroup(g){ g.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.dispose()); } }); while(g.children.length) g.remove(g.children[0]); }
+function simResize3D(){
+  if(!sim3d) return;
+  const cv=sim3d.renderer.domElement; if(!cv||!cv.isConnected) return;
+  const w=cv.clientWidth||300, h=cv.clientHeight||340;
+  sim3d.renderer.setSize(w,h,false);
+  sim3d.camera.aspect=w/h; sim3d.camera.updateProjectionMatrix();
+  sim3d.needs=true;
+}
+document.addEventListener("fullscreenchange",()=>setTimeout(simResize3D,60));
+window.addEventListener("resize",simResize3D);
 /* פרמטרים ריאליים לכל משפחת פרופיל: face=קו-ראייה, depth=עומק, sash=מסגרת-כנף */
 const FAM3D={
   minimal:  {face:0.055, depth:0.16, sash:0.05, bead:0.02},
@@ -1814,7 +1853,7 @@ function buildSimWindow(){
   let glassMat;
   if(sim.glass==="frost") glassMat=new THREE.MeshStandardMaterial({color:0xeef2f2,transparent:true,opacity:0.74,metalness:0.1,roughness:0.72,envMapIntensity:0.5,side:THREE.DoubleSide});
   else if(sim.glass==="tint") glassMat=new THREE.MeshStandardMaterial({color:0x3a4750,transparent:true,opacity:0.6,metalness:0.5,roughness:0.08,envMapIntensity:1.2,side:THREE.DoubleSide});
-  else glassMat=new THREE.MeshStandardMaterial({color:0xdfeef1,transparent:true,opacity:0.34,metalness:0.55,roughness:0.05,envMapIntensity:1.3,side:THREE.DoubleSide});
+  else glassMat=new THREE.MeshStandardMaterial({color:0xdfeef1,transparent:true,opacity:0.22,metalness:0.5,roughness:0.05,envMapIntensity:1.5,side:THREE.DoubleSide});
   const box=(w,h,d,x,y,z,m)=>{ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.012,w),Math.max(0.012,h),Math.max(0.012,d)),m||alu); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; g.add(me); };
   // ----- חדר: קיר עם פתח במידות החלון, רצפה, ונוף אמיתי בחוץ -----
   const wallMat=new THREE.MeshStandardMaterial({color:0xd9d2c4,roughness:0.92,metalness:0});
@@ -1911,7 +1950,16 @@ const App = {
   search(v){ searchQ=v; renderList(); },
   /* הדמיה ללקוח */
   simView(v){ simViewMode=v; render(); },
-  simKlil(s){ simKlilSeries=s; try{localStorage.setItem("alum_sim_klil",s);}catch(e){} render(); },
+  simPreset(v,h){
+    sim.vLines = v ? v.split("|").map(Number) : [];
+    sim.hLines = h ? h.split("|").map(Number) : [];
+    simSel=null; saveSim(); renderSimControls(); renderSim2D(); buildSimWindow();
+  },
+  simFull(){
+    const w=document.getElementById("sim3dwrap"); if(!w) return;
+    if(document.fullscreenElement){ document.exitFullscreen().catch(()=>{}); }
+    else if(w.requestFullscreen){ w.requestFullscreen().catch(()=>{}); }
+  },
   simAdd(dir){
     if(dir==="v"){ sim.vLines.push(0.5); simSel={dir:"v",idx:sim.vLines.length-1}; }
     else { sim.hLines.push(0.5); simSel={dir:"h",idx:sim.hLines.length-1}; }
@@ -1927,7 +1975,13 @@ const App = {
       if(!ok) return; sim.vLines=[]; sim.hLines=[]; simSel=null; saveSim(); renderSim2D(); buildSimWindow();
     });
   },
-  simDim(k,v){ sim[k]=v; saveSim(); renderSim2D(); buildSimWindow(); },
+  simDim(k,v){
+    sim[k]=v; saveSim();
+    const r=document.getElementById("dimr-"+k), n=document.getElementById("dimn-"+k);
+    if(r && r!==document.activeElement && String(r.value)!==String(v)) r.value=parseFloat(v)||0;
+    if(n && n!==document.activeElement && String(n.value)!==String(v)) n.value=v;
+    renderSim2D(); buildSimWindow();
+  },
   simSet(k,v){ sim[k]=v; saveSim(); renderSimControls(); renderSim2D(); buildSimWindow(); },
   simColor(name,code){ sim.color=name+" ("+code+")"; saveSim(); renderSimControls(); renderSim2D(); buildSimWindow(); },
   simFromItem(pid,iid){
