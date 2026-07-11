@@ -1562,6 +1562,7 @@ function viewSim(){
     +'<div class="sim-tools">'
     +'<button class="btn small" onclick="App.simAdd(\'v\')">➕ חלוקה אנכית</button>'
     +'<button class="btn small" onclick="App.simAdd(\'h\')">➕ חלוקה אופקית</button>'
+    +'<button class="btn small" onclick="App.simCopySel()">⧉ העתק לשאר הכנפיים</button>'
     +'<button class="btn small danger" onclick="App.simDelSel()">🗑 מחק קו נבחר</button>'
     +'<button class="btn small" onclick="App.simClear()">נקה הכל</button>'
     +'</div>';
@@ -2282,6 +2283,49 @@ const App = {
     if(dir==="v"){ sim.vLines.push(0.5); simSel={dir:"v",idx:sim.vLines.length-1}; }
     else { sim.hLines.push({f:0.5,w:-1}); simSel={dir:"h",idx:sim.hLines.length-1}; }
     saveSim(); renderSim2D(); buildSimWindow();
+  },
+  /* העתקת הקו/הצורה שנבחרו לכל שאר הכנפיים — באותם גדלים וגבהים בדיוק */
+  simCopySel(){
+    const n=simWingCount();
+    if(!simSel){ uiAlert("בחר קודם קו או צורה (לחיצה), ואז העתק.","העתקה לכנפיים"); return; }
+    if(n<2){ uiAlert("אין כנפיים נוספות להעתיק אליהן.","העתקה לכנפיים"); return; }
+    const r3=x=>Math.round(x*1000)/1000;
+    let added=0;
+    if(simSel.dir==="s"){
+      const s=(sim.shapes||[])[simSel.idx]; if(!s) return;
+      const w0=shapeWing(s);
+      if(w0<0){ uiAlert("הצורה מתפרסת כבר על כל הרוחב.","העתקה לכנפיים"); return; }
+      const rx0=s.x0-w0/n, rx1=s.x1-w0/n;
+      for(let k=0;k<n;k++){
+        if(k===w0) continue;
+        const nx0=r3(k/n+rx0), nx1=r3(k/n+rx1);
+        const exists=sim.shapes.some(o=>o.t===s.t&&shapeWing(o)===k&&Math.abs(o.x0-nx0)<0.01&&Math.abs(o.x1-nx1)<0.01&&Math.abs(o.y0-s.y0)<0.01&&Math.abs(o.y1-s.y1)<0.01);
+        if(!exists){ sim.shapes.push({t:s.t,w:k,x0:nx0,x1:nx1,y0:s.y0,y1:s.y1}); added++; }
+      }
+    } else if(simSel.dir==="h"){
+      const L=sim.hLines[simSel.idx]; if(!L) return;
+      const w0=hlineWing(L);
+      if(w0<0){ uiAlert("הקו מתפרס כבר על כל הרוחב.","העתקה לכנפיים"); return; }
+      const f=hlineF(L);
+      for(let k=0;k<n;k++){
+        if(k===w0) continue;
+        const exists=sim.hLines.some(o=>hlineWing(o)===k&&Math.abs(hlineF(o)-f)<0.01);
+        if(!exists){ sim.hLines.push({f:f,w:k}); added++; }
+      }
+    } else {
+      const f=sim.vLines[simSel.idx]; if(f===undefined) return;
+      const w0=Math.max(0,Math.min(n-1,Math.floor(f*n)));
+      const rel=f-w0/n;
+      for(let k=0;k<n;k++){
+        if(k===w0) continue;
+        const nf=r3(k/n+rel);
+        if(nf<=0.03||nf>=0.97) continue;
+        const exists=sim.vLines.some(o=>Math.abs(o-nf)<0.01);
+        if(!exists){ sim.vLines.push(nf); added++; }
+      }
+    }
+    saveSim(); renderSim2D(); buildSimWindow();
+    if(!added) uiAlert("כבר קיים עותק זהה בכל הכנפיים.","העתקה לכנפיים");
   },
   simDelSel(){
     if(!simSel){ uiAlert("בחר קודם קו או צורה (לחיצה), ואז מחק.","מחיקה"); return; }
