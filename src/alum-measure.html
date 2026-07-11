@@ -1942,7 +1942,7 @@ function frameContour(f,D){ const d=D/2; return [
 function sashContour(s,D){ const d=D/2; return [
   [0,-d],[0,d],[s*0.14,d],[s*0.2,d*0.78],[s*0.78,d*0.78],[s*0.88,d*0.28],[s,d*0.2],[s,-d]
 ];}
-let simViewTex=null, simWallTex=null, simFloorTex=null;
+let simViewTex=null, simWallTex=null, simFloorTex=null, simPaversTex=null, simStuccoTex=null;
 function simGetViewTex(){
   if(!simViewTex){
     simViewTex=new THREE.TextureLoader().load(VIEW_IMG,function(){ if(sim3d) sim3d.needs=true; });
@@ -1955,9 +1955,11 @@ function simRepeatTex(file,rx,ry){
   if(THREE.sRGBEncoding) t.encoding=THREE.sRGBEncoding;
   return t;
 }
-/* קיר טרוורטין: UV של ExtrudeGeometry = מטרים, אריח כל ~1.8מ'; רצפת פרקט: המישור 16x9 */
+/* קיר טרוורטין: UV של ExtrudeGeometry = מטרים, אריח כל ~1.8מ'; רצפת פרקט: מישור פנים */
 function simGetWallTex(){ if(!simWallTex) simWallTex=simRepeatTex("wall.jpg",0.55,0.55); return simWallTex; }
-function simGetFloorTex(){ if(!simFloorTex) simFloorTex=simRepeatTex("floor.jpg",7,4); return simFloorTex; }
+function simGetFloorTex(){ if(!simFloorTex) simFloorTex=simRepeatTex("floor.jpg",7,3); return simFloorTex; }
+function simGetPaversTex(){ if(!simPaversTex) simPaversTex=simRepeatTex("pavers.jpg",13,2.6); return simPaversTex; }
+function simGetStuccoTex(){ if(!simStuccoTex) simStuccoTex=simRepeatTex("stucco.jpg",0.9,0.9); return simStuccoTex; }
 function buildSimWindow(){
   if(!sim3d) return;
   const g=sim3d.group; simDisposeGroup(g);
@@ -1993,8 +1995,15 @@ function buildSimWindow(){
   wShape.holes.push(hole);
   const wall=new THREE.Mesh(new THREE.ExtrudeGeometry(wShape,{depth:0.24,bevelEnabled:false}),wallMat);
   wall.position.z=-0.26; wall.receiveShadow=true; g.add(wall);
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(16,9),new THREE.MeshStandardMaterial({color:0xffffff,map:simGetFloorTex(),roughness:0.75,metalness:0,envMapIntensity:0.12}));
-  floor.rotation.x=-Math.PI/2; floor.position.set(0,FLOOR-0.004,1.5); floor.receiveShadow=true; g.add(floor);
+  /* חיפוי חוץ — שליכט צבעוני על הפאה החיצונית של הקיר (עם אותו פתח) */
+  const stucco=new THREE.Mesh(new THREE.ExtrudeGeometry(wShape,{depth:0.012,bevelEnabled:false}),
+    new THREE.MeshStandardMaterial({color:0xffffff,map:simGetStuccoTex(),roughness:0.95,metalness:0,envMapIntensity:0.1}));
+  stucco.position.z=-0.274; stucco.receiveShadow=true; g.add(stucco);
+  /* רצפת פנים: פרקט; רצפת חוץ: ריצוף טרוורטין בדוגמה צרפתית */
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(16,7),new THREE.MeshStandardMaterial({color:0xffffff,map:simGetFloorTex(),roughness:0.75,metalness:0,envMapIntensity:0.12}));
+  floor.rotation.x=-Math.PI/2; floor.position.set(0,FLOOR-0.004,3.35); floor.receiveShadow=true; g.add(floor);
+  const pav=new THREE.Mesh(new THREE.PlaneGeometry(16,3.1),new THREE.MeshStandardMaterial({color:0xffffff,map:simGetPaversTex(),roughness:0.85,metalness:0,envMapIntensity:0.1}));
+  pav.rotation.x=-Math.PI/2; pav.position.set(0,FLOOR-0.006,-1.72); pav.receiveShadow=true; g.add(pav);
   const back=new THREE.Mesh(new THREE.PlaneGeometry(17,8.5),new THREE.MeshBasicMaterial({map:simGetViewTex()}));
   back.position.set(0,0.6,-3.2); g.add(back);
   // ----- משקוף: חתך אמיתי שנסחף עם פינות 45° -----

@@ -1,5 +1,5 @@
 /* Service Worker — עבודה אופליין מלאה. להעלאת גרסה חדשה: להעלות את VERSION. */
-const VERSION = "v50";
+const VERSION = "v51";
 const CACHE = "alum-measure-" + VERSION;
 const ASSETS = [
   "./",
@@ -13,6 +13,8 @@ const ASSETS = [
   "./view.jpg",
   "./wall.jpg",
   "./floor.jpg",
+  "./pavers.jpg",
+  "./stucco.jpg",
   "./profiles-catalog.pdf",
   "./handles/alma.png","./handles/art_black.png","./handles/art_brass_antique.png","./handles/art_brass_mat.png",
   "./handles/art_silver.png","./handles/art_silver_antique.png","./handles/art_white.png","./handles/astra.png",
