@@ -261,6 +261,12 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .sim-stage{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:12px;margin-bottom:12px}
 .sim-2d{width:100%;display:block;touch-action:none;border-radius:12px;background:var(--line2)}
 .sim-3d{width:100%;height:340px;display:block;touch-action:none;border-radius:12px;background:var(--line2)}
+.sim-klil{width:100%;height:850px;border:0;border-radius:12px;background:#fff;display:block}
+.klil-tabs{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.klil-tab{flex:1;min-width:100px;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 6px;cursor:pointer;display:flex;flex-direction:column;gap:2px;align-items:center;font-family:inherit}
+.klil-tab b{font-size:.92rem;color:var(--ink)}
+.klil-tab span{font-size:.7rem;color:var(--ink2)}
+.klil-tab.on{border-color:var(--acc);background:var(--line2)}
 .sim-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .sim-hint{font-size:.8rem;color:var(--ink2);margin-top:8px;text-align:center}
 .sim-3d-wrap{position:relative;background:linear-gradient(180deg,#eef2f7,#dfe5ee);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
@@ -1465,35 +1471,55 @@ function simFromItem(it){
   };
 }
 
-let simViewMode="3d";
+let simViewMode="klil";
+/* ההדמיה הרשמית של קליל — אפליקציות Bimmatch שקליל עצמם מטמיעים באתר שלהם */
+const KLIL_SIMS=[
+  {id:"7300",name:"בלגי 7300",desc:"הזזה — פתחים בינוניים וגדולים"},
+  {id:"4300",name:"בלגי 4300",desc:"ציר (קיפ/רגילה) — פתחים בינוניים"},
+  {id:"1700",name:"בלגי 1700",desc:"הזזה — פתחים קטנים"}
+];
+let simKlilSeries = localStorage.getItem("alum_sim_klil") || "7300";
 function viewSim(){
   const has3D = (typeof THREE!=="undefined");
-  const in3D = simViewMode==="3d" && has3D;
+  const mode = (simViewMode==="3d"&&!has3D) ? "2d" : simViewMode;
+  let stage="";
+  if(mode==="klil"){
+    stage=''
+    +'<div class="klil-tabs">'
+    +KLIL_SIMS.map(s=>'<button class="klil-tab'+(simKlilSeries===s.id?" on":"")+'" onclick="App.simKlil(\''+s.id+'\')"><b>'+s.name+'</b><span>'+s.desc+'</span></button>').join("")
+    +'</div>'
+    +'<iframe class="sim-klil" src="https://klil-belgium'+simKlilSeries+'.netlify.app/" title="הדמיית קליל — בלגי '+simKlilSeries+'" loading="eager"></iframe>'
+    +'<div class="sim-hint">מנוע ההדמיה הרשמי של קליל (סגנון בלגי, אחד לאחד כמו באתר). כפתור המצלמה שבפנים שומר תמונה. נדרש חיבור אינטרנט.</div>';
+  } else if(mode==="3d"){
+    stage='<canvas id="sim3dcv" class="sim-3d"></canvas>'
+    +'<div class="sim-hint">גוררים כדי לסובב, גלגלת או צביטה כדי להתקרב. חלוקות מוסיפים בתצוגת החזית.</div>';
+  } else {
+    stage='<svg id="sim2d" class="sim-2d" viewBox="0 0 360 300"></svg>'
+    +'<div class="sim-hint">מעבירים אצבע/עט על החלון כדי להוסיף חלוקה — הקו מתיישר לבד. אפשר לגרור קו, או לבחור אותו ולמחוק.</div>'
+    +'<div class="sim-tools">'
+    +'<button class="btn small" onclick="App.simAdd(\'v\')">➕ חלוקה אנכית</button>'
+    +'<button class="btn small" onclick="App.simAdd(\'h\')">➕ חלוקה אופקית</button>'
+    +'<button class="btn small danger" onclick="App.simDelSel()">🗑 מחק קו נבחר</button>'
+    +'<button class="btn small" onclick="App.simClear()">נקה הכל</button>'
+    +'</div>';
+  }
   return ''
   +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
   +'<div class="grow"><h1>הדמיה ללקוח</h1><div class="sub">מרכיבים חלון ורואים אותו כמו במציאות</div></div>'
-  +'<button class="btn small primary" onclick="App.simShare()">📤 שתף</button></div>'
+  +(mode==="klil"?'':'<button class="btn small primary" onclick="App.simShare()">📤 שתף</button>')+'</div>'
   +'<div class="sim-stage">'
   +'<div class="seg" style="margin-bottom:10px">'
-  +segBtn(in3D,"תלת־ממד","App.simView('3d')")
-  +segBtn(!in3D,"חזית + עריכת חלוקות","App.simView('2d')")
+  +segBtn(mode==="klil","קליל רשמי","App.simView('klil')")
+  +segBtn(mode==="3d","תלת־ממד שלנו","App.simView('3d')")
+  +segBtn(mode==="2d","חזית + חלוקות","App.simView('2d')")
   +'</div>'
-  +(in3D
-    ? '<canvas id="sim3dcv" class="sim-3d"></canvas>'
-      +'<div class="sim-hint">גוררים כדי לסובב, גלגלת או צביטה כדי להתקרב. חלוקות מוסיפים בתצוגת החזית.</div>'
-    : '<svg id="sim2d" class="sim-2d" viewBox="0 0 360 300"></svg>'
-      +'<div class="sim-hint">מעבירים אצבע/עט על החלון כדי להוסיף חלוקה — הקו מתיישר לבד. אפשר לגרור קו, או לבחור אותו ולמחוק.</div>'
-      +'<div class="sim-tools">'
-      +'<button class="btn small" onclick="App.simAdd(\'v\')">➕ חלוקה אנכית</button>'
-      +'<button class="btn small" onclick="App.simAdd(\'h\')">➕ חלוקה אופקית</button>'
-      +'<button class="btn small danger" onclick="App.simDelSel()">🗑 מחק קו נבחר</button>'
-      +'<button class="btn small" onclick="App.simClear()">נקה הכל</button>'
-      +'</div>')
+  +stage
   +'</div>'
   +'<div id="simcontrols"></div>';
 }
 
 function afterSimRender(){
+  if(simViewMode==="klil"){ return; }
   if(simViewMode==="3d" && typeof THREE!=="undefined"){
     const cv=document.getElementById("sim3dcv");
     if(cv){ initSim3D(cv); buildSimWindow(); }
@@ -1885,6 +1911,7 @@ const App = {
   search(v){ searchQ=v; renderList(); },
   /* הדמיה ללקוח */
   simView(v){ simViewMode=v; render(); },
+  simKlil(s){ simKlilSeries=s; try{localStorage.setItem("alum_sim_klil",s);}catch(e){} render(); },
   simAdd(dir){
     if(dir==="v"){ sim.vLines.push(0.5); simSel={dir:"v",idx:sim.vLines.length-1}; }
     else { sim.hLines.push(0.5); simSel={dir:"h",idx:sim.hLines.length-1}; }
