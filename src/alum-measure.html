@@ -1995,10 +1995,21 @@ function buildSimWindow(){
   wShape.holes.push(hole);
   const wall=new THREE.Mesh(new THREE.ExtrudeGeometry(wShape,{depth:0.24,bevelEnabled:false}),wallMat);
   wall.position.z=-0.26; wall.receiveShadow=true; g.add(wall);
-  /* חיפוי חוץ — שליכט צבעוני על הפאה החיצונית של הקיר (עם אותו פתח) */
-  const stucco=new THREE.Mesh(new THREE.ExtrudeGeometry(wShape,{depth:0.012,bevelEnabled:false}),
+  /* חיפוי חוץ — שליכט צבעוני; הפתח החיצוני בגובה החלון בלבד:
+     ארגז התריס מוסתר בקיר ומבחוץ לא רואים אותו בכלל */
+  const sShape=new THREE.Shape();
+  sShape.moveTo(-4.2,FLOOR-0.01); sShape.lineTo(4.2,FLOOR-0.01); sShape.lineTo(4.2,2.5); sShape.lineTo(-4.2,2.5); sShape.closePath();
+  const sHole=new THREE.Path();
+  sHole.moveTo(-Wd/2,yB); sHole.lineTo(Wd/2,yB); sHole.lineTo(Wd/2,yB+Hd); sHole.lineTo(-Wd/2,yB+Hd); sHole.closePath();
+  sShape.holes.push(sHole);
+  const stucco=new THREE.Mesh(new THREE.ExtrudeGeometry(sShape,{depth:0.012,bevelEnabled:false}),
     new THREE.MeshStandardMaterial({color:0xffffff,map:simGetStuccoTex(),roughness:0.95,metalness:0,envMapIntensity:0.1}));
   stucco.position.z=-0.274; stucco.receiveShadow=true; g.add(stucco);
+  /* סגירת עומק מעל המשקוף בצד החוץ כשיש ארגז — כדי שלא ייראה חלל בזווית */
+  if(boxH>0){
+    const lint=new THREE.Mesh(new THREE.BoxGeometry(Wd,boxH,0.16),wallMat);
+    lint.position.set(0,yC+Hd/2+boxH/2,-0.18); lint.receiveShadow=true; g.add(lint);
+  }
   /* רצפת פנים: פרקט; רצפת חוץ: ריצוף טרוורטין בדוגמה צרפתית */
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(16,7),new THREE.MeshStandardMaterial({color:0xffffff,map:simGetFloorTex(),roughness:0.75,metalness:0,envMapIntensity:0.12}));
   floor.rotation.x=-Math.PI/2; floor.position.set(0,FLOOR-0.004,3.35); floor.receiveShadow=true; g.add(floor);
