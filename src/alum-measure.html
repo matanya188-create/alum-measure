@@ -276,6 +276,13 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .bigsw.on i{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}
 .bigsw span{font-size:.66rem;color:var(--ink2);text-align:center}
 .klil-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.hview{position:fixed;inset:0;background:rgba(13,16,22,.74);z-index:400;display:flex;align-items:center;justify-content:center;padding:18px;animation:fadein .15s ease}
+.hview-card{background:#fff;border-radius:20px;padding:22px 20px 18px;max-width:min(92vw,540px);width:100%;position:relative;text-align:center;box-shadow:0 18px 60px rgba(0,0,0,.35)}
+.hview-card img{width:100%;max-height:58vh;object-fit:contain}
+.hview-name{font-weight:800;font-size:1.15rem;color:var(--ink);margin-top:10px}
+.hview-sub{font-size:.8rem;color:var(--ink2);margin-top:2px}
+.hview-x{position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:1rem;cursor:pointer;color:var(--ink)}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
 .klil-tab{flex:1;min-width:100px;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 6px;cursor:pointer;display:flex;flex-direction:column;gap:2px;align-items:center;font-family:inherit}
 .klil-tab b{font-size:.92rem;color:var(--ink)}
 .klil-tab span{font-size:.7rem;color:var(--ink2)}
@@ -1725,8 +1732,8 @@ function renderSimControls(){
   +PROFILES.map(pr=>'<option value="'+pr.code+'"'+(sim.profile===pr.code?" selected":"")+'>'+pr.code+' — '+pr.desc.split("—")[0].trim()+'</option>').join("")
   +'</select></div>'
   +(function(){ const hs=handleSetFor(sim.profile);
-    return '<div class="field" style="margin:12px 0 0"><label>'+hs.title+' (תמונות אמיתיות)</label><div class="hmodels">'
-    +hs.list.map(h=>'<div class="hmodel"><img src="'+handleImg(h[1])+'" alt="'+esc(h[0])+'" loading="lazy"><span>'+esc(h[0])+'</span></div>').join("")
+    return '<div class="field" style="margin:12px 0 0"><label>'+hs.title+' — לחיצה מגדילה</label><div class="hmodels">'
+    +hs.list.map(h=>'<div class="hmodel" onclick="App.handleView(\''+esc(h[0]).replace(/'/g,"\\'")+'\',\''+h[1]+'\')"><img src="'+handleImg(h[1])+'" alt="'+esc(h[0])+'" loading="lazy"><span>'+esc(h[0])+'</span></div>').join("")
     +'</div></div>'; })()
   +'<div class="field" style="margin:12px 0 0"><label>כל מניפת הגוונים של קליל</label><div class="swatches">'+swatches+'</div>'
   +'<div class="muted" style="margin-top:4px">'+(sim.color?esc(sim.color):"אלומיניום (ברירת מחדל)")+'</div></div>'
@@ -1925,6 +1932,19 @@ const App = {
   search(v){ searchQ=v; renderList(); },
   /* הדמיה ללקוח */
   simView(v){ simViewMode=v; render(); },
+  /* תצוגה מוגדלת של ידית — כמו באתר קליל */
+  handleView(name,id){
+    const old=document.querySelector(".hview"); if(old) old.remove();
+    const ov=document.createElement("div"); ov.className="hview";
+    ov.innerHTML='<div class="hview-card">'
+      +'<button class="hview-x" aria-label="סגירה">✕</button>'
+      +'<img src="'+handleImg(id)+'" alt="'+esc(name)+'">'
+      +'<div class="hview-name">ידית '+esc(name)+'</div>'
+      +'<div class="hview-sub">קולקציית הידיות של קליל</div>'
+      +'</div>';
+    ov.addEventListener("click",e=>{ if(e.target===ov||e.target.classList.contains("hview-x")) ov.remove(); });
+    document.body.appendChild(ov);
+  },
   simPreset(v,h){
     sim.vLines = v ? v.split("|").map(Number) : [];
     sim.hLines = h ? h.split("|").map(Number) : [];
