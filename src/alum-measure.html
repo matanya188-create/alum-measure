@@ -1450,14 +1450,27 @@ function viewQuoteExport(p){
 
 /* ================= הדמיה ללקוח (2D בנייה + 3D) ================= */
 const SIM_KEY="alum_sim_v1";
-function newSim(){ return {kind:"window",wings:2,box:false,w:120,h:100,profile:"7000",color:"",glass:"clear",handleSide:"right",handleModel:"zamir",vLines:[],hLines:[],shapes:[]}; }
+function newSim(){ return {kind:"window",wings:2,box:false,w:120,h:100,fixW:80,fixSide:"right",profile:"7000",color:"",glass:"clear",handleSide:"right",handleModel:"zamir",vLines:[],hLines:[],shapes:[]}; }
 const SIM_BOX_CM=28; /* גובה ארגז תריס בהדמיה */
 /* מספר כנפיים בפועל: חלון/ויטרינה שנפתחים = לפחות 2 (קו מפגש באמצע!); 0 = קבוע */
 function simWingCount(){
   const k=sim.kind||"window";
+  if(k==="doorfix") return 2; /* דלת + קבוע = שני שדות */
   if(k==="door") return Math.max(1,Math.min(2,sim.wings!==undefined?sim.wings:1));
   if(sim.wings===0) return 0;
   return Math.max(2,Math.min(4,sim.wings!==undefined?sim.wings:2));
+}
+/* גבולות הכנפיים כשברי רוחב — שווים בדרך כלל; בדלת+קבוע לפי המידות שהוזנו */
+function simPaneBounds(){
+  const n=simWingCount();
+  if((sim.kind||"window")==="doorfix"){
+    const dw=Math.max(30,parseFloat(sim.w)||95), fw2=Math.max(20,parseFloat(sim.fixW)||80);
+    const f=(sim.fixSide==="left") ? fw2/(dw+fw2) : dw/(dw+fw2);
+    return [0,f,1];
+  }
+  if(n<2) return [0,1];
+  const b=[0]; for(let i=1;i<n;i++) b.push(i/n); b.push(1);
+  return b;
 }
 /* קו רוחבי = {f: גובה יחסי, w: אינדקס כנף (משמאל), או -1 = על כל הרוחב} */
 function hlineF(L){ return (L&&L.f!==undefined)?L.f:L; }
@@ -1603,7 +1616,9 @@ function simSnap(f){
 function renderSim2D(){
   const svg=document.getElementById("sim2d"); if(!svg) return;
   const W=360,H=300, bx=30,by=24,bw=300,bh=248;
-  const wcm=(sim.w>0?parseFloat(sim.w):120)||120, hcm=(sim.h>0?parseFloat(sim.h):100)||100;
+  let wcm=(sim.w>0?parseFloat(sim.w):120)||120;
+  if(sim.kind==="doorfix") wcm+=Math.max(20,parseFloat(sim.fixW)||80);
+  const hcm=(sim.h>0?parseFloat(sim.h):100)||100;
   const boxCm=sim.box?SIM_BOX_CM:0;
   const aspect=Math.max(0.25,Math.min(4,wcm/(hcm+boxCm)));
   let TW=bw,TH=bh;
@@ -1660,10 +1675,11 @@ function renderSim2D(){
   A.push('<rect x="'+gx+'" y="'+gy+'" width="'+gw+'" height="'+gh+'" fill="url(#sheen)"/>');
   /* קווי מפגש כנפיים — פרופיל מבני (חלון/ויטרינה שנפתחים = תמיד 2+ כנפיים) */
   const nW=simWingCount();
-  if(nW>=2){
+  const PB=simPaneBounds();
+  if(PB.length>2){
     const meetW=Math.max(7,ssw*1.5);
-    for(let i=1;i<nW;i++){
-      const x=gx+(i/nW)*gw;
+    for(let i=1;i<PB.length-1;i++){
+      const x=gx+PB[i]*gw;
       A.push('<g filter="url(#barsh)"><rect x="'+(x-meetW/2)+'" y="'+gy+'" width="'+meetW+'" height="'+gh+'" fill="url(#mv)"/></g>');
       A.push('<rect x="'+(x-0.6)+'" y="'+gy+'" width="1.2" height="'+gh+'" fill="rgba(0,0,0,0.28)"/>');
     }
@@ -1671,7 +1687,7 @@ function renderSim2D(){
   sim.hLines.forEach((L,i)=>{ const f=hlineF(L), wgi=hlineWing(L);
     const y=FY+f*FH, on=simSel&&simSel.dir==="h"&&simSel.idx===i;
     let x0=gx, x1=gx+gw;
-    if(wgi>=0){ const pw=gw/nW; x0=gx+wgi*pw; x1=x0+pw; }
+    if(wgi>=0 && PB[wgi+1]!==undefined){ x0=gx+PB[wgi]*gw; x1=gx+PB[wgi+1]*gw; }
     A.push('<g filter="url(#barsh)"><rect x="'+x0+'" y="'+(y-barW/2)+'" width="'+(x1-x0)+'" height="'+barW+'" fill="'+(on?"#e04f3f":"url(#mh)")+'"/></g>'); });
   sim.vLines.forEach((f,i)=>{ const x=FX+f*FW, on=simSel&&simSel.dir==="v"&&simSel.idx===i;
     A.push('<g filter="url(#barsh)"><rect x="'+(x-barW/2)+'" y="'+gy+'" width="'+barW+'" height="'+gh+'" fill="'+(on?"#e04f3f":"url(#mv)")+'"/></g>'); });
@@ -1725,16 +1741,22 @@ function renderSim2D(){
   }
   /* ידית נבחרת — תמונה אמיתית במקום ובכיוון הנכונים לסוג הפתיחה */
   if(sim.handleOn && sim.handleModel && nW!==0){
-    const kindH = (sim.kind==="door") ? "hinge" : (sim.kind==="vitrina") ? "slide" : (PF.kind||"slide");
+    const kindH = (sim.kind==="door"||sim.kind==="doorfix") ? "hinge" : (sim.kind==="vitrina") ? "slide" : (PF.kind||"slide");
     const hImg=handleImg(sim.handleModel);
-    const hw2=Math.max(22,Math.min(FW*0.11,34)), hh2=hw2*0.62, cyH=gy+gh/2;
+    const hw2=Math.max(22,Math.min(FW*0.11,34)), hh2=hw2*0.62;
+    const cyH=(sim.kind==="door"||sim.kind==="doorfix") ? gy+gh*Math.min(0.85,Math.max(0.3,1-100/hcm)) : gy+gh/2;
     const put=(cx2,ori)=>{
       let tr='translate('+cx2+','+cyH+')';
       if(ori==="down") tr+=' rotate(90)';
       if(ori==="left") tr+=' scale(-1,1)';
       A.push('<g filter="url(#hsh)" transform="'+tr+'"><image href="'+hImg+'" x="'+(-hw2*0.18)+'" y="'+(-hh2/2)+'" width="'+hw2+'" height="'+hh2+'" preserveAspectRatio="xMidYMid meet"/></g>');
     };
-    if(kindH==="slide"){
+    if(sim.kind==="doorfix"){
+      /* ידית אחת על זקף הדלת שליד הקבוע */
+      const xb=gx+PB[1]*gw, meetW=Math.max(7,ssw*1.5);
+      if(sim.fixSide==="left") put(xb+meetW*0.55,"right");
+      else put(xb-meetW*0.55,"left");
+    } else if(kindH==="slide"){
       /* הזזה: שתי ידיות אנכיות על הזקפים הצדדיים */
       put(gx-ssw/2,"down");
       put(gx+gw+ssw/2,"down");
@@ -1787,9 +1809,9 @@ function attachSim2DHandlers(){
     let hit=null;
     sim.vLines.forEach((f,i)=>{ if(Math.abs(p.x-(g.FX+f*g.FW))<9 && p.y>=g.FY && p.y<=g.FY+g.FH) hit={dir:"v",idx:i}; });
     sim.hLines.forEach((L,i)=>{
-      const f=hlineF(L), wgi=hlineWing(L), n=simWingCount();
+      const f=hlineF(L), wgi=hlineWing(L), PB=simPaneBounds();
       let x0=g.FX, x1=g.FX+g.FW;
-      if(wgi>=0){ const pw=g.FW/n; x0=g.FX+wgi*pw; x1=x0+pw; }
+      if(wgi>=0 && PB[wgi+1]!==undefined){ x0=g.FX+PB[wgi]*g.FW; x1=g.FX+PB[wgi+1]*g.FW; }
       if(Math.abs(p.y-(g.FY+f*g.FH))<9 && p.x>=x0 && p.x<=x1) hit={dir:"h",idx:i}; });
     (sim.shapes||[]).forEach((s,i)=>{
       const x0=g.FX+s.x0*g.FW, x1=g.FX+s.x1*g.FW, y0=g.FY+s.y0*g.FH, y1=g.FY+s.y1*g.FH;
@@ -1851,8 +1873,9 @@ function attachSim2DHandlers(){
     if(mode==="resizeS"||mode==="moveS"){
       const s=sim.shapes[dragRef&&dragRef.idx];
       if(s){
-        const n=simWingCount();
-        s.w = n>=2 ? Math.max(0,Math.min(n-1,Math.floor(((s.x0+s.x1)/2)*n))) : -1;
+        const PB=simPaneBounds(), cxF=(s.x0+s.x1)/2;
+        s.w=-1;
+        if(PB.length>2){ for(let k=0;k<PB.length-1;k++){ if(cxF>=PB[k]&&cxF<PB[k+1]){ s.w=k; break; } } }
       }
       saveSim(); renderSim2D(); buildSimWindow();
       mode=null; dragRef=null; return;
@@ -1863,10 +1886,11 @@ function attachSim2DHandlers(){
       const bw=mxx-mnx, bh=mxy-mny;
       if(bw>0.15*g.FW && bh>0.15*g.FH && pts.length>7){
         /* ציור חופשי → מזהים צורה ומיישרים אותה יפה בתוך הכנף */
-        const n=simWingCount();
+        const n=simWingCount(), PB=simPaneBounds();
         const cxF=((mnx+mxx)/2-g.FX)/g.FW;
-        const wgi = n>=2 ? Math.max(0,Math.min(n-1,Math.floor(cxF*n))) : -1;
-        const pL = wgi>=0 ? wgi/n : 0, pR = wgi>=0 ? (wgi+1)/n : 1;
+        let wgi=-1;
+        if(PB.length>2){ for(let k=0;k<PB.length-1;k++){ if(cxF>=PB[k]&&cxF<PB[k+1]){ wgi=k; break; } } }
+        const pL = wgi>=0 ? PB[wgi] : 0, pR = wgi>=0 ? PB[wgi+1] : 1;
         let x0f=(mnx-g.FX)/g.FW, x1f=(mxx-g.FX)/g.FW;
         let y0f=(mny-g.FY)/g.FH, y1f=(mxy-g.FY)/g.FH;
         let mrg=((x0f-pL)+(pR-x1f))/2; mrg=Math.max(0.015,Math.round(mrg*50)/50);
@@ -1900,8 +1924,9 @@ function attachSim2DHandlers(){
           if(dy>=dx){ sim.vLines.push(simSnap((startX-g.FX)/g.FW)); simSel={dir:"v",idx:sim.vLines.length-1}; }
           else {
             /* קו רוחבי — רק על הכנף שבה צוירה התנועה */
-            const n=simWingCount();
-            const wgi = n>=2 ? Math.max(0,Math.min(n-1,Math.floor((startX-g.FX)/g.FW*n))) : -1;
+            const PB=simPaneBounds(), fx=(startX-g.FX)/g.FW;
+            let wgi=-1;
+            if(PB.length>2){ for(let k=0;k<PB.length-1;k++){ if(fx>=PB[k]&&fx<PB[k+1]){ wgi=k; break; } } }
             sim.hLines.push({f:simSnap((startY-g.FY)/g.FH),w:wgi});
             simSel={dir:"h",idx:sim.hLines.length-1};
           }
@@ -1956,20 +1981,32 @@ function renderSimControls(){
   +'<div class="field" style="margin:0"><label>סוג הפתח</label><div class="seg">'
   +segBtn(kindCur==="window","חלון","App.simKind('window')")
   +segBtn(kindCur==="door","דלת","App.simKind('door')")
+  +segBtn(kindCur==="doorfix","דלת + קבוע","App.simKind('doorfix')")
   +segBtn(kindCur==="vitrina","ויטרינה","App.simKind('vitrina')")
   +'</div></div>'
-  +'<div class="field" style="margin:12px 0 0"><label>מבנה (כנפיים)</label><div class="seg">'
-  +wingOpts.map(o=>segBtn(wingCur===o[0],o[1],"App.simWings("+o[0]+")")).join("")
-  +'</div></div>'
+  +(kindCur==="doorfix"
+    ? '<div class="field" style="margin:12px 0 0"><label>צד הקבוע (במבט מבפנים)</label><div class="seg">'
+      +segBtn(sim.fixSide!=="left","קבוע מימין לדלת","App.simSet('fixSide','right')")
+      +segBtn(sim.fixSide==="left","קבוע משמאל לדלת","App.simSet('fixSide','left')")
+      +'</div></div>'
+    : '<div class="field" style="margin:12px 0 0"><label>מבנה (כנפיים)</label><div class="seg">'
+      +wingOpts.map(o=>segBtn(wingCur===o[0],o[1],"App.simWings("+o[0]+")")).join("")
+      +'</div></div>')
   +'<div class="field" style="margin:12px 0 0"><label>ארגז תריס</label><div class="seg">'
   +segBtn(!sim.box,"בלי","App.simBox(false)")
   +segBtn(!!sim.box,"עם ארגז","App.simBox(true)")
   +'</div></div>'
   +'<div class="field" style="margin:12px 0 0"><label>יישומים</label><div class="klil-tabs">'+presets+'</div></div>'
-  +'<div class="field" style="margin:12px 0 0"><label>גודל חלון (ס״מ)</label>'
-  +dimRow("רוחב","w",60,400)
-  +dimRow("גובה","h",60,280)
-  +'</div>'
+  +(kindCur==="doorfix"
+    ? '<div class="field" style="margin:12px 0 0"><label>מידות (ס״מ)</label>'
+      +dimRow("דלת","w",60,160)
+      +dimRow("קבוע","fixW",20,250)
+      +dimRow("גובה","h",180,280)
+      +'</div>'
+    : '<div class="field" style="margin:12px 0 0"><label>גודל חלון (ס״מ)</label>'
+      +dimRow("רוחב","w",60,400)
+      +dimRow("גובה","h",60,280)
+      +'</div>')
   +'<div class="field" style="margin:12px 0 0"><label>צבעים מומלצים</label><div class="bigsws">'+bigsw+'</div></div>'
   +'<div class="field" style="margin:12px 0 0"><label>סדרת פרופיל</label>'
   +'<select onchange="App.simSet(\'profile\',this.value)">'
@@ -2116,12 +2153,14 @@ function buildSimWindow(){
   const fam=P.style||"standard";
   const simKind=sim.kind||"window";
   /* דלת = כנפי ציר עד הרצפה; ויטרינה = הזזה עד הרצפה; חלון = לפי הפרופיל */
-  const kind = simKind==="door" ? "hinge" : simKind==="vitrina" ? "slide" : (P.kind||"slide");
+  const kind = (simKind==="door"||simKind==="doorfix") ? "hinge" : simKind==="vitrina" ? "slide" : (P.kind||"slide");
   const FP=FAM3D[fam]||FAM3D.standard;
   /* קנה מידה פיזי: יחידה אחת = מטר; חדר בגובה 2.80 */
   const FLOOR=-1.35, CEIL=1.45;
   const boxH=sim.box?SIM_BOX_CM/100:0;
-  const Wd=Math.min(4.0,Math.max(0.5,(parseFloat(sim.w)||120)/100));
+  let wTot=(parseFloat(sim.w)||120);
+  if(simKind==="doorfix") wTot+=Math.max(20,parseFloat(sim.fixW)||80);
+  const Wd=Math.min(4.0,Math.max(0.5,wTot/100));
   const Hd=Math.min(2.7-boxH,Math.max(0.5,(parseFloat(sim.h)||100)/100));
   const sill = simKind==="window" ? Math.max(0.05,Math.min(0.9,(CEIL-FLOOR)-Hd-boxH-0.08)) : 0;
   const yC=FLOOR+sill+Hd/2;
@@ -2240,7 +2279,7 @@ function buildSimWindow(){
     else if(hsSet===HANDLE_SETS.belgian||hsSet===HANDLE_SETS.art) hcol=0x8f7350;
     else if(hsSet===HANDLE_SETS.bauhaus||hsSet===HANDLE_SETS.bold) hcol=0x2a2b2e;
     const hmat=new THREE.MeshStandardMaterial({color:new THREE.Color(hcol),metalness:0.85,roughness:0.3,envMapIntensity:1.1});
-    const hy = simKind==="door" ? Math.max(-iH/2+0.2, 1.0-sill-Hd/2) : 0;
+    const hy = (simKind==="door"||simKind==="doorfix") ? Math.max(-iH/2+0.2, 1.0-sill-Hd/2) : 0;
     const mk=(hx,zFace,ori)=>{
       const add=m=>{ m.castShadow=true; win.add(m); };
       let m=new THREE.Mesh(new THREE.CylinderGeometry(0.027,0.027,0.012,18),hmat);
@@ -2255,7 +2294,12 @@ function buildSimWindow(){
       m=new THREE.Mesh(new THREE.SphereGeometry(0.0135,14,10),hmat);
       m.position.set(hx+dx*(L-0.006),hy+dy*(L-0.006),zL); add(m);
     };
-    if(kind==="slide"){
+    if(simKind==="doorfix"){
+      /* ידית אחת על זקף הדלת שליד הקבוע */
+      const PB=simPaneBounds(), xb=-iW/2+PB[1]*iW;
+      if(sim.fixSide==="left") mk(xb+ss*0.9, sashD/2, "right");
+      else mk(xb-ss*0.9, sashD/2, "left");
+    } else if(kind==="slide"){
       mk(-iW/2+ss*0.5, off+sashD/2, "down");
       mk(iW/2-ss*0.5, ((wings-1)%2===0?off:-off)+sashD/2, "down");
     } else if(wings>=2){
@@ -2265,7 +2309,13 @@ function buildSimWindow(){
       mk(iW/2-ss*0.9, sashD/2, "left");
     }
   }
-  if(wings===0){
+  if(simKind==="doorfix"){
+    // דלת + קבוע לצד — שני שדות ברוחבים שהוזנו, מפגש ביניהם
+    const PB=simPaneBounds();
+    const w1=PB[1]*iW, w2=iW-w1;
+    sashCell(-iW/2+w1/2, 0, w1+0.004, iH, 0, 0);
+    sashCell(iW/2-w2/2, 0, w2+0.004, iH, 0, 1);
+  } else if(wings===0){
     // קבוע — זכוכית אחת, בלי קו מפגש
     sashCell(0,0,iW,iH,0,0);
   } else if(kind==="slide"){
@@ -2317,8 +2367,9 @@ const App = {
   simKind(k){
     if((sim.kind||"window")===k) return;
     sim.kind=k;
-    const d={window:{w:120,h:100,wings:2},door:{w:95,h:215,wings:1},vitrina:{w:300,h:220,wings:3}}[k];
+    const d={window:{w:120,h:100,wings:2},door:{w:95,h:215,wings:1},doorfix:{w:95,h:215,wings:1,fixW:80},vitrina:{w:300,h:220,wings:3}}[k];
     sim.w=d.w; sim.h=d.h; sim.wings=d.wings;
+    if(d.fixW) sim.fixW=d.fixW;
     saveSim(); renderSimControls(); renderSim2D(); buildSimWindow();
   },
   simWings(n){
@@ -2374,10 +2425,13 @@ const App = {
       const s=(sim.shapes||[])[simSel.idx]; if(!s) return;
       const w0=shapeWing(s);
       if(w0<0){ uiAlert("הצורה מתפרסת כבר על כל הרוחב.","העתקה לכנפיים"); return; }
-      const rx0=s.x0-w0/n, rx1=s.x1-w0/n;
+      const PB=simPaneBounds();
+      const sp0=PB[w0+1]-PB[w0];
+      const rx0=(s.x0-PB[w0])/sp0, rx1=(s.x1-PB[w0])/sp0; /* יחסי בתוך הכנף — נשמר גם בכנפיים ברוחב שונה */
       for(let k=0;k<n;k++){
         if(k===w0) continue;
-        const nx0=r3(k/n+rx0), nx1=r3(k/n+rx1);
+        const sp=PB[k+1]-PB[k];
+        const nx0=r3(PB[k]+rx0*sp), nx1=r3(PB[k]+rx1*sp);
         const exists=sim.shapes.some(o=>o.t===s.t&&shapeWing(o)===k&&Math.abs(o.x0-nx0)<0.01&&Math.abs(o.x1-nx1)<0.01&&Math.abs(o.y0-s.y0)<0.01&&Math.abs(o.y1-s.y1)<0.01);
         if(!exists){ sim.shapes.push({t:s.t,w:k,x0:nx0,x1:nx1,y0:s.y0,y1:s.y1}); added++; }
       }
@@ -2393,11 +2447,13 @@ const App = {
       }
     } else {
       const f=sim.vLines[simSel.idx]; if(f===undefined) return;
-      const w0=Math.max(0,Math.min(n-1,Math.floor(f*n)));
-      const rel=f-w0/n;
+      const PB=simPaneBounds();
+      let w0=0;
+      for(let k=0;k<PB.length-1;k++){ if(f>=PB[k]&&f<PB[k+1]){ w0=k; break; } }
+      const rel=(f-PB[w0])/(PB[w0+1]-PB[w0]);
       for(let k=0;k<n;k++){
         if(k===w0) continue;
-        const nf=r3(k/n+rel);
+        const nf=r3(PB[k]+rel*(PB[k+1]-PB[k]));
         if(nf<=0.03||nf>=0.97) continue;
         const exists=sim.vLines.some(o=>Math.abs(o-nf)<0.01);
         if(!exists){ sim.vLines.push(nf); added++; }
