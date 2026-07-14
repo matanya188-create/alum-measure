@@ -352,6 +352,7 @@ const TYPES = [
   {id:16, name:"דלת + חלון דריי-קיפ",               door:true, doorWin:true, inOut:true},
   {id:17, name:"הזזה 4 כנפיים מפגש + רשת",          sashes:4, slide:true, mesh:true},
   {id:18, name:"פתיחה + קבוע צד + קבוע תחתון",      sideFix:true, openSel:true, fixedBottom:true},
+  {id:19, name:"דלת ציר + קבוע צד",                 door:true, doorFix:true, inOut:true},
 ];
 /* ברירת מחדל הלבשות לפי סוג: הכל דלוק, חוץ מתריסים/גלילה (בלי בכלל) וויטרינה (בלי למטה — מסילה) */
 function halDefaults(t){
@@ -495,7 +496,7 @@ function newItem(typeId){
     handleSide:"right",
     op: t.defOp || "electric", elecSide:"right", ropeSide:"right",
     mesh: !!t.mesh,
-    inOut:"out", openKind:"dreikipp", fixSide:"left",
+    inOut:"out", openKind:"dreikipp", fixSide:"left", fixW:"",
     cols:1, rows:1, box:false,
     hal: halDefaults(t),
     profile:"", profileOther:"", color:"", glass:"", glazeThick:"", notes:"", photo:null
@@ -510,7 +511,9 @@ function sketchSVG(it, w){
   const W=274, H=250;
   // frame proportions follow the real width:height ratio, centered in a fixed box
   const boxX=34, boxW=192, boxY=28, boxH=182;
-  const rw=parseFloat(it.width), rh=parseFloat(it.height);
+  let rw=parseFloat(it.width);
+  if(T.doorFix){ const fw2=parseFloat(it.fixW); if(rw>0&&fw2>0) rw+=fw2; } /* יחס לפי הרוחב הכולל */
+  const rh=parseFloat(it.height);
   let FW=boxW, FH=boxH;
   if(rw>0 && rh>0){
     const aspect=Math.max(0.4,Math.min(2.5, rw/rh));
@@ -637,12 +640,22 @@ function sketchSVG(it, w){
     ln(FX+FW, FY, FX, FY+FH);
   }
 
-  // דלת ציר (15/16): סימוני צירים בצד הנגדי לידית + ר בצד הידית
+  // דלת ציר (15/16/19): סימוני צירים בצד הנגדי לידית + ר בצד הידית
+  let dfLbl=null;
   if(T.door){
-    const hingeX = it.handleSide==="left" ? FX+FW : FX;
+    let dx0=FX, dx1=FX+FW;
+    if(T.doorFix){
+      /* קבוע בצד — מחיצה במיקום האמיתי לפי המידות + X בקבוע */
+      const dw=parseFloat(it.width)||100, fw2=parseFloat(it.fixW)||80, tot=dw+fw2;
+      const divX = it.fixSide==="right" ? FX+FW*(dw/tot) : FX+FW*(fw2/tot);
+      ln(divX, top, divX, areaBot, ' stroke-width="'+pst.div+'"');
+      if(it.fixSide==="right"){ dx1=divX; xmark(P,(divX+FX+FW)/2,(top+areaBot)/2,11); dfLbl={dCx:(FX+divX)/2, fCx:(divX+FX+FW)/2}; }
+      else { dx0=divX; xmark(P,(FX+divX)/2,(top+areaBot)/2,11); dfLbl={dCx:(divX+FX+FW)/2, fCx:(FX+divX)/2}; }
+    }
+    const hingeX = it.handleSide==="left" ? dx1 : dx0;
     [0.22,0.5,0.78].forEach(f=>{ const y=top+(areaBot-top)*f; ln(hingeX-5,y,hingeX+5,y,' stroke-width="3.4"'); });
     const midDoor=top+(areaBot-top)*0.55;
-    const rx = it.handleSide==="left" ? FX+8 : FX+FW-20;
+    const rx = it.handleSide==="left" ? dx0+8 : dx1-20;
     P.push('<text x="'+rx+'" y="'+midDoor+'" font-size="17" font-weight="700" fill="currentColor" stroke="none">ר</text>');
   }
   // דלת עם חלון דריי-קיפ בחלק העליון (16): חלון + קוף בגובה סטנדרטי + פאנל תחתון
@@ -726,7 +739,12 @@ function sketchSVG(it, w){
   if(h.left)  P.push('<polyline points="'+(FX-4)+','+(FY+FH/2-9)+' '+(FX-13)+','+(FY+FH/2)+' '+(FX-4)+','+(FY+FH/2+9)+'" fill="none"/>');
 
   // dimension labels — width below frame, height right of frame (vertical), hugging the frame edge
-  if(String(it.width||"").trim()){
+  if(dfLbl && String(it.width||"").trim() && String(it.fixW||"").trim()){
+    /* דלת + קבוע: רוחב לכל חלק בנפרד, מתחת לחלק שלו */
+    const wy = Math.min(H-4, FY+FH + (h.bottom?26:13) + 12);
+    P.push('<text x="'+dfLbl.dCx+'" y="'+wy+'" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor" stroke="none">'+esc(it.width)+'</text>');
+    P.push('<text x="'+dfLbl.fCx+'" y="'+wy+'" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor" stroke="none">'+esc(it.fixW)+' '+esc(unitName(it.unit))+'</text>');
+  } else if(String(it.width||"").trim()){
     const wy = Math.min(H-4, FY+FH + (h.bottom?26:13) + 12);
     P.push('<text x="'+(FX+FW/2)+'" y="'+wy+'" text-anchor="middle" font-size="15" font-weight="700" fill="currentColor" stroke="none">'+esc(it.width)+' '+esc(unitName(it.unit))+'</text>');
   }
@@ -798,6 +816,7 @@ function missingList(it){
   if(!String(it.height||"").trim()) m.push("גובה");
   if(needsWall(it) && !String(it.wallDepth||"").trim()) m.push("עובי קיר (לארגז התריס)");
   if(TYPE(it.type).rail && !it.railH) m.push("גובה מסילה");
+  if(TYPE(it.type).doorFix && !String(it.fixW||"").trim()) m.push("רוחב הקבוע");
   return m;
 }
 function todayISO(){
@@ -1196,6 +1215,14 @@ function renderItemForm(){
     cond += '<div class="field"><label>צד הקבוע</label><div class="seg">'
       +segBtn(draft.fixSide!=="right","שמאל","App.f('fixSide','left')")
       +segBtn(draft.fixSide==="right","ימין","App.f('fixSide','right')")
+      +'</div></div>';
+  }
+  if(T.doorFix){
+    cond += '<div class="field" style="max-width:180px"><label style="color:var(--danger)">רוחב הקבוע — חובה</label>'
+      +'<input class="num" inputmode="decimal" value="'+esc(draft.fixW||"")+'" oninput="App.f(\'fixW\',this.value)" placeholder="'+unitName(draft.unit)+'"></div>'
+      +'<div class="field"><label>צד הקבוע (במבט מבפנים)</label><div class="seg">'
+      +segBtn(draft.fixSide!=="right","קבוע משמאל לדלת","App.f('fixSide','left')")
+      +segBtn(draft.fixSide==="right","קבוע מימין לדלת","App.f('fixSide','right')")
       +'</div></div>';
   }
   if(T.rail){
@@ -1622,12 +1649,15 @@ function simFromItem(it){
   const gl = /חלב|אסיד|מנומר|צ'ינצ|סבתא|אורנ/.test(it.glass||"") ? "frost"
            : /ברונזה|אפור|גרפיט|כחול|טינטד|רפלק/.test(it.glass||"") ? "tint" : "clear";
   const nm=(T.name||"")+(it.type||"");
+  const cf = it.unit==="mm" ? 0.1 : 1; /* ההדמיה עובדת בס"מ */
   return {
-    kind: /דלת/.test(nm) ? "door" : /ויטרינ/.test(nm) ? "vitrina" : "window",
-    wings: T.fixedAll ? 0 : Math.max(2, T.sashes||2),
+    kind: T.doorFix ? "doorfix" : /דלת/.test(nm) ? "door" : /ויטרינ/.test(nm) ? "vitrina" : "window",
+    wings: T.door ? 1 : T.fixedAll ? 0 : Math.max(2, T.sashes||2),
+    fixW: parseFloat(it.fixW) ? parseFloat(it.fixW)*cf : 80,
+    fixSide: it.fixSide||"right",
     box: !!it.box || !!T.rollerBox,
-    w: parseFloat(it.width) || (it.unit==="mm"?1200:120),
-    h: parseFloat(it.height)|| (it.unit==="mm"?1000:100),
+    w: parseFloat(it.width) ? parseFloat(it.width)*cf : 120,
+    h: parseFloat(it.height) ? parseFloat(it.height)*cf : 100,
     profile: (it.profile && it.profile!=="other") ? it.profile : "7000",
     color: it.color||"", glass: gl, handleSide: it.handleSide||"right",
     vLines:v, hLines:h
