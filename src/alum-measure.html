@@ -348,6 +348,10 @@ const TYPES = [
   {id:12, name:"קיפ קבוע תחתון",                    hinge:"kipp", fixedBottom:true},
   {id:13, name:"דריי קיפ קבוע תחתון",               hinge:"dreikipp", fixedBottom:true},
   {id:14, name:"ויטרינה הזזה",                      sashes:2, slide:true, noHalBottom:true, rail:true},
+  {id:15, name:"דלת ציר",                           door:true, inOut:true},
+  {id:16, name:"דלת + חלון דריי-קיפ",               door:true, doorWin:true, inOut:true},
+  {id:17, name:"הזזה 4 כנפיים מפגש + רשת",          sashes:4, slide:true, mesh:true},
+  {id:18, name:"פתיחה + קבוע צד + קבוע תחתון",      sideFix:true, openSel:true, fixedBottom:true},
 ];
 /* ברירת מחדל הלבשות לפי סוג: הכל דלוק, חוץ מתריסים/גלילה (בלי בכלל) וויטרינה (בלי למטה — מסילה) */
 function halDefaults(t){
@@ -491,6 +495,7 @@ function newItem(typeId){
     handleSide:"right",
     op: t.defOp || "electric", elecSide:"right", ropeSide:"right",
     mesh: !!t.mesh,
+    inOut:"out", openKind:"dreikipp", fixSide:"left",
     cols:1, rows:1, box:false,
     hal: halDefaults(t),
     profile:"", profileOther:"", color:"", glass:"", glazeThick:"", notes:"", photo:null
@@ -583,6 +588,10 @@ function sketchSVG(it, w){
       if(it.openDir==="toleft"){ arrow(P,cx(0),midY,"l"); arrow(P,cx(1),midY,"l"); }
       else if(it.openDir==="toright"){ arrow(P,cx(0),midY,"r"); arrow(P,cx(1),midY,"r"); }
       else { arrow(P,cx(0),midY,"r"); arrow(P,cx(1),midY,"l"); }
+    } else if(n===4){
+      /* מפגש — שתי הכנפיים משמאל נעות ימינה ושתיים מימין שמאלה, נפגשות באמצע */
+      arrow(P,cx(0),midY,"r"); arrow(P,cx(1),midY,"r");
+      arrow(P,cx(2),midY,"l"); arrow(P,cx(3),midY,"l");
     } else {
       if(it.openDir==="flip"){ arrow(P,cx(0),midY,"r"); arrow(P,cx(1),midY,"lr"); arrow(P,cx(2),midY,"lr"); }
       else { arrow(P,cx(0),midY,"lr"); arrow(P,cx(1),midY,"lr"); arrow(P,cx(2),midY,"l"); }
@@ -626,6 +635,55 @@ function sketchSVG(it, w){
   if(T.fixedAll){
     ln(FX, FY, FX+FW, FY+FH);
     ln(FX+FW, FY, FX, FY+FH);
+  }
+
+  // דלת ציר (15/16): סימוני צירים בצד הנגדי לידית + ר בצד הידית
+  if(T.door){
+    const hingeX = it.handleSide==="left" ? FX+FW : FX;
+    [0.22,0.5,0.78].forEach(f=>{ const y=top+(areaBot-top)*f; ln(hingeX-5,y,hingeX+5,y,' stroke-width="3.4"'); });
+    const midDoor=top+(areaBot-top)*0.55;
+    const rx = it.handleSide==="left" ? FX+8 : FX+FW-20;
+    P.push('<text x="'+rx+'" y="'+midDoor+'" font-size="17" font-weight="700" fill="currentColor" stroke="none">ר</text>');
+  }
+  // דלת עם חלון דריי-קיפ בחלק העליון (16): חלון + קוף בגובה סטנדרטי + פאנל תחתון
+  if(T.doorWin){
+    const railY = top + (areaBot-top)*0.52;
+    const wx0=FX+11, wx1=FX+FW-11, wy0=top+11, wy1=railY-9;
+    P.push('<rect x="'+wx0+'" y="'+wy0+'" width="'+(wx1-wx0)+'" height="'+(wy1-wy0)+'" rx="2" stroke-width="'+Math.max(1.2,pst.sw*0.7)+'"/>');
+    const wMidY=(wy0+wy1)/2, wMidX=(wx0+wx1)/2;
+    /* דריי-קיפ: V קיפ + V צד לפי הידית */
+    ln(wx0, wy0, wMidX, wy1); ln(wx1, wy0, wMidX, wy1);
+    const apexX = it.handleSide==="left" ? wx0 : wx1;
+    const fromX = it.handleSide==="left" ? wx1 : wx0;
+    ln(fromX, wy0, apexX, wMidY); ln(fromX, wy1, apexX, wMidY);
+    ln(FX, railY, FX+FW, railY);
+    ln(FX, railY+6, FX+FW, railY+6, faint);
+  }
+  // פתיחה + קבוע צד (18): מחיצה, X בקבוע, V קיפ/דריי-קיפ בכנף + ר
+  if(T.sideFix){
+    const fixLeft = it.fixSide!=="right";
+    const divX = fixLeft ? FX+FW*0.36 : FX+FW*0.64;
+    ln(divX, top, divX, areaBot, ' stroke-width="'+pst.div+'"');
+    const fcx = fixLeft ? (FX+divX)/2 : (divX+FX+FW)/2;
+    xmark(P, fcx, (top+areaBot)/2, 11);
+    const ox0 = fixLeft ? divX : FX, ox1 = fixLeft ? FX+FW : divX;
+    const oMid=(top+areaBot)/2, oMidX=(ox0+ox1)/2;
+    ln(ox0, top, oMidX, areaBot); ln(ox1, top, oMidX, areaBot); /* V קיפ */
+    if(it.openKind!=="kipp"){ /* דריי-קיפ = גם V לצד */
+      const apexX = it.handleSide==="left" ? ox0 : ox1;
+      const fromX = it.handleSide==="left" ? ox1 : ox0;
+      ln(fromX, top, apexX, oMid); ln(fromX, areaBot, apexX, oMid);
+    }
+    const rx = it.handleSide==="left" ? ox0+7 : ox1-19;
+    P.push('<text x="'+rx+'" y="'+(areaBot-9)+'" font-size="16" font-weight="700" fill="currentColor" stroke="none">ר</text>');
+  }
+  // כיוון פתיחה פנימה/החוצה — חץ מסולסל + פ/ח, בפינה השמאלית מתחת למסגרת
+  if(T.inOut){
+    const letter = it.inOut==="in" ? "פ" : "ח";
+    const ax=FX+2, ay=bot+20;
+    P.push('<path d="M '+ax+' '+ay+' q 7 -14 19 -11" fill="none" stroke-width="2"/>');
+    P.push('<polyline points="'+(ax+13)+','+(ay-15)+' '+(ax+19)+','+(ay-11)+' '+(ax+14)+','+(ay-6)+'" fill="none" stroke-width="2"/>');
+    P.push('<text x="'+(ax+24)+'" y="'+(ay+1)+'" font-size="15" font-weight="700" fill="currentColor" stroke="none">'+letter+'</text>');
   }
 
   // universal division grid (extra mullions) — cols x rows
@@ -1116,10 +1174,28 @@ function renderItemForm(){
         +'</div></div>';
     }
   }
-  if(T.hinge && T.hinge!=="kipp"){
+  if((T.hinge && T.hinge!=="kipp") || T.door || T.sideFix){
     cond += '<div class="field"><label>צד ידית</label><div class="seg">'
       +segBtn(draft.handleSide==="right","ימין","App.f('handleSide','right')")
       +segBtn(draft.handleSide==="left","שמאל","App.f('handleSide','left')")
+      +'</div></div>';
+  }
+  if(T.inOut){
+    cond += '<div class="field"><label>כיוון פתיחת הדלת (מסומן במקרא)</label><div class="seg">'
+      +segBtn(draft.inOut!=="in","החוצה (ח)","App.f('inOut','out')")
+      +segBtn(draft.inOut==="in","פנימה (פ)","App.f('inOut','in')")
+      +'</div></div>';
+  }
+  if(T.openSel){
+    cond += '<div class="field"><label>סוג הפתיחה</label><div class="seg">'
+      +segBtn(draft.openKind!=="kipp","דריי-קיפ (שני V)","App.f('openKind','dreikipp')")
+      +segBtn(draft.openKind==="kipp","קיפ (V אחד)","App.f('openKind','kipp')")
+      +'</div></div>';
+  }
+  if(T.sideFix){
+    cond += '<div class="field"><label>צד הקבוע</label><div class="seg">'
+      +segBtn(draft.fixSide!=="right","שמאל","App.f('fixSide','left')")
+      +segBtn(draft.fixSide==="right","ימין","App.f('fixSide','right')")
       +'</div></div>';
   }
   if(T.rail){
@@ -2549,7 +2625,7 @@ const App = {
     draft[k]=v;
     persistDraft();
     if(k==="type"||k==="op"||k==="mesh"||k==="profile"||k==="photo"||k==="box") renderItemForm();
-    if(k==="unit"||k==="measureType"||k==="openDir"||k==="handleSide"||k==="elecSide"||k==="ropeSide"||k==="railH") renderItemForm();
+    if(k==="unit"||k==="measureType"||k==="openDir"||k==="handleSide"||k==="elecSide"||k==="ropeSide"||k==="railH"||k==="inOut"||k==="openKind"||k==="fixSide") renderItemForm();
     renderPreview();
   },
   step(key,delta,min,max){
@@ -2564,6 +2640,9 @@ const App = {
     draft.op = t.defOp || draft.op;
     draft.mesh = !!t.mesh;
     draft.openDir = t.sashes===3 ? "std" : "center";
+    draft.inOut = draft.inOut||"out";
+    draft.openKind = draft.openKind||"dreikipp";
+    draft.fixSide = draft.fixSide||"left";
     draft.hal = halDefaults(t);
     typeOpen=false; persistDraft(); renderItemForm(); renderPreview();
   },
