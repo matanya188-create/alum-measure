@@ -353,6 +353,7 @@ const TYPES = [
   {id:17, name:"הזזה 4 כנפיים מפגש + רשת",          sashes:4, slide:true, mesh:true},
   {id:18, name:"פתיחה + קבוע צד + קבוע תחתון",      sideFix:true, openSel:true, fixedBottom:true},
   {id:19, name:"דלת ציר + קבוע צד",                 door:true, doorFix:true, inOut:true},
+  {id:20, name:"קיפ רגיל",                          hinge:"kipp", inOut:true, inOutTop:true},
 ];
 /* ברירת מחדל הלבשות לפי סוג: הכל דלוק, חוץ מתריסים/גלילה (בלי בכלל) וויטרינה (בלי למטה — מסילה) */
 function halDefaults(t){
@@ -690,13 +691,19 @@ function sketchSVG(it, w){
     const rx = it.handleSide==="left" ? ox0+7 : ox1-19;
     P.push('<text x="'+rx+'" y="'+(areaBot-9)+'" font-size="16" font-weight="700" fill="currentColor" stroke="none">ר</text>');
   }
-  // כיוון פתיחה פנימה/החוצה — חץ מסולסל + פ/ח, בפינה השמאלית מתחת למסגרת
+  // כיוון פתיחה פנימה/החוצה — פ/ח
   if(T.inOut){
     const letter = it.inOut==="in" ? "פ" : "ח";
-    const ax=FX+2, ay=bot+20;
-    P.push('<path d="M '+ax+' '+ay+' q 7 -14 19 -11" fill="none" stroke-width="2"/>');
-    P.push('<polyline points="'+(ax+13)+','+(ay-15)+' '+(ax+19)+','+(ay-11)+' '+(ax+14)+','+(ay-6)+'" fill="none" stroke-width="2"/>');
-    P.push('<text x="'+(ax+24)+'" y="'+(ay+1)+'" font-size="15" font-weight="700" fill="currentColor" stroke="none">'+letter+'</text>');
+    if(T.inOutTop){
+      /* קיפ: האות באמצע העליון, בתוך המסגרת (כמו בסקיצה) */
+      P.push('<text x="'+(FX+FW/2)+'" y="'+(top+22)+'" text-anchor="middle" font-size="17" font-weight="700" fill="currentColor" stroke="none">'+letter+'</text>');
+    } else {
+      /* דלתות: חץ מסולסל + האות בפינה השמאלית מתחת למסגרת */
+      const ax=FX+2, ay=bot+20;
+      P.push('<path d="M '+ax+' '+ay+' q 7 -14 19 -11" fill="none" stroke-width="2"/>');
+      P.push('<polyline points="'+(ax+13)+','+(ay-15)+' '+(ax+19)+','+(ay-11)+' '+(ax+14)+','+(ay-6)+'" fill="none" stroke-width="2"/>');
+      P.push('<text x="'+(ax+24)+'" y="'+(ay+1)+'" font-size="15" font-weight="700" fill="currentColor" stroke="none">'+letter+'</text>');
+    }
   }
 
   // universal division grid (extra mullions) — cols x rows
@@ -1200,7 +1207,7 @@ function renderItemForm(){
       +'</div></div>';
   }
   if(T.inOut){
-    cond += '<div class="field"><label>כיוון פתיחת הדלת (מסומן במקרא)</label><div class="seg">'
+    cond += '<div class="field"><label>כיוון פתיחה — פנימה/החוצה (מסומן בשרטוט)</label><div class="seg">'
       +segBtn(draft.inOut!=="in","החוצה (ח)","App.f('inOut','out')")
       +segBtn(draft.inOut==="in","פנימה (פ)","App.f('inOut','in')")
       +'</div></div>';
