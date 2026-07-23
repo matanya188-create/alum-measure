@@ -358,7 +358,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 65; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 66; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -2967,8 +2967,13 @@ function showPaywall(){
   document.body.style.overflow="hidden";
 }
 
+/* מצב בדיקה מוגן: הכתובת ...?paywall=test מציגה את המסך רק למי שמוסיף אותה,
+   ומאפסת רישיון קודם כך שהבדיקה תמיד טרייה — בלי להשפיע על שאר הלקוחות. */
+const payTestMode = /[?&]paywall=test/.test(location.search);
+if(payTestMode){ try{ localStorage.removeItem(LICENSE_KEY); }catch(e){} }
+
 render();
-if(PAYWALL.on && !paywallLicensed()) showPaywall();
+if((PAYWALL.on || payTestMode) && !paywallLicensed()) showPaywall();
 </script>
 
 <script>

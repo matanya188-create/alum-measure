@@ -2952,6 +2952,11 @@ function showPaywall(){
   document.body.style.overflow="hidden";
 }
 
+/* מצב בדיקה מוגן: הכתובת ...?paywall=test מציגה את המסך רק למי שמוסיף אותה,
+   ומאפסת רישיון קודם כך שהבדיקה תמיד טרייה — בלי להשפיע על שאר הלקוחות. */
+const payTestMode = /[?&]paywall=test/.test(location.search);
+if(payTestMode){ try{ localStorage.removeItem(LICENSE_KEY); }catch(e){} }
+
 render();
-if(PAYWALL.on && !paywallLicensed()) showPaywall();
+if((PAYWALL.on || payTestMode) && !paywallLicensed()) showPaywall();
 </script>
