@@ -358,7 +358,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 67; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 68; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -367,7 +367,7 @@ const APP_VERSION = 67; /* מוחלף אוטומטית בבנייה (build.py) *
 const PAYWALL = {
   on: true,
   price: "10",
-  paypal: "https://www.paypal.com/invoice/p/#QXMABKCFL648H8VC"  /* חשבונית לבדיקה — לתשלום אחד */
+  paypal: "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=LL6G8NVNMA9MW"  /* כפתור קנייה ILS — תשלומים חוזרים ללא הגבלה */
 };
 const LICENSE_KEY = "alum_license_v1";
 /* SHA-256 של קודים תקפים. הקודים עצמם אצל מתניה בלבד (license-codes.txt) —
