@@ -1,5 +1,20 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>פנקס מדידות אלומיניום</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="description" content="מדידת חלונות, דלתות וויטרינות בשטח — וייצוא קובץ מסודר ליצרן">
+<meta name="theme-color" content="#2c4e9e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script src="three.min.js"></script>
+</head>
+<body><script>try{localStorage.removeItem("alum_license_v1")}catch(e){}</script>
 <style>
 :root{
   --paper:#f2f4f8; --surface:#ffffff; --ink:#101828; --ink2:#667085;
@@ -343,14 +358,14 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 0; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 65; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
    כשמתניה מוכן: להפוך ל-true, למלא לינק PayPal, ולפרסם.
    זו הדגמת התהליך בלבד. המערכת האמיתית (שרת + סליקת GROW) — פרויקט נפרד. */
 const PAYWALL = {
-  on: false,
+  on: true,
   price: "10",
   paypal: "https://paypal.me/REPLACE_ME"  /* מתניה: החלף בלינק PayPal.me שלך */
 };
@@ -2955,3 +2970,11 @@ function showPaywall(){
 render();
 if(PAYWALL.on && !paywallLicensed()) showPaywall();
 </script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js"); });
+}
+</script>
+</body>
+</html>
