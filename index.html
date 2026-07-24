@@ -358,7 +358,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 69; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 70; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -2961,7 +2961,7 @@ function showPaywall(){
     +'<input id="payCode" class="pw-input" placeholder="קוד הרישיון שקיבלת" autocomplete="off" autocapitalize="characters">'
     +'<button class="pw-btn" onclick="paywallTry()">הפעל גישה</button>'
     +'<div id="payErr" class="pw-err"></div>'
-    +'<div class="pw-note">שילמת ולא קיבלת קוד? שלח הודעה ותקבל קוד להזנה.</div>'
+    +'<div class="pw-note">הקוד יישלח אוטומטית, תוך דקות, למייל שאיתו תשלם ב-PayPal — הזן אותו למעלה. לא הגיע? בדוק בתיבת הספאם.</div>'
     +'</div>';
   document.body.appendChild(ov);
   document.body.style.overflow="hidden";
