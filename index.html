@@ -352,6 +352,14 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .prod-status{border-inline-start:4px solid var(--ok)}
 .prod-warn{color:var(--warn);font-weight:700;font-size:.85rem;margin-top:4px}
 .prod-warn a{color:inherit}
+.rv-card{border-inline-start:4px solid var(--line)}
+.rv-pending{border-inline-start-color:var(--warn)}
+.rv-returned{border-inline-start-color:var(--danger)}
+.rv-ok{border-inline-start-color:var(--ok)}
+.rv-note{margin-top:8px;padding:8px 12px;border-radius:10px;background:var(--warn-bg);color:var(--ink);white-space:pre-line}
+.rv-row{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.rv-row:last-child{border-bottom:none}
+.rv-card .btn{margin-inline-end:6px}
 /* ===== מסך תשלום (paywall) ===== */
 .paywall{position:fixed;inset:0;z-index:900;background:linear-gradient(160deg,#20315e,#2c4e9e);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
 .pw-card{background:var(--surface);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.4);width:100%;max-width:380px;padding:26px 22px;text-align:center}
@@ -374,7 +382,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 72; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 73; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -1025,6 +1033,7 @@ function viewHome(){
   return ''
   +'<div class="topbar"><div><h1>אלום אלבז</h1><div class="sub">פנקס מדידות והצעות מחיר</div></div>'+cloudPillHTML()+'</div>'
   +cloudHomeCard()
+  +cloudQueueCard()
   +(showInstall
     ? '<div class="card banner"><div class="rowline">'
       +'<div class="grow"><b>📲 התקנת האפליקציה בטלפון</b><div class="muted">אייקון במסך הבית, מסך מלא, עובד גם בלי אינטרנט</div></div>'
@@ -1167,7 +1176,8 @@ function viewProject(p){
   return ''
   +'<div class="topbar"><button class="backbtn" onclick="nav(\''+back+'\')">→</button>'
   +'<div class="grow"><h1>'+esc(pname(p))+'</h1><div class="sub">'+(isQuote?"מדידת הצעה · ":"")+'<span class="num">'+p.items.length+'</span> פריטים'+(Cloud.ready?' · <span class="cloud-pill-txt">'+esc(cloudPillText())+'</span>':'')+'</div>'+cloudByline(cloudLatest(p))+'</div>'
-  +((isQuote && !canPrice())?'':actionBtn)+'</div>'
+  +((isQuote ? !canPrice() : !canExport())?'':actionBtn)+'</div>'
+  +cloudReviewCard(p)
   +(isQuote?'':cloudProdStatus(p))
 
   +'<div class="card"><details'+(p.items.length?'':' open')+'><summary style="font-weight:700;cursor:pointer">פרטי הפרויקט (לשימוש פנימי)</summary>'
@@ -1182,7 +1192,7 @@ function viewProject(p){
   +'<div class="field"><label>שם המודד</label><input value="'+esc(p.measurer)+'" oninput="App.pf(\''+p.id+'\',\'measurer\',this.value)"></div>'
   +'</div>'
   +'<div class="field"><label>הערות פרויקט</label><textarea rows="2" oninput="App.pf(\''+p.id+'\',\'notes\',this.value)">'+esc(p.notes)+'</textarea></div>'
-  +(isQuote?'<button class="btn small" style="margin-bottom:8px" onclick="App.convertToProduction(\''+p.id+'\')">📐 העתק לפרויקט ייצור</button><br>':'')
+  +(isQuote&&canExport()?'<button class="btn small" style="margin-bottom:8px" onclick="App.convertToProduction(\''+p.id+'\')">📐 העתק לפרויקט ייצור</button><br>':'')
   +(canDelProject()?'<button class="btn small danger" onclick="App.delProject(\''+p.id+'\')">מחק '+(isQuote?"מדידת הצעה":"פרויקט")+'</button>':'')
   +'</div></details></div>'
 
@@ -3048,7 +3058,7 @@ function cloudLocalChanged(){ if(Cloud.ready) cloudPush(); }
 
 /* ---- המרה בין DB למסמכי ענן ---- */
 function cloudOmit(o, skip){ const r={}; for(const k in o){ if(skip.indexOf(k)<0) r[k]=o[k]; } return r; }
-function cloudSerProject(p){ return {d:JSON.stringify(cloudOmit(p, ["items","_m"].concat(PRICE_P)))}; }
+function cloudSerProject(p){ return {d:JSON.stringify(cloudOmit(p, ["items","_m","_rv"].concat(PRICE_P)))}; }
 function cloudSerItem(it,pid,pos){ return {d:JSON.stringify(cloudOmit(it, ["photo","_m","priceOverride"])), photo:it.photo||null, pid:pid, pos:pos}; }
 function cloudSerPrices(p){
   const o={}; PRICE_P.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; });
@@ -3251,16 +3261,27 @@ function cloudSnap(kind, s){
   const changes=s.docChanges();
   if(Cloud.got[kind] && !changes.length){ cloudPill(); return; }
   if(Cloud.ready) cloudPush();
-  let ext=false, who="";
+  let ext=false, who="", rvMsg="";
   changes.forEach(ch=>{
     const id=ch.doc.id, key=kind+":"+id;
     if(ch.type==="removed"){ map.delete(id); if(Cloud.ready) Cloud.last.delete(key); ext=true; return; }
-    const d=ch.doc.data({serverTimestamps:"estimate"});
+    const d=ch.doc.data({serverTimestamps:"estimate"}), pv=map.get(id);
+    if(kind==="p" && Cloud.ready){
+      if(d.rvState && (!pv || pv.rvState!==d.rvState) && d.rvBy && d.rvBy!==Cloud.user.email){
+        const nm=d.rvByName||d.rvBy, t={pending:" שלח לאישור: ", approved:" אישר: ", returned:" החזיר לתיקון: "}[d.rvState];
+        if(t) rvMsg=nm+t+pname(cloudObj(d.d)||{});
+      }
+    }
     map.set(id, d);
     if(Cloud.ready) Cloud.last.set(key, cloudLastOf(key,d));
-    if(!ch.doc.metadata.hasPendingWrites){ ext=true; if(d.ub && d.ub!==Cloud.user.email) who=d.un||d.ub; }
+    /* "עודכן ע״י" רק כשהתוכן עצמו השתנה — לא על שינוי סטטוס או חותמת זמן בלבד */
+    if(!ch.doc.metadata.hasPendingWrites){
+      ext=true;
+      if(d.ub && d.ub!==Cloud.user.email && (!pv || JSON.stringify(cloudLastOf(key,pv))!==JSON.stringify(cloudLastOf(key,d)))) who=d.un||d.ub;
+    }
   });
   cloudGot(kind, ext, who);
+  if(rvMsg) cloudToast(rvMsg);
 }
 function cloudSnapDoc(kind, s){
   const key = kind==="s" ? "s:main" : "s:pricing";
@@ -3384,7 +3405,7 @@ function cloudRebuild(){
   Cloud.projects.forEach((d,id)=>{
     if(d.deleted || !cloudIdOk(id)) return;
     const p=cloudObj(d.d); if(!p) return;
-    p.id=id; p.items=[]; if(!p.kind) p.kind="production"; p._m=cloudMeta(d);
+    p.id=id; p.items=[]; if(!p.kind) p.kind="production"; p._m=cloudMeta(d); p._rv=cloudRv(d);
     if(boss){
       const r=Cloud.prices.get(id);
       if(r && r.d){ try{ const o=cloudObj(r.d)||{}; PRICE_P.forEach(k=>{ if(o[k]!==undefined) p[k]=o[k]; }); if(o.items) ovs.set(id,o.items); }catch(e){} }
@@ -3442,18 +3463,120 @@ function cloudSendProd(pid){
   const p=proj(pid); if(!p || !canBoss()) return;
   const miss=p.items.filter(it=>missingList(it).length).length;
   if(!p.items.length || miss){ uiAlert(miss?"חסרים נתונים ב-"+miss+" פריטים. משלימים אותם, ואז אפשר לשלוח ליצרן.":"אין פריטים בפרויקט.","אי אפשר לשלוח"); return; }
-  const prev=Cloud.production.get(pid);
-  uiConfirm(prev ? "לשלוח ליצרן את הגרסה המעודכנת? היצרן יראה אותה במקום הקודמת."
+  const prev=Cloud.production.get(pid), pending=p._rv && p._rv.state==="pending";
+  uiConfirm(pending ? "לאשר את המדידות של "+(p._rv.byName||"העובד")+" ולשלוח ליצרן? מהרגע הזה היצרן יראה את קובץ הייצור — בלי מחירים, בלי פרטי לקוח ובלי תמונות."
+          : prev ? "לשלוח ליצרן את הגרסה המעודכנת? היצרן יראה אותה במקום הקודמת."
                  : "לשלוח את הפרויקט ליצרן? מהרגע הזה הוא יראה את קובץ הייצור — בלי מחירים, בלי פרטי לקוח ובלי תמונות.",
-            {title:"שליחה לייצור", ok:prev?"שלח עדכון":"שלח ליצרן"}).then(ok=>{
+            {title:pending?"אישור ושליחה לייצור":"שליחה לייצור", ok:pending?"אשר ושלח ליצרן":prev?"שלח עדכון":"שלח ליצרן"}).then(ok=>{
     if(!ok) return;
     const M=Cloud.m, u=Cloud.user, ver=prev?(Number(prev.ver)||1)+1:1, snap=prodSnapshot(p);
     M.setDoc(M.doc(cloudCol("production"), pid), {d:snap, sentAt:M.serverTimestamp(), sentBy:u.email, sentByName:u.name, ver:ver})
       .catch(e=>uiAlert(cloudErrText(e),"השליחה נכשלה"));
     Cloud.production.set(pid, {d:snap, sentAt:Date.now(), sentBy:u.email, sentByName:u.name, ver:ver});
-    cloudLogOnce(prev?"שלח ליצרן גרסה מעודכנת ("+ver+")":"שלח ליצרן", pname(p), pid);
+    if(p._rv && p._rv.state!=="approved") cloudReview(pid, "approved", "");
+    cloudLogOnce(pending?"אישר ושלח ליצרן":prev?"שלח ליצרן גרסה מעודכנת ("+ver+")":"שלח ליצרן", pname(p), pid);
     cloudRender(); cloudToast(prev?"העדכון נשלח ליצרן ✓":"נשלח ליצרן ✓");
   });
+}
+
+/* ---- תהליך אישור: עובד ← מנהל ← יצרן ----
+   rvState: pending (נשלח לאישור) · returned (הוחזר לתיקון, עם הערה) · approved (אושר).
+   עובד יכול רק "לשלוח לאישור"; אישור והחזרה — רק מנהל/מפתח (נאכף בשרת). */
+const cloudRv = d => (typeof d.rvState==="string" && ["draft","pending","approved","returned"].indexOf(d.rvState)>=0)
+  ? {state:d.rvState, by:String(d.rvBy||""), byName:String(d.rvByName||""), at:cloudMs(d.rvAt), note:String(d.rvNote||"")} : null;
+/* קובץ ליצוא / העתקה לייצור — רק מנהל ומפתח: הם היחידים מול היצרן */
+function canExport(){ return !cloudActiveHere() || cloudIsBoss(); }
+function cloudReview(pid, state, note){
+  const M=Cloud.m, u=Cloud.user, ts=M.serverTimestamp(), now=Date.now();
+  const data={rvState:state, rvBy:u.email, rvByName:u.name, rvAt:ts, rvNote:String(note||"").slice(0,500), ub:u.email, un:u.name, ua:ts, deleted:false};
+  M.setDoc(cloudRef("p:"+pid), data, {merge:true}).catch(e=>uiAlert(cloudErrText(e),"הפעולה נכשלה"));
+  const prev=Cloud.projects.get(pid)||{};
+  Cloud.projects.set(pid, Object.assign({}, prev, data, {rvAt:now, ua:now}));
+  cloudRebuild(); cloudRender();
+}
+function cloudSubmitReview(pid){
+  const p=proj(pid); if(!p || !Cloud.ready) return;
+  const miss=p.items.filter(it=>missingList(it).length).length;
+  if(!p.items.length){ uiAlert("אין פריטים במדידה.","שליחה לאישור"); return; }
+  if(miss){ uiAlert("חסרים נתונים ב-"+miss+" פריטים. משלימים אותם, ואז שולחים לאישור.","שליחה לאישור"); return; }
+  const q=p.kind==="quote";
+  uiConfirm("לשלוח את "+(q?"מדידת ההצעה":"הפרויקט")+" לאישור מנהל? המנהל יקבל הודעה, יבדוק"+(q?" ויאשר.":", ויאשר וישלח לייצור."),
+            {title:"שליחה לאישור", ok:"שלח לאישור"}).then(ok=>{
+    if(!ok) return;
+    cloudReview(pid, "pending", "");
+    cloudLogOnce("שלח לאישור מנהל", pname(p), pid);
+    cloudToast("נשלח לאישור ✓");
+  });
+}
+function cloudApprove(pid){
+  const p=proj(pid); if(!p || !canBoss()) return;
+  if(p.kind!=="quote"){ cloudSendProd(pid); return; }      /* פרויקט ייצור: אישור = שליחה ליצרן */
+  uiConfirm("לאשר את מדידת ההצעה?",{title:"אישור", ok:"אשר"}).then(ok=>{
+    if(!ok) return;
+    cloudReview(pid, "approved", "");
+    cloudLogOnce("אישר את מדידת ההצעה", pname(p), pid);
+    cloudToast("אושר ✓");
+  });
+}
+function cloudReturn(pid){
+  const p=proj(pid); if(!p || !canBoss()) return;
+  uiPrompt({title:"החזרה לתיקון", msg:"מה צריך לתקן? ההערה תוצג לעובד.", placeholder:"למשל: חסרה מידת הקבוע בחדר שינה", ok:"החזר לעובד"}).then(note=>{
+    if(note===null) return;
+    const n=String(note).trim();
+    cloudReview(pid, "returned", n);
+    cloudLogOnce("החזיר לתיקון"+(n?": "+n.slice(0,120):""), pname(p), pid);
+    cloudToast("הוחזר לתיקון ✓");
+  });
+}
+/* תיבת שיח עם שדה טקסט (כמו uiDialog) */
+function uiPrompt(o){
+  return new Promise(res=>{
+    const ov=document.createElement("div"); ov.className="modal-overlay";
+    ov.innerHTML='<div class="modal" role="dialog" aria-modal="true" dir="rtl">'+(o.title?'<h3>'+esc(o.title)+'</h3>':'')
+      +'<div class="msg">'+esc(o.msg||"")+'</div>'
+      +'<textarea rows="3" maxlength="500" style="width:100%;margin:-8px 0 16px" placeholder="'+esc(o.placeholder||"")+'"></textarea>'
+      +'<div class="btns"><button class="btn primary" data-m="ok">'+esc(o.ok||"אישור")+'</button><button class="btn" data-m="cancel">ביטול</button></div></div>';
+    document.body.appendChild(ov);
+    const ta=ov.querySelector("textarea");
+    const close=v=>{ ov.remove(); res(v); };
+    ov.querySelector('[data-m="ok"]').onclick=()=>close(ta.value);
+    ov.querySelector('[data-m="cancel"]').onclick=()=>close(null);
+    ov.addEventListener("click",e=>{ if(e.target===ov) close(null); });
+    ta.focus();
+  });
+}
+/* כרטיס הסטטוס בדף הפרויקט */
+function cloudReviewCard(p){
+  if(!Cloud.ready || Cloud.role==="maker") return "";
+  const rv=p._rv, boss=cloudIsBoss(), q=p.kind==="quote";
+  const by=rv?esc(rv.byName||rv.by||""):"", when=rv?esc(cloudRel(rv.at)):"";
+  const btn=(lbl,fn,cls)=>'<button class="btn small '+(cls||"")+'" onclick="'+fn+'(\''+esc(p.id)+'\')">'+lbl+'</button>';
+  const note=rv&&rv.note?'<div class="rv-note">'+esc(rv.note)+'</div>':'';
+  if(!boss){
+    if(!rv || rv.state==="draft") return p.items.length
+      ? '<div class="card rv-card"><div class="rowline wrap"><div class="grow">כשהמדידה מוכנה — שולחים אותה לאישור מנהל.</div>'+btn("📤 שלח לאישור מנהל","cloudSubmitReview","primary")+'</div></div>' : "";
+    if(rv.state==="pending") return '<div class="card rv-card rv-pending"><b>⏳ נשלח לאישור</b> · '+when+' · ממתין למנהל</div>';
+    if(rv.state==="returned") return '<div class="card rv-card rv-returned"><b>↩ הוחזר לתיקון</b> ע״י '+by+' · '+when+note
+      +'<div class="rowline wrap" style="margin-top:10px">'+btn("📤 תיקנתי — שלח שוב לאישור","cloudSubmitReview","primary")+'</div></div>';
+    return '<div class="card rv-card rv-ok"><b>✓ אושר</b> ע״י '+by+' · '+when+'</div>';
+  }
+  if(!rv) return "";
+  if(rv.state==="pending") return '<div class="card rv-card rv-pending"><b>⏳ '+by+' שלח לאישור</b> · '+when
+    +'<div class="rowline wrap" style="margin-top:10px">'+btn(q?"✓ אשר":"✓ אשר ושלח ליצרן","cloudApprove","primary")+btn("↩ החזר לתיקון","cloudReturn")+'</div></div>';
+  if(rv.state==="returned") return '<div class="card rv-card rv-returned"><b>↩ הוחזר לתיקון</b> ע״י '+by+' · '+when+note+'</div>';
+  if(rv.state==="approved") return '<div class="card rv-card rv-ok"><b>✓ אושר</b> ע״י '+by+' · '+when+'</div>';
+  return "";
+}
+/* מסך הבית: למנהל — ממתינים לאישור; לעובד — מה שהוחזר לתיקון */
+function cloudQueueCard(){
+  if(!Cloud.ready || Cloud.role==="maker") return "";
+  const boss=cloudIsBoss(), want=boss?"pending":"returned";
+  const rows=DB.projects.filter(p=>p._rv && p._rv.state===want).sort((a,b)=>b._rv.at-a._rv.at);
+  if(!rows.length) return "";
+  return '<div class="card rv-card '+(boss?'rv-pending':'rv-returned')+'"><b>'+(boss?"📥 ממתינים לאישור":"↩ הוחזרו לתיקון")+' (<span class="num">'+rows.length+'</span>)</b>'
+    +rows.slice(0,8).map(p=>'<div class="rv-row" onclick="nav(\'/p/'+esc(p.id)+'\')"><span class="grow">'+(p.kind==="quote"?"💰 ":"🏠 ")+esc(pname(p))+'</span>'
+      +'<span class="muted">'+esc(p._rv.byName||"")+' · '+esc(cloudRel(p._rv.at))+'</span></div>').join("")
+    +'</div>';
 }
 function cloudUnsendProd(pid){
   const p=proj(pid); if(!p || !canBoss()) return;
@@ -3678,6 +3801,7 @@ function cloudGate(parts){
   if(r==="prod"){ nav("/"); return true; }
   if(!canPrice() && (r==="pricing" || (r==="p" && (parts[2]==="pricing" || parts[2]==="quote-export")))){ nav("/"); return true; }
   if((r==="trash" || r==="team") && Cloud.ready && !canBoss()){ nav("/settings"); return true; }
+  if(r==="p" && parts[2]==="export" && !canExport()){ nav("/p/"+parts[1]); return true; }
   return false;
 }
 
@@ -3732,7 +3856,8 @@ function cloudLatest(p){
 function cloudCardBy(p){
   if(!Cloud.ready) return "";
   const m=cloudLatest(p), st=p.kind!=="quote" && prodState(p);
-  return ((m && m.un) ? ' · ✎ '+esc(m.un) : "") + (st ? ' · 🏭'+(st.changed?'⚠':'') : "");
+  const rv=p._rv, rvTag = rv ? ({pending:' · ⏳ לאישור', returned:' · ↩ לתיקון', approved:' · ✓ אושר'}[rv.state]||"") : "";
+  return ((m && m.un) ? ' · ✎ '+esc(m.un) : "") + rvTag + (st ? ' · 🏭'+(st.changed?'⚠':'') : "");
 }
 function cloudErrText(e){
   const c=(e&&e.code)||"";
