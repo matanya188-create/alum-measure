@@ -1,5 +1,5 @@
 /* Service Worker — עבודה אופליין מלאה. להעלאת גרסה חדשה: להעלות את VERSION. */
-const VERSION = "v74";
+const VERSION = "v75";
 const CACHE = "alum-measure-" + VERSION;
 const ASSETS = [
   "./",
