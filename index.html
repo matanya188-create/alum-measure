@@ -12,6 +12,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script src="i18n.js"></script>
 <script src="three.min.js"></script>
 </head>
 <body>
@@ -54,7 +55,7 @@ body{
   font-family:"Segoe UI","Heebo","Assistant",Tahoma,Arial,sans-serif;
   font-size:16px; line-height:1.45;
 }
-#app{max-width:760px;margin:0 auto;padding:0 14px 96px}
+#app{max-width:760px;margin:0 auto;padding:env(safe-area-inset-top,0px) max(14px,env(safe-area-inset-right,0px)) calc(96px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
 h1,h2,h3{text-wrap:balance;margin:0}
 button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 input,select,textarea{
@@ -67,7 +68,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .num{font-variant-numeric:tabular-nums}
 
 .topbar{
-  position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;gap:12px;
   background:var(--paper);padding:16px 0 12px;margin-bottom:14px;
 }
 .topbar h1{font-size:1.3rem;font-weight:800;letter-spacing:-.01em}
@@ -88,7 +89,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .btn.small{min-height:38px;padding:7px 14px;font-size:.85rem}
 .btn.wide{width:100%}
 .fab{
-  position:fixed;bottom:18px;inset-inline-start:50%;transform:translateX(50%);
+  position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));inset-inline-start:50%;transform:translateX(50%);
   z-index:30;box-shadow:0 12px 30px rgba(18,178,171,.45);min-width:min(420px,calc(100vw - 40px));
 }
 
@@ -182,13 +183,13 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 
 .modal-overlay{
   position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
-  padding:24px;background:rgba(12,17,26,.5);backdrop-filter:blur(3px);
+  padding:max(24px,env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(24px,env(safe-area-inset-left,0px));background:rgba(12,17,26,.5);backdrop-filter:blur(3px);
   animation:mfade .16s ease-out;
 }
 .modal{
   background:var(--surface);color:var(--ink);border:none;
   border-radius:24px;box-shadow:0 24px 70px rgba(0,0,0,.4);
-  max-width:380px;width:100%;padding:22px;
+  max-width:380px;width:100%;padding:22px;max-height:100%;overflow-y:auto;overscroll-behavior:contain;
   animation:mpop .2s cubic-bezier(.2,1.2,.4,1);
 }
 .modal h3{font-size:1.08rem;margin-bottom:8px}
@@ -207,7 +208,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
   border-radius:var(--r);margin-bottom:14px;
 }
 
-.exp-tools{position:sticky;top:0;z-index:25;background:var(--paper);padding:12px 0;margin-bottom:14px}
+.exp-tools{position:sticky;top:env(safe-area-inset-top,0px);z-index:25;background:var(--paper);padding:12px 0;margin-bottom:14px}
 
 /* ===== Export sheets ===== */
 .sheet{
@@ -216,7 +217,8 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
   direction:rtl;
 }
 .sheet .sk{color:#233f80}
-.sheet-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;min-height:10mm}
+/* בס״ד תמיד בעברית ובפינה הימנית, בכל שפה */
+.sheet-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;min-height:10mm;direction:rtl}
 .sheet-top .bsd{font-size:.78rem;font-weight:700;color:#333;line-height:1}
 .sheet-logo{height:13mm;max-width:36mm;object-fit:contain;border-radius:2px}
 .sheet-head{border-bottom:2.5px solid #233f80;padding-bottom:8px;margin-bottom:10px}
@@ -224,7 +226,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .sheet-head .meta{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:.82rem;color:#444;margin-top:4px}
 .sheet-grid{display:grid;gap:6px}
 .cell{
-  border:1.5px solid #8a93a5;border-radius:6px;padding:6px;display:flex;flex-direction:column;
+  min-width:0;border:1.5px solid #8a93a5;border-radius:6px;padding:6px;display:flex;flex-direction:column;
   break-inside:avoid;
 }
 .cell .cellhead{display:flex;justify-content:space-between;align-items:baseline;gap:6px;border-bottom:1px solid #d5d9e2;padding-bottom:2px;margin-bottom:2px}
@@ -243,19 +245,20 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .cell img{max-width:100%;max-height:26mm;object-fit:contain;border-radius:4px;margin-top:3px}
 .sheet-foot{text-align:center;font-size:.72rem;color:#777;margin-top:8px}
 
-.exp-tools{position:sticky;top:0;z-index:25;background:var(--paper);padding:12px 0;border-bottom:1px solid var(--line2);margin-bottom:14px}
+.exp-tools{position:sticky;top:env(safe-area-inset-top,0px);z-index:25;background:var(--paper);padding:12px 0;border-bottom:1px solid var(--line2);margin-bottom:14px}
 
 .menu-card{display:flex;align-items:center;gap:16px;padding:20px 18px;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:14px;cursor:pointer}
 .menu-card .mc-ic{flex:none;width:58px;height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:1.7rem}
 .menu-card .mc-t{font-weight:800;font-size:1.15rem}
 .menu-card .mc-s{color:var(--ink2);font-size:.85rem;margin-top:2px}
 .menu-card .mc-arrow{font-size:1.4rem;color:var(--ink2)}
-.fab-left{left:18px;right:auto;inset-inline-start:auto;transform:none;min-width:0;width:auto;padding:12px 20px}
+.fab-left{left:max(18px,env(safe-area-inset-left,0px));right:auto;inset-inline-start:auto;transform:none;min-width:0;width:auto;padding:12px 20px}
 .searchbar{position:relative;margin-bottom:14px}
 .searchbar input{padding-inline-start:42px}
 .searchbar .si{position:absolute;inset-inline-start:14px;top:50%;transform:translateY(-50%);color:var(--ink2);font-size:1.05rem;pointer-events:none}
 .price-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .price-line .pl-price{width:120px;flex:none}
+.price-line .pl-total{flex:1 0 auto;text-align:end;font-weight:800}
 .totals{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
 .totals .tr{display:flex;justify-content:space-between;padding:5px 0;font-variant-numeric:tabular-nums}
 .totals .tr.grand{border-top:2px solid var(--line);margin-top:6px;padding-top:12px;font-weight:800;font-size:1.15rem}
@@ -267,6 +270,9 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .qtable .qdesc{font-weight:700;color:#161a20}
 .qtable .qsub{font-size:.72rem;color:#555}
 .qtable tr{break-inside:avoid}
+/* בטלפון צר הטבלה נגללת בתוך עצמה, לא כל העמוד */
+.qwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+@media (max-width:480px){ .sheet{padding:5mm} }
 .qtot{margin-top:10px;margin-inline-start:auto;width:min(300px,70%)}
 .qtot .qr{display:flex;justify-content:space-between;padding:4px 2px;font-size:.9rem;font-variant-numeric:tabular-nums}
 .qtot .qr.grand{border-top:2px solid #233f80;margin-top:4px;padding-top:8px;font-weight:800;font-size:1.1rem;color:#161a20}
@@ -282,7 +288,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .sim-ovl{position:absolute;top:10px;left:10px;display:flex;gap:8px}
 .ovlbtn{width:42px;height:42px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.92);font-size:1.15rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .simdim{display:flex;align-items:center;gap:10px;margin:8px 0}
-.simdim>span{width:48px;color:var(--ink2);font-size:.9rem}
+.simdim>span{min-width:48px;flex:none;color:var(--ink2);font-size:.9rem}
 .simdim input[type=range]{flex:1;accent-color:var(--acc)}
 .simdim .num{width:76px;text-align:center}
 .bigsws{display:flex;gap:10px;flex-wrap:wrap}
@@ -292,7 +298,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .bigsw span{font-size:.66rem;color:var(--ink2);text-align:center}
 .klil-tabs{display:flex;gap:8px;flex-wrap:wrap}
 .hview{position:fixed;inset:0;background:rgba(13,16,22,.74);z-index:400;display:flex;align-items:center;justify-content:center;padding:18px;animation:fadein .15s ease}
-.hview-card{background:#fff;border-radius:20px;padding:22px 20px 18px;max-width:min(92vw,540px);width:100%;position:relative;text-align:center;box-shadow:0 18px 60px rgba(0,0,0,.35)}
+.hview-card{background:#fff;border-radius:20px;padding:22px 20px 18px;max-width:min(92vw,540px);width:100%;max-height:100%;overflow-y:auto;position:relative;text-align:center;box-shadow:0 18px 60px rgba(0,0,0,.35)}
 .hview-card img{width:100%;max-height:58vh;object-fit:contain}
 .hview-name{font-weight:800;font-size:1.15rem;color:var(--ink);margin-top:10px}
 .hview-sub{font-size:.8rem;color:var(--ink2);margin-top:2px}
@@ -324,6 +330,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 
 @media print{
   body{background:#fff}
+  .qwrap{overflow:visible}
   #app{max-width:none;padding:0}
   .no-print{display:none !important}
   .sheet{border:none;box-shadow:none;border-radius:0;margin:0;max-width:none;width:auto;padding:0;page-break-after:always}
@@ -341,6 +348,11 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .cloud-toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:calc(100vw - 32px);background:#101828;color:#fff;padding:10px 18px;border-radius:99px;font-size:.85rem;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s}
 .cloud-toast.show{opacity:1}
 .rowline.wrap{flex-wrap:wrap}
+/* טקסט לצד כפתור: כשצר מדי (טלפון קטן / שפה עם מילים ארוכות) הכפתור יורד שורה */
+.rowline.wrap>.grow{min-width:min(160px,100%)}
+.exp-tools .rowline{flex-wrap:wrap}
+.exp-tools .rowline>.grow{flex-basis:150px}
+.exp-tools .rowline>.btn{margin-inline-start:auto}
 .byline{font-size:.75rem;color:var(--ink2);margin-top:3px;font-weight:400}
 .act-day{font-size:.78rem;font-weight:800;color:var(--ink2);margin:16px 4px 8px}
 .act-row{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow)}
@@ -360,6 +372,14 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .rv-row{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
 .rv-row:last-child{border-bottom:none}
 .rv-card .btn{margin-inline-end:6px}
+/* ===== שפות: צרפתית משמאל לימין, כפתור 🌐 תרגום ===== */
+html[dir="ltr"] .sheet, html[dir="ltr"] .qtable{direction:ltr}
+html[dir="ltr"] .qtable th, html[dir="ltr"] .qtable td{text-align:left}
+html[dir="ltr"] .fab{transform:translateX(-50%)}
+html[dir="ltr"] .fab-left{left:auto;right:max(18px,env(safe-area-inset-right,0px));transform:none}
+/* חיצי "חזרה" ו"כניסה" מתהפכים בשפה שנקראת משמאל לימין */
+html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev{transform:scaleX(-1)}
+.trbtn{font-size:.72rem;font-weight:700;color:var(--acc);text-decoration:none;white-space:nowrap}
 /* ===== מסך תשלום (paywall) ===== */
 .paywall{position:fixed;inset:0;z-index:900;background:linear-gradient(160deg,#20315e,#2c4e9e);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
 .pw-card{background:var(--surface);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.4);width:100%;max-width:380px;padding:26px 22px;text-align:center}
@@ -382,7 +402,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 73; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 74; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -949,7 +969,7 @@ function uiDialog(opts){
   return new Promise(res=>{
     const ov=document.createElement("div");
     ov.className="modal-overlay";
-    ov.innerHTML='<div class="modal" role="dialog" aria-modal="true" dir="rtl">'
+    ov.innerHTML='<div class="modal" role="dialog" aria-modal="true">'
       +(opts.title?'<h3>'+esc(opts.title)+'</h3>':'')
       +'<div class="msg">'+esc(opts.msg)+'</div>'
       +'<div class="btns">'
@@ -975,6 +995,148 @@ const isStandalone = () =>
   window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; render(); });
 window.addEventListener("appinstalled", () => { installEvt = null; render(); });
+
+/* ================= I18N — שפות: עברית (מקור) / צרפתית / ערבית =================
+   המקור של האפליקציה תמיד עברית. השכבה הזו מתרגמת את מה שמוצג על המסך ברגע שהוא מוצג —
+   טקסטים ומאפיינים (placeholder / title / alt) — לפי המילון שב-i18n.js:
+     I18N[lang][טקסט עברי מדויק] = תרגום     ·     I18N_RX = [[ביטוי, {fr, ar}], ...] לטקסטים עם מספרים/שמות.
+   אין תרגום של חלקי משפטים — כך הערה שמישהו הקליד לא משתבשת. מה שלא נמצא במילון נשאר כמו שהוא.
+   הנתונים נשמרים בעברית הקבועה או כקוד (סוג פריט, "עם רשת", מיקום מהרשימה, גוון + קוד קליל),
+   ולכן כל אחד רואה אותם בשפה שבחר. טקסט חופשי בשפה אחרת מקבל כפתור 🌐 שפותח את התרגום של גוגל. */
+const LANG_KEY = "alum_lang_v1";
+const LANGS = {he:"עברית", fr:"Français", ar:"العربية"};
+let LANG = (()=>{ try{ const l=localStorage.getItem(LANG_KEY); return LANGS[l] ? l : "he"; }catch(e){ return "he"; } })();
+const I18N_HEB = /[֐-׿]/;
+const I18N_SCRIPT = {he:/[א-ת]/, ar:/[ء-ي]/, fr:/[A-Za-zÀ-ÿ]/};
+const I18N_ATTRS = ["placeholder","title","alt","aria-label"];
+let I18N_REV = null;   /* תרגום → מקור עברי, לשפה הנוכחית (לשמירה בעברית הקבועה) */
+
+function i18nDict(){ const D=(window.I18N||{})[LANG]; return D||{}; }
+function i18nHas(s){ return LANG!=="he" && Object.prototype.hasOwnProperty.call(i18nDict(), String(s).trim()); }
+/* סדר החיפוש: מדויק → (בלי סמלים בקצוות, ברקורסיה) → תבנית → מספרים כ-{n} → פירוק לפי " · " → "תווית: ערך" */
+const I18N_NUM=/\d+(?:[.,]\d+)?/g;
+function trCore(core, depth){
+  depth=depth||0;
+  const D=i18nDict(), has=k=>Object.prototype.hasOwnProperty.call(D,k);
+  if(has(core)) return D[core];
+  if(depth>5) return core;
+  const af=core.match(/^([^֐-׿A-Za-z0-9]*)([\s\S]*?)([^֐-׿A-Za-z0-9"]*)$/);
+  if(af && (af[1]||af[3]) && af[2] && af[2]!==core){ const c2=trCore(af[2],depth+1); if(c2!==af[2]) return af[1]+c2+af[3]; }
+  const RX=window.I18N_RX||[];
+  for(let i=0;i<RX.length;i++){
+    const mm=core.match(RX[i][0]);
+    if(mm){ const v=RX[i][1][LANG]; if(v!=null) return typeof v==="function" ? v(mm, s=>trCore(s,depth+1)) : core.replace(RX[i][0], v); }
+  }
+  const nums=[]; const key=core.replace(I18N_NUM, m=>{ nums.push(m); return "{n}"; });
+  if(nums.length && has(key)){ let i=0; return D[key].replace(/\{n\}/g, ()=>nums[i++]||""); }
+  if(core.indexOf(" · ")>=0) return core.split(" · ").map(x=>x && I18N_HEB.test(x) ? trCore(x.trim(),depth+1) : x).join(" · ");
+  const lv=core.match(/^([^:]{1,40}): ([\s\S]+)$/);
+  if(lv && I18N_HEB.test(lv[1])){ const l2=trCore(lv[1],depth+1); if(l2!==lv[1]) return l2+(LANG==="fr"?" : ":": ")+trCore(lv[2],depth+1); }
+  return core;
+}
+/* הקשר (למשל יומן הפעילות): אותה מילה בעברית, ניסוח אחר בתרגום — "act|שלח ליצרן" */
+function trCtx(core, ctx){
+  const D=i18nDict(), k=ctx+"|"+core;
+  if(Object.prototype.hasOwnProperty.call(D,k)) return D[k];
+  const nums=[]; const key=ctx+"|"+core.replace(I18N_NUM, m=>{ nums.push(m); return "{n}"; });
+  if(nums.length && Object.prototype.hasOwnProperty.call(D,key)){ let i=0; return D[key].replace(/\{n\}/g, ()=>nums[i++]||""); }
+  return null;
+}
+/* תרגום מחרוזת אחת (שומר רווחים בקצוות) */
+function tr(s, ctx){
+  if(LANG==="he" || s==null) return s;
+  s=String(s);
+  if(!I18N_HEB.test(s)) return s;
+  const m=s.match(/^(\s*)([\s\S]*?)(\s*)$/);
+  if(ctx){ const c=trCtx(m[2], ctx); if(c!=null) return m[1]+c+m[3]; }
+  return m[1]+trCore(m[2])+m[3];
+}
+/* בחירה מרשימה שהוצגה מתורגמת — נשמרת בעברית הקבועה */
+function i18nCanon(v){
+  if(LANG==="he" || v==null) return v;
+  if(!I18N_REV){ I18N_REV={}; const D=i18nDict(); for(const k in D){ if(typeof D[k]==="string") I18N_REV[D[k].trim()]=k; } }
+  const t=String(v).trim();
+  return Object.prototype.hasOwnProperty.call(I18N_REV, t) ? I18N_REV[t] : v;
+}
+/* האם הטקסט כתוב (גם) בשפה אחרת מזו של הצופה — אז מציעים 🌐 תרגום */
+function i18nForeign(s){
+  s=String(s||""); if(s.replace(/\s/g,"").length<2) return false;
+  if(LANG!=="he" && i18nHas(s)) return false;
+  return Object.keys(I18N_SCRIPT).some(l=>l!==LANG && I18N_SCRIPT[l].test(s));
+}
+function i18nTrLink(s){
+  return "https://translate.google.com/?sl=auto&tl="+(LANG==="he"?"iw":LANG)+"&op=translate&text="+encodeURIComponent(String(s).slice(0,1500));
+}
+function i18nCtxOf(n){ const p=n.parentNode, c=p && p.closest && p.closest("[data-i18n-ctx]"); return c ? c.getAttribute("data-i18n-ctx") : ""; }
+/* מעבר על צומת וכל מה שבתוכו */
+function i18nNode(root){
+  const walk=n=>{
+    if(n.nodeType===3){
+      if(LANG!=="he"){ const v=n.nodeValue; if(v && I18N_HEB.test(v)){ const t2=tr(v, i18nCtxOf(n)); if(t2!==v) n.nodeValue=t2; } }
+      return;
+    }
+    if(n.nodeType!==1) return;
+    const tag=n.tagName;
+    if(tag==="SCRIPT" || tag==="STYLE" || n.hasAttribute("data-noi18n")) return;
+    if(n.hasAttribute("data-tr")){ i18nFree(n); return; }   /* טקסט חופשי: לא מתרגמים, רק מציעים 🌐 */
+    if(LANG!=="he"){
+      for(let i=0;i<I18N_ATTRS.length;i++){ const a=I18N_ATTRS[i], v=n.getAttribute(a); if(v && I18N_HEB.test(v)){ const t2=tr(v); if(t2!==v) n.setAttribute(a,t2); } }
+      if(LANG==="fr" && n.getAttribute("dir")==="rtl") n.setAttribute("dir","ltr");
+      if(tag==="OPTION" && n.parentNode && n.parentNode.tagName==="DATALIST"){ const v=n.getAttribute("value"); if(v && i18nHas(v)) n.setAttribute("value", tr(v)); }
+      if(tag==="INPUT" && (n.getAttribute("list") || n.hasAttribute("data-i18n-value")) && n.value && I18N_HEB.test(n.value)){
+        const t2=tr(n.value); if(t2!==n.value) n.value=t2;   /* רק ערך מהמילון (בחירה קבועה); טקסט חופשי לא משתנה */
+      }
+    }
+    if(tag==="TEXTAREA") return;   /* התוכן שהוקלד לא מתורגם — רק הרמז (placeholder) */
+    for(let c=n.firstChild;c;c=c.nextSibling) walk(c);
+  };
+  walk(root);
+}
+/* טקסט חופשי: מתרגמים רק אם הוא בדיוק ערך מהמילון (למשל "סלון"), אחרת מציגים כמו שהוקלד + 🌐 */
+function i18nFree(el){
+  if(el.querySelector(":scope > .trbtn")) return;
+  const txt=el.textContent||"";
+  if(LANG!=="he"){ const t2=tr(txt); if(t2!==txt){ el.textContent=t2; return; } }   /* ערך מהמילון או תבנית (למשל גוון + קוד) */
+  if(i18nForeign(txt)){
+    const a=document.createElement("a");
+    a.className="trbtn no-print"; a.href=i18nTrLink(txt); a.target="_blank"; a.rel="noopener noreferrer";
+    a.textContent=LANG==="he"?"🌐 תרגם":LANG==="fr"?"🌐 Traduire":"🌐 ترجمة";
+    a.addEventListener("click", e=>e.stopPropagation());
+    el.appendChild(document.createTextNode(" ")); el.appendChild(a);
+  }
+}
+let i18nBusy=false;
+const i18nObs = (typeof MutationObserver!=="undefined") ? new MutationObserver(muts=>{
+  if(i18nBusy) return; i18nBusy=true;
+  try{
+    for(const m of muts){
+      if(m.type==="characterData"){ const n=m.target; if(LANG!=="he" && n.nodeValue && I18N_HEB.test(n.nodeValue) && !(n.parentNode && n.parentNode.closest && n.parentNode.closest("[data-tr]"))){ const t2=tr(n.nodeValue, i18nCtxOf(n)); if(t2!==n.nodeValue) n.nodeValue=t2; } continue; }
+      m.addedNodes.forEach(n=>{
+        if(n.nodeType===3){ if(!(n.parentNode && n.parentNode.closest && n.parentNode.closest("[data-tr]"))) i18nNode(n); }
+        else if(n.nodeType===1){ const fr=n.parentNode && n.parentNode.closest && n.parentNode.closest("[data-tr]"); if(fr) i18nFree(fr); else i18nNode(n); }
+      });
+    }
+  } finally { i18nBusy=false; }
+}) : null;
+function i18nStart(){
+  const h=document.documentElement;
+  h.lang = LANG; h.dir = LANG==="fr" ? "ltr" : "rtl";
+  const app=document.getElementById("app"); if(app) app.setAttribute("dir", h.dir);
+  i18nNode(document.body);
+  if(i18nObs) i18nObs.observe(document.body, {childList:true, subtree:true, characterData:true});
+  try{ document.title = tr(document.title); }catch(e){}
+}
+function setLang(l){
+  if(!LANGS[l] || l===LANG) return;
+  try{ localStorage.setItem(LANG_KEY, l); }catch(e){}
+  location.reload();
+}
+/* כרטיס בחירת שפה בהגדרות — שמות השפות כתובים כל אחד בשפה שלו */
+function langCard(){
+  return '<div class="card"><label>🌐 שפה</label><div class="seg" style="margin-top:8px">'
+    + Object.keys(LANGS).map(l=>'<button type="button" class="'+(l===LANG?"on":"")+'" data-noi18n onclick="setLang(\''+l+'\')">'+LANGS[l]+'</button>').join("")
+    + '</div><div class="muted" style="margin-top:6px">כל אחד בוחר לעצמו. הנתונים משותפים — כל אחד רואה אותם בשפה שלו.</div></div>';
+}
 
 /* ================= ROUTER ================= */
 window.addEventListener("hashchange", render);
@@ -1065,7 +1227,7 @@ function projCardHTML(p,i){
     +'<div class="grow">'
     +'<div class="title-md">'+esc(pname(p))+'</div>'
     +'<div class="muted">'+esc(p.client||"")+(p.client&&p.date?" · ":"")+esc(fmtDate(p.date))+' · <span class="num">'+p.items.length+'</span> פריטים'+cloudCardBy(p)+'</div>'
-    +'</div>'+(extra||'<div style="font-size:1.3rem;color:var(--ink2)">‹</div>')+'</div></div>';
+    +'</div>'+(extra||'<div class="chev" style="font-size:1.3rem;color:var(--ink2)">‹</div>')+'</div></div>';
 }
 function viewList(kind){
   listKind=kind; searchQ=""; listSuffix="";
@@ -1114,6 +1276,7 @@ function viewSettings(){
   +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
   +'<div class="grow"><h1>הגדרות</h1></div></div>'
   +cloudSettingsCard()
+  +langCard()
   +(canPrice()?(''
   +'<div class="card"><label>לוגו החברה — מופיע בכל קובץ מיוצא (לצד בס״ד)</label>'
   +'<div class="rowline" style="margin-top:8px">'
@@ -1151,7 +1314,7 @@ function viewProject(p){
     return '<div class="card"><div class="itemrow">'
       +'<div class="thumb">'+sketchSVG(it,86)+'</div>'
       +'<div class="grow tap" onclick="nav(\'/p/'+p.id+'/item/'+it.id+'\')">'
-      +'<div class="title-md"><span class="num">'+(i+1)+'.</span> '+esc(it.location||T.name)+'</div>'
+      +'<div class="title-md"><span class="num">'+(i+1)+'.</span> '+(it.location?'<span data-tr>'+esc(it.location)+'</span>':T.name)+'</div>'
       +'<div class="muted">'+T.name+'</div>'
       +'<div style="font-weight:700;margin-top:2px">'+dimsHTML(it)+' '
       +(it.measureType==="opening"?'<span class="badge open">מידת פתח</span>':'<span class="badge prod">לייצור</span>')
@@ -1287,7 +1450,7 @@ function renderItemForm(){
   html += '<div class="card">'
     +'<div class="field"><label>מיקום בבית</label>'
     +'<input list="locs" value="'+esc(draft.location)+'" oninput="App.f(\'location\',this.value)" placeholder="למשל: סלון, ממ&quot;ד...">'
-    +'<datalist id="locs">'+LOC_SUGGEST.map(l=>'<option value="'+l+'">').join("")+'</datalist></div>'
+    +'<datalist id="locs">'+LOC_SUGGEST.map(l=>'<option value="'+esc(l)+'">').join("")+'</datalist></div>'
 
   /* dims */
     +'<div class="three">'
@@ -1301,7 +1464,7 @@ function renderItemForm(){
   /* wall thickness — required for roller-shutter items (sizing the shutter box) */
     +(needsWall(draft)
       ? '<div class="field" style="max-width:240px"><label style="color:var(--danger)">עובי קיר — חובה (לקביעת ארגז התריס)</label>'
-        +'<input class="num" inputmode="decimal" value="'+esc(draft.wallDepth)+'" oninput="App.f(\'wallDepth\',this.value)" placeholder="'+unitName(draft.unit)+'"></div>'
+        +'<input class="num" inputmode="decimal" value="'+esc(draft.wallDepth)+'" oninput="App.f(\'wallDepth\',this.value)" placeholder="'+esc(unitName(draft.unit))+'"></div>'
       : '')
 
   /* measure type — prominent */
@@ -1356,7 +1519,7 @@ function renderItemForm(){
   }
   if(T.doorFix){
     cond += '<div class="field" style="max-width:180px"><label style="color:var(--danger)">רוחב הקבוע — חובה</label>'
-      +'<input class="num" inputmode="decimal" value="'+esc(draft.fixW||"")+'" oninput="App.f(\'fixW\',this.value)" placeholder="'+unitName(draft.unit)+'"></div>'
+      +'<input class="num" inputmode="decimal" value="'+esc(draft.fixW||"")+'" oninput="App.f(\'fixW\',this.value)" placeholder="'+esc(unitName(draft.unit))+'"></div>'
       +'<div class="field"><label>צד הקבוע (במבט מבפנים)</label><div class="seg">'
       +segBtn(draft.fixSide!=="right","קבוע משמאל לדלת","App.f('fixSide','left')")
       +segBtn(draft.fixSide==="right","קבוע מימין לדלת","App.f('fixSide','right')")
@@ -1452,12 +1615,12 @@ function renderItemForm(){
       ? '<div class="field"><label>סדרה אחרת</label><input value="'+esc(draft.profileOther)+'" oninput="App.f(\'profileOther\',this.value)"></div>'
       : '')
     +'<div class="field colorbox"><label>גוון (מניפת קליל — חיפוש, או הקלדת גוון אחר)</label>'
-    +'<input id="colorInput" value="'+esc(draft.color)+'" placeholder="חפש: שחור, לבן, 95F... או הקלד גוון חופשי"'
+    +'<input id="colorInput" data-i18n-value value="'+esc(draft.color)+'" placeholder="חפש: שחור, לבן, 95F... או הקלד גוון חופשי"'
     +' oninput="App.colorFilter(this.value)" onfocus="App.colorFilter(this.value)">'
     +'<div class="colorlist" id="colorList" style="display:none"></div></div>'
     +'<div class="field"><label>זכוכית</label>'
     +'<input list="glasses" value="'+esc(draft.glass)+'" oninput="App.f(\'glass\',this.value)" placeholder="בחר או הקלד...">'
-    +'<datalist id="glasses">'+GLASS_SUGGEST.map(g=>'<option value="'+g+'">').join("")+'</datalist></div>'
+    +'<datalist id="glasses">'+GLASS_SUGGEST.map(g=>'<option value="'+esc(g)+'">').join("")+'</datalist></div>'
     +'<div class="field" style="max-width:220px"><label>עובי זיגוג (מ״מ)</label>'
     +'<input list="glazes" class="num" inputmode="decimal" value="'+esc(draft.glazeThick)+'" oninput="App.f(\'glazeThick\',this.value)" placeholder="למשל 24">'
     +'<datalist id="glazes">'+GLAZE_THICK.map(g=>'<option value="'+g+'">').join("")+'</datalist></div>'
@@ -1506,7 +1669,7 @@ function viewExport(p){
           +'<span>תאריך: <b class="num">'+esc(fmtDate(p.date))+'</b></span>'
           +(p.measurer?'<span>מודד: <b>'+esc(p.measurer)+'</b></span>':'')
           +'<span>סה"כ פריטים: <b class="num">'+p.items.length+'</b></span>'
-          +(p.notes?'<span>הערות: '+esc(p.notes)+'</span>':'')
+          +(p.notes?'<span>הערות: <span data-tr>'+esc(p.notes)+'</span></span>':'')
           +'</div></div>';
       } else {
         head = '<div class="sheet-head"><h2>הזמנת ייצור'+(expOpts.showName?" — "+esc(pname(p)):"")+'</h2><div class="meta">'
@@ -1519,8 +1682,8 @@ function viewExport(p){
       const T = TYPE(it.type);
       const info = [];
       const pt = profileText(it); if(pt) info.push("<b>"+esc(pt)+"</b>");
-      if(it.color) info.push("גוון: <b>"+esc(it.color)+"</b>");
-      if(it.glass) info.push("זכוכית: "+esc(it.glass));
+      if(it.color) info.push("גוון: <b data-tr>"+esc(it.color)+"</b>");
+      if(it.glass) info.push("זכוכית: <span data-tr>"+esc(it.glass)+"</span>");
       if(it.glazeThick) info.push("עובי זיגוג: "+esc(it.glazeThick)+" מ\"מ");
       if(T.rail && it.railH) info.push('גובה מסילה: <b class="num">'+esc(it.railH)+' ס"מ</b>');
       const dv=divText(it); if(dv) info.push("<b>"+dv+"</b>");
@@ -1528,7 +1691,7 @@ function viewExport(p){
       const ot=opText(it); if(ot) info.push(ot);
       if(Number(it.qty)>1) info.push('כמות: <b class="num">×'+esc(it.qty)+"</b>");
       return '<div class="cell">'
-        +'<div class="cellhead"><span class="cloc">מיקום בבית: <b class="num">'+esc(it.location||"—")+'</b></span></div>'
+        +'<div class="cellhead"><span class="cloc">מיקום בבית: <b class="num" data-tr>'+esc(it.location||"—")+'</b></span></div>'
         +'<div class="ctype">'+T.name+'</div>'
         +'<div class="csk">'+sketchSVG(it,skW)+'</div>'
         +'<div class="cdims">'+dimsHTML(it)+'</div>'
@@ -1537,16 +1700,16 @@ function viewExport(p){
           : '')
         +'<div class="cbadge">'+measureBadge(it)+'</div>'
         +'<div class="cinfo">'+info.join(" · ")+'</div>'
-        +(it.notes?'<div class="cnote">'+esc(it.notes)+'</div>':'')
+        +(it.notes?'<div class="cnote" data-tr>'+esc(it.notes)+'</div>':'')
         +(internal&&it.photo?'<img src="'+esc(it.photo)+'" alt="">':'')
         +'</div>';
     }).join("");
     const strip = '<div class="sheet-top">'
-      +'<span class="bsd">בס״ד</span>'
+      +'<span class="bsd" data-noi18n>בס״ד</span>'
       +'<img class="sheet-logo" src="'+esc(DB.settings.logo||DEFAULT_LOGO)+'" alt="לוגו">'
       +'</div>';
     return '<div class="sheet">'+strip+head
-      +'<div class="sheet-grid" style="grid-template-columns:repeat('+cols+',1fr)">'+cells+'</div>'
+      +'<div class="sheet-grid" style="grid-template-columns:repeat('+cols+',minmax(0,1fr))">'+cells+'</div>'
       +'<div class="sheet-foot">עמוד '+(pi+1)+' מתוך '+pages.length+'</div></div>';
   }).join("");
 
@@ -1624,12 +1787,12 @@ function renderPricing(){
     return '<div class="card"><div class="itemrow">'
       +'<div class="thumb">'+sketchSVG(it,70)+'</div>'
       +'<div class="grow">'
-      +'<div class="title-md"><span class="num">'+(i+1)+'.</span> '+esc(it.location||T.name)+'</div>'
+      +'<div class="title-md"><span class="num">'+(i+1)+'.</span> '+(it.location?'<span data-tr>'+esc(it.location)+'</span>':T.name)+'</div>'
       +'<div class="muted">'+T.name+' · '+esc(dimsText(it))+(area?' · <span class="num">'+area.toFixed(2)+'</span> מ״ר':'')+(qty>1?' · <span class="num">×'+qty+'</span>':'')+'</div>'
       +'<div class="price-line" style="margin-top:8px">'
       +'<div class="pl-price"><input class="num" inputmode="decimal" value="'+(overridden?esc(it.priceOverride):"")+'" placeholder="'+suggested+'" onchange="App.setOverride(\''+p.id+'\',\''+it.id+'\',this.value)"></div>'
       +'<div class="muted">₪ ליחידה'+(overridden?' (ידני)':' (מחושב)')+'</div>'
-      +'<div class="grow" style="text-align:left;font-weight:800">'+money(line)+'</div>'
+      +'<div class="pl-total">'+money(line)+'</div>'
       +'</div></div></div></div>';
   }).join("");
   const t=quoteTotals(p);
@@ -1652,23 +1815,23 @@ function viewQuoteExport(p){
     const sub=[profileText(it),it.color,it.glass].filter(Boolean).join(" · ");
     return '<tr>'
       +'<td class="num">'+(i+1)+'</td>'
-      +'<td><div class="qdesc">'+(it.location?esc(it.location)+' — ':'')+esc(T.name)+'</div>'+(sub?'<div class="qsub">'+esc(sub)+'</div>':'')+'</td>'
+      +'<td><div class="qdesc">'+(it.location?'<span data-tr>'+esc(it.location)+'</span> — ':'')+esc(T.name)+'</div>'+(sub?'<div class="qsub">'+esc(sub)+'</div>':'')+'</td>'
       +'<td class="num">'+esc(dimsText(it))+'</td>'
       +'<td class="num">'+qty+'</td>'
       +'<td class="num">'+money(unit)+'</td>'
       +'<td class="num">'+money(unit*qty)+'</td>'
       +'</tr>';
   }).join("");
-  const strip='<div class="sheet-top"><span class="bsd">בס״ד</span><img class="sheet-logo" src="'+esc(DB.settings.logo||DEFAULT_LOGO)+'" alt="לוגו"></div>';
+  const strip='<div class="sheet-top"><span class="bsd" data-noi18n>בס״ד</span><img class="sheet-logo" src="'+esc(DB.settings.logo||DEFAULT_LOGO)+'" alt="לוגו"></div>';
   const head='<div class="sheet-head"><h2>הצעת מחיר</h2><div class="meta">'
     +(p.client?'<span>לקוח: <b>'+esc(p.client)+'</b></span>':'')
     +(p.phone?'<span>טל׳: <b class="num">'+esc(p.phone)+'</b></span>':'')
     +(p.address?'<span>כתובת: <b>'+esc(p.address)+'</b></span>':'')
     +'<span>תאריך: <b class="num">'+esc(fmtDate(p.date||todayISO()))+'</b></span>'
     +'</div></div>';
-  const table='<table class="qtable"><thead><tr>'
+  const table='<div class="qwrap"><table class="qtable"><thead><tr>'
     +'<th>#</th><th>תיאור</th><th>מידות</th><th>כמות</th><th>מחיר יח׳</th><th>סה״כ</th>'
-    +'</tr></thead><tbody>'+rows+'</tbody></table>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<div class="qtot">'
     +'<div class="qr"><span>סכום ביניים</span><span>'+money(t.sub)+'</span></div>'
     +(t.vatRate?'<div class="qr"><span>מע״מ ('+t.vatRate+'%)</span><span>'+money(t.vat)+'</span></div>':'')
@@ -2791,6 +2954,7 @@ const App = {
   },
   /* item editor */
   f(k,v){
+    if(k==="location"||k==="glass") v=i18nCanon(v);
     draft[k]=v;
     persistDraft();
     if(k==="type"||k==="op"||k==="mesh"||k==="profile"||k==="photo"||k==="box") renderItemForm();
@@ -2823,7 +2987,7 @@ const App = {
     const qq=(q||"").trim();
     let html="";
     KLIL_COLORS.forEach(f=>{
-      const hits=f.list.filter(([n,c])=> !qq || n.includes(qq) || c.includes(qq) || c.toLowerCase().includes(qq.toLowerCase()));
+      const hits=f.list.filter(([n,c])=> !qq || n.includes(qq) || tr(n).toLowerCase().includes(qq.toLowerCase()) || c.includes(qq) || c.toLowerCase().includes(qq.toLowerCase()));
       if(hits.length){
         html+='<div class="fam">'+f.fam+'</div>';
         html+=hits.map(([n,c])=>'<button type="button" class="copt" onclick="App.pickColor(\''+esc(n).replace(/'/g,"\\'")+'\',\''+c+'\')">'+esc(n)+' <small class="num">'+c+'</small></button>').join("");
@@ -3532,7 +3696,7 @@ function cloudReturn(pid){
 function uiPrompt(o){
   return new Promise(res=>{
     const ov=document.createElement("div"); ov.className="modal-overlay";
-    ov.innerHTML='<div class="modal" role="dialog" aria-modal="true" dir="rtl">'+(o.title?'<h3>'+esc(o.title)+'</h3>':'')
+    ov.innerHTML='<div class="modal" role="dialog" aria-modal="true">'+(o.title?'<h3>'+esc(o.title)+'</h3>':'')
       +'<div class="msg">'+esc(o.msg||"")+'</div>'
       +'<textarea rows="3" maxlength="500" style="width:100%;margin:-8px 0 16px" placeholder="'+esc(o.placeholder||"")+'"></textarea>'
       +'<div class="btns"><button class="btn primary" data-m="ok">'+esc(o.ok||"אישור")+'</button><button class="btn" data-m="cancel">ביטול</button></div></div>';
@@ -3551,7 +3715,7 @@ function cloudReviewCard(p){
   const rv=p._rv, boss=cloudIsBoss(), q=p.kind==="quote";
   const by=rv?esc(rv.byName||rv.by||""):"", when=rv?esc(cloudRel(rv.at)):"";
   const btn=(lbl,fn,cls)=>'<button class="btn small '+(cls||"")+'" onclick="'+fn+'(\''+esc(p.id)+'\')">'+lbl+'</button>';
-  const note=rv&&rv.note?'<div class="rv-note">'+esc(rv.note)+'</div>':'';
+  const note=rv&&rv.note?'<div class="rv-note" data-tr>'+esc(rv.note)+'</div>':'';
   if(!boss){
     if(!rv || rv.state==="draft") return p.items.length
       ? '<div class="card rv-card"><div class="rowline wrap"><div class="grow">כשהמדידה מוכנה — שולחים אותה לאישור מנהל.</div>'+btn("📤 שלח לאישור מנהל","cloudSubmitReview","primary")+'</div></div>' : "";
@@ -3622,7 +3786,7 @@ function cloudMakerHome(){
       +'<div class="pchip pc3">🏭</div><div class="grow"><div class="title-md">'+esc(pname(P))+'</div>'
       +'<div class="muted">נשלח '+esc(cloudRel(cloudMs(r.d.sentAt)))+' ע״י '+esc(r.d.sentByName||"")+' · <span class="num">'+n+'</span> פריטים'
       +(Number(r.d.ver)>1?' · <b>עודכן (גרסה <span class="num">'+esc(r.d.ver)+'</span>)</b>':'')+'</div></div>'
-      +'<div style="font-size:1.3rem;color:var(--ink2)">‹</div></div></div>';
+      +'<div class="chev" style="font-size:1.3rem;color:var(--ink2)">‹</div></div></div>';
   }).join("") : '<div class="card muted">עוד לא נשלחו הזמנות ייצור. כשמנהל ישלח פרויקט, הוא יופיע כאן.</div>';
   return '<div class="topbar"><div><h1>אלום אלבז</h1><div class="sub">הזמנות ייצור</div></div>'+cloudPillHTML()+'</div>'
     +list
@@ -3652,7 +3816,7 @@ function cloudActText(key, op){
   const it=cloudObj(d.d)||{};
   const lbl=TYPE(it.type).name+(it.location?" ב"+it.location:"");
   const t={create:"הוסיף "+lbl, update:"עדכן "+lbl, delete:"מחק "+lbl, restore:"שחזר "+lbl}[op];
-  return {text:t, where:pname(p), pid:d.pid||""};
+  return {text:t, where:pname(p), pid:d.pid||"", v:"i."+op, ty:Number(it.type)||1, loc:String(it.location||"")};
 }
 function cloudActivity(key, op, data){
   if(key[0]==="i" && op==="update" && Object.keys(data).every(f=>f==="pos"||f==="pid")) return;   /* שינוי סדר — לא מעניין ביומן */
@@ -3667,6 +3831,7 @@ function cloudActWrite(ent, isNew){
   const M=Cloud.m, u=Cloud.user; if(!M || !u) return;
   const t=cloudActText(ent.key, ent.op), ts=M.serverTimestamp();
   const data={at:ts, by:u.email, byName:u.name, text:t.text, where:t.where||"", pid:t.pid||""};
+  if(t.v){ data.v=t.v; data.ty=t.ty; data.loc=t.loc.slice(0,120); }
   if(isNew){ data.t0=ts; data.op=ent.op; }
   M.setDoc(ent.ref, data, {merge:!isNew}).catch(()=>{});
   ent.dirty=false;
@@ -3917,6 +4082,13 @@ function viewActivity(){
     +'<div id="actbox">'+(Cloud.ready?'<div class="card muted">טוען…</div>':'<div class="card muted">הפעילות זמינה כשמחוברים לצוות.</div>')+'</div>';
 }
 function afterActivityRender(){ cloudActivityStart(); }
+/* שורת יומן: אם נשמרה כרכיבים — כל רכיב בנפרד (מתורגם לבד); אחרת הטקסט כמו שנשמר */
+const ACT_VERBS={"i.create":"הוסיף","i.update":"עדכן","i.delete":"מחק","i.restore":"שחזר"};
+function actLine(r){
+  if(r.v && ACT_VERBS[r.v]) return '<span data-i18n-ctx="act">'+ACT_VERBS[r.v]+'</span> <span>'+esc(TYPE(r.ty).name)+'</span>'
+    +(r.loc?' · <span data-tr>'+esc(r.loc)+'</span>':'');
+  return '<span data-i18n-ctx="act">'+esc(r.text||"")+'</span>';
+}
 function renderActivityList(){
   const box=document.getElementById("actbox"); if(!box) return;
   const rows=Cloud.activity||[];
@@ -3933,7 +4105,7 @@ function renderActivityList(){
     const nm=String(r.byName||r.by||"?");
     html+='<div class="act-row'+(live?' tap':'')+'"'+(live?' onclick="nav(\'/p/'+esc(r.pid)+'\')"':'')+'>'
       +'<div class="act-av">'+esc(nm.trim().charAt(0)||"?")+'</div>'
-      +'<div class="grow"><div><b>'+esc(nm)+'</b> '+esc(r.text||"")+'</div>'
+      +'<div class="grow"><div><b>'+esc(nm)+'</b> '+actLine(r)+'</div>'
       +'<div class="muted">'+(where?esc(where)+' · ':'')+'<span class="num">'+hm+'</span></div></div></div>';
   });
   box.innerHTML=html;
@@ -4074,6 +4246,7 @@ function showPaywall(){
 const payTestMode = /[?&]paywall=test/.test(location.search);
 if(payTestMode){ try{ localStorage.removeItem(LICENSE_KEY); }catch(e){} }
 
+i18nStart();
 render();
 if((PAYWALL.on || payTestMode) && !paywallLicensed()) showPaywall();
 cloudInit();
