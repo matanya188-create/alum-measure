@@ -227,6 +227,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .cell .ctype{font-size:.75rem;font-weight:700;color:#233f80;text-align:center}
 .cell .cnote{font-size:.7rem;color:#555;border-top:1px dashed #ccc;margin-top:2px;padding-top:2px}
 .cell img{max-width:100%;max-height:26mm;object-fit:contain;border-radius:4px;margin-top:3px}
+.cell img.cphoto{cursor:zoom-in;align-self:center}
 .sheet-foot{text-align:center;font-size:.72rem;color:#777;margin-top:8px}
 
 .exp-tools{position:sticky;top:env(safe-area-inset-top,0px);z-index:25;background:var(--paper);padding:12px 0;border-bottom:1px solid var(--line2);margin-bottom:14px}
@@ -1615,7 +1616,7 @@ function renderItemForm(){
   /* notes + photo */
   html += '<div class="card">'
     +'<div class="field"><label>הערות לפריט</label><textarea rows="2" oninput="App.f(\'notes\',this.value)">'+esc(draft.notes)+'</textarea></div>'
-    +'<div class="field"><label>תמונה של הפתח (נכנסת לקובץ הפנימי בלבד)</label>'
+    +'<div class="field"><label>תמונה של הפתח (נשלחת גם ליצרן)</label>'
     +'<div class="rowline">'
     +'<label class="btn small" style="margin:0">📷 צלם / העלה<input type="file" accept="image/*" capture="environment" style="display:none" onchange="App.photo(this)"></label>'
     +(draft.photo?'<button type="button" class="btn small danger" onclick="App.f(\'photo\',null);renderItemForm()">הסר תמונה</button>':'')
@@ -1687,7 +1688,7 @@ function viewExport(p){
         +'<div class="cbadge">'+measureBadge(it)+'</div>'
         +'<div class="cinfo">'+info.join(" · ")+'</div>'
         +(it.notes?'<div class="cnote" data-tr>'+esc(it.notes)+'</div>':'')
-        +(internal&&it.photo?'<img src="'+esc(it.photo)+'" alt="">':'')
+        +(it.photo?'<img class="cphoto" src="'+esc(it.photo)+'" alt="תמונה מהשטח" onclick="photoZoom(this)">':'')
         +'</div>';
     }).join("");
     const strip = '<div class="sheet-top">'
@@ -1720,7 +1721,7 @@ function viewExport(p){
   +(expOpts.mode==="factory"
     ? '<div style="margin-top:8px"><label class="chip '+(expOpts.showName?"on":"")+'" style="display:inline-flex;align-items:center" onclick="App.eo(\'showName\','+(!expOpts.showName)+')">'
       +(expOpts.showName?"✓ ":"")+'הצג כתובת (שם הפרויקט) בכותרת</label>'
-      +' <span class="muted">היצרן רואה רק את הכתובת — בלי שם לקוח, טלפון ותמונות.</span></div>'
+      +(p._prod?'':' <span class="muted">היצרן רואה את הכתובת ואת התמונות מהשטח — בלי שם הלקוח והטלפון.</span>')+'</div>'
     : '<div class="muted" style="margin-top:8px">הקובץ הפנימי כולל את כל פרטי הלקוח והתמונות.</div>')
   +cloudProdButtons(p, problems.length>0)
   +'</div>'
@@ -3159,6 +3160,7 @@ window.App=App; window.nav=nav; window.renderItemForm=renderItemForm;
      prices/{pid}      {d: JSON מחירי הפרויקט ומחירים ידניים לפריטים}          — מנהל ומפתח בלבד
      meta/settings     {d, logo}  ·  meta/pricing {d: מחירי ברירת מחדל}         — pricing: מנהל ומפתח בלבד
      production/{pid}  {d: עותק קבוע של קובץ הייצור, sentAt, sentBy, ver}       — מה שהיצרן רואה
+     production/{pid}/photos/{iid}  {photo, ver}   — התמונות מהשטח, עותק מרגע השליחה (נטען רק כשהיצרן פותח את ההזמנה)
      activity/{id}     {at, t0, op, by, byName, text, where, pid}
    מטא בכל מסמך: cb/cn/ca = נוצר ע"י/שם/מתי, ub/un/ua = עודכן ע"י/שם/מתי, deleted (+deletedAt/By).
    מחיקה = סל מחזור; מחיקה סופית רק אחרי TRASH_DAYS (נאכף בשרת, כולל תאריך המחיקה עצמו).
@@ -3182,7 +3184,7 @@ const Cloud = {
   last:new Map(), need:[], got:{}, ready:false, snapPend:{},
   unsubs:[], pending:0, renderPending:false,
   act:new Map(), actTimer:null, actUnsub:null, activity:null,
-  team:null, teamUnsub:null, claiming:false
+  team:null, teamUnsub:null, claiming:false, prodPh:null
 };
 
 /* ---- הרשאות לתצוגה (האכיפה בשרת) ---- */
@@ -3533,7 +3535,7 @@ function cloudStart(){
   L(cloudCol("production"), s=>cloudSnapProd(s));
   L(M.doc(Cloud.db,"teams",TEAM_ID,"members",Cloud.user.email), s=>cloudSnapMe(s));
 }
-function cloudStop(){ Cloud.unsubs.forEach(f=>{ try{ f(); }catch(e){} }); Cloud.unsubs=[]; }
+function cloudStop(){ Cloud.unsubs.forEach(f=>{ try{ f(); }catch(e){} }); Cloud.unsubs=[]; cloudProdPhotosStop(); }
 
 function cloudSnap(kind, s){
   const map = kind==="p" ? Cloud.projects : kind==="i" ? Cloud.items : Cloud.prices;
@@ -3734,12 +3736,45 @@ function cloudPurge(){
   Cloud.items.forEach((d,id)=>{ if(old(d)) M.deleteDoc(cloudRef("i:"+id)).catch(()=>{}); });
 }
 
-/* ---- שליחה לייצור: עותק קבוע של קובץ היצרן (בלי מחירים, בלי פרטי לקוח ובלי תמונות) ---- */
+/* ---- שליחה לייצור: עותק קבוע של קובץ היצרן (בלי מחירים ובלי פרטי לקוח).
+   התמונות מהשטח נשלחות במסמכים נפרדים (production/{pid}/photos/{iid}); כאן רק "טביעה" שלהן — כך החלפת תמונה מסמנת שיש גרסה חדשה ---- */
+const prodPhKey = s => String(s).length+":"+String(s).slice(-24);
 function prodSnapshot(p){
   const P={id:p.id, kind:p.kind||"production", address:p.address||"", name:p.name||"", date:p.date||""};
-  const items=(p.items||[]).map(it=>cloudOmit(it, ["photo","_m","priceOverride"]));
+  const items=(p.items||[]).map(it=>{ const o=cloudOmit(it, ["photo","_m","priceOverride"]); if(it.photo) o.ph=prodPhKey(it.photo); return o; });
   return JSON.stringify({project:P, items:items});
 }
+/* התמונות מהשטח ליצרן: מסמך לכל פריט עם תמונה; תמונות שהוסרו מאז השליחה הקודמת — נמחקות */
+function cloudSendPhotos(pid, p, ver){
+  const M=Cloud.m, col=M.collection(Cloud.db,"teams",TEAM_ID,"production",pid,"photos"), keep=new Set();
+  (p.items||[]).forEach(it=>{
+    if(!it.photo || !cloudImgOk(it.photo) || !cloudIdOk(it.id)) return;
+    keep.add(it.id);
+    M.setDoc(M.doc(col, it.id), {photo:it.photo, ver:ver}).catch(e=>cloudToast("שליחת תמונה נכשלה: "+cloudErrText(e)));
+  });
+  M.getDocs(col).then(s=>s.forEach(d=>{ if(!keep.has(d.id)) M.deleteDoc(d.ref).catch(()=>{}); })).catch(()=>{});
+}
+function cloudDelPhotos(pid){
+  const M=Cloud.m;
+  M.getDocs(M.collection(Cloud.db,"teams",TEAM_ID,"production",pid,"photos"))
+    .then(s=>s.forEach(d=>M.deleteDoc(d.ref).catch(()=>{}))).catch(()=>{});
+}
+/* אצל היצרן: התמונות של ההזמנה הפתוחה — נטענות רק כשפותחים אותה (חוסך תעבורה), ומתעדכנות לבד */
+function cloudProdPhotos(pid){
+  if(Cloud.prodPh && Cloud.prodPh.pid===pid) return Cloud.prodPh.map;
+  cloudProdPhotosStop();
+  const M=Cloud.m, ph={pid:pid, map:new Map(), unsub:null};
+  Cloud.prodPh=ph;
+  ph.unsub=M.onSnapshot(M.collection(Cloud.db,"teams",TEAM_ID,"production",pid,"photos"), s=>{
+    const m=new Map();
+    s.forEach(d=>{ const x=d.data(); if(cloudIdOk(d.id) && cloudImgOk(x.photo)) m.set(d.id, x.photo); });
+    const same=m.size===ph.map.size && [...m].every(([k,v])=>ph.map.get(k)===v);
+    ph.map=m;
+    if(!same && Cloud.prodPh===ph && location.hash.replace(/^#\/?/,"").split("/")[0]==="prod") cloudRender();
+  }, ()=>{});
+  return ph.map;
+}
+function cloudProdPhotosStop(){ if(Cloud.prodPh && Cloud.prodPh.unsub){ try{ Cloud.prodPh.unsub(); }catch(e){} } Cloud.prodPh=null; }
 function prodState(p){
   const s=Cloud.ready && Cloud.production.get(p.id);
   if(!s) return null;
@@ -3750,14 +3785,15 @@ function cloudSendProd(pid){
   const miss=p.items.filter(it=>missingList(it).length).length;
   if(!p.items.length || miss){ uiAlert(miss?"חסרים נתונים ב-"+miss+" פריטים. משלימים אותם, ואז אפשר לשלוח ליצרן.":"אין פריטים בפרויקט.","אי אפשר לשלוח"); return; }
   const prev=Cloud.production.get(pid), pending=p._rv && p._rv.state==="pending";
-  uiConfirm(pending ? "לאשר את המדידות של "+(p._rv.byName||"העובד")+" ולשלוח ליצרן? מהרגע הזה היצרן יראה את קובץ הייצור — בלי מחירים, בלי פרטי לקוח ובלי תמונות."
+  uiConfirm(pending ? "לאשר את המדידות של "+(p._rv.byName||"העובד")+" ולשלוח ליצרן? מהרגע הזה היצרן יראה את קובץ הייצור עם התמונות מהשטח — בלי מחירים ובלי פרטי לקוח."
           : prev ? "לשלוח ליצרן את הגרסה המעודכנת? היצרן יראה אותה במקום הקודמת."
-                 : "לשלוח את הפרויקט ליצרן? מהרגע הזה הוא יראה את קובץ הייצור — בלי מחירים, בלי פרטי לקוח ובלי תמונות.",
+                 : "לשלוח את הפרויקט ליצרן? מהרגע הזה הוא יראה את קובץ הייצור עם התמונות מהשטח — בלי מחירים ובלי פרטי לקוח.",
             {title:pending?"אישור ושליחה לייצור":"שליחה לייצור", ok:pending?"אשר ושלח ליצרן":prev?"שלח עדכון":"שלח ליצרן"}).then(ok=>{
     if(!ok) return;
     const M=Cloud.m, u=Cloud.user, ver=prev?(Number(prev.ver)||1)+1:1, snap=prodSnapshot(p);
     M.setDoc(M.doc(cloudCol("production"), pid), {d:snap, sentAt:M.serverTimestamp(), sentBy:u.email, sentByName:u.name, ver:ver})
       .catch(e=>uiAlert(cloudErrText(e),"השליחה נכשלה"));
+    cloudSendPhotos(pid, p, ver);
     Cloud.production.set(pid, {d:snap, sentAt:Date.now(), sentBy:u.email, sentByName:u.name, ver:ver});
     if(p._rv && p._rv.state!=="approved") cloudReview(pid, "approved", "");
     cloudLogOnce(pending?"אישר ושלח ליצרן":prev?"שלח ליצרן גרסה מעודכנת ("+ver+")":"שלח ליצרן", pname(p), pid);
@@ -3831,6 +3867,16 @@ function uiPrompt(o){
     ta.focus();
   });
 }
+/* תמונה מהשטח בגדול — לחיצה על התמונה בקובץ */
+function photoZoom(el){
+  if(!el || !el.src) return;
+  const old=document.querySelector(".hview"); if(old) old.remove();
+  const ov=document.createElement("div"); ov.className="hview no-print";
+  ov.innerHTML='<div class="hview-card"><button class="hview-x" aria-label="סגירה">✕</button><img alt="תמונה מהשטח"></div>';
+  ov.querySelector("img").src=el.src;
+  ov.addEventListener("click", ()=>ov.remove());
+  document.body.appendChild(ov);
+}
 /* תיבת שיח עם שדה קלט בשורה אחת (מספר טלפון) */
 function uiAsk(o){
   return new Promise(res=>{
@@ -3890,6 +3936,7 @@ function cloudUnsendProd(pid){
     if(!ok) return;
     const M=Cloud.m;
     M.deleteDoc(M.doc(cloudCol("production"), pid)).catch(e=>uiAlert(cloudErrText(e),"הביטול נכשל"));
+    cloudDelPhotos(pid);
     Cloud.production.delete(pid);
     cloudLogOnce("ביטל את השליחה ליצרן", pname(p), pid);
     cloudRender();
@@ -3939,7 +3986,8 @@ function viewProdOrder(pid){
   if(!d || !cloudIdOk(pid)){ return cloudTopbar("הזמנת ייצור","/")+'<div class="card muted">ההזמנה לא נמצאה (אולי השליחה בוטלה).</div>'; }
   const s=cloudObj(d.d)||{};
   const P=Object.assign({}, (s.project&&typeof s.project==="object")?s.project:{}, {id:pid, _prod:true});
-  P.items=(Array.isArray(s.items)?s.items:[]).filter(it=>it && typeof it==="object");
+  const phs = Cloud.ready ? cloudProdPhotos(pid) : new Map();
+  P.items=(Array.isArray(s.items)?s.items:[]).filter(it=>it && typeof it==="object").map(it=>Object.assign({}, it, {photo:phs.get(it.id)||null}));
   return viewExport(P);
 }
 

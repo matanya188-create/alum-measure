@@ -202,7 +202,7 @@ const T = [
 ["חפש: שחור, לבן, 95F... או הקלד גוון חופשי","Rechercher : noir, blanc, 95F... ou saisir une teinte libre","ابحث: أسود، أبيض، 95F... أو اكتب لونًا حرًّا"],
 ["אין התאמה במניפה — מה שהקלדת יישמר כגוון חופשי","Aucune correspondance — votre saisie sera enregistrée comme teinte libre","لا يوجد تطابق في المروحة — سيُحفظ ما كتبته كلون حر"],
 ["זכוכית","Vitrage","الزجاج"],["בחר או הקלד...","Choisir ou saisir...","اختر أو اكتب..."],["עובי זיגוג (מ״מ)","Épaisseur du vitrage (mm)","سماكة الزجاج (ملم)"],
-["הערות לפריט","Notes de l'élément","ملاحظات البند"],["תמונה של הפתח (נכנסת לקובץ הפנימי בלבד)","Photo de la baie (fichier interne uniquement)","صورة الفتحة (للملف الداخلي فقط)"],
+["הערות לפריט","Notes de l'élément","ملاحظات البند"],["תמונה של הפתח (נשלחת גם ליצרן)","Photo de la baie (envoyée aussi au fabricant)","صورة الفتحة (تُرسل للمصنّع أيضًا)"],["תמונה מהשטח","Photo du chantier","صورة من الموقع"],["שליחת תמונה נכשלה","Échec de l'envoi d'une photo","فشل إرسال صورة"],
 ["צלם / העלה","Photographier / importer","تصوير / رفع"],["הסר תמונה","Retirer la photo","إزالة الصورة"],["תמונת הפתח","Photo de la baie","صورة الفتحة"],
 ["שמור פריט","Enregistrer l'élément","حفظ البند"],["מחק","Supprimer","حذف"],["נקה","Effacer","مسح"],["התחל מחדש","Recommencer","البدء من جديد"],
 ["למחוק את הטיוטה ולהתחיל מחדש?","Supprimer le brouillon et recommencer ?","حذف المسودة والبدء من جديد؟"],["טיוטה","Brouillon","مسودة"],
@@ -237,7 +237,7 @@ const T = [
 /* ---------- קובץ ליצוא ---------- */
 ["ייעוד הקובץ","Destination du fichier","غرض الملف"],["ליצרן (נקי)","Fabricant (épuré)","للمصنّع (نظيف)"],["פנימי (מלא)","Interne (complet)","داخلي (كامل)"],
 ["פריטים בעמוד","Éléments par page","بنود في الصفحة"],["הצג כתובת (שם הפרויקט) בכותרת","Afficher l'adresse (nom du projet) en titre","إظهار العنوان (اسم المشروع) في الرأس"],
-["היצרן רואה רק את הכתובת — בלי שם לקוח, טלפון ותמונות.","Le fabricant ne voit que l'adresse — sans nom du client, téléphone ni photos.","المصنّع يرى العنوان فقط — بدون اسم الزبون والهاتف والصور."],
+["היצרן רואה את הכתובת ואת התמונות מהשטח — בלי שם הלקוח והטלפון.","Le fabricant voit l'adresse et les photos du chantier — sans nom ni téléphone du client.","يرى المصنّع العنوان وصور الموقع — بدون اسم الزبون وهاتفه."],
 ["הקובץ הפנימי כולל את כל פרטי הלקוח והתמונות.","Le fichier interne inclut toutes les coordonnées du client et les photos.","الملف الداخلي يشمل كل تفاصيل الزبون والصور."],
 ["הדפס / שמור PDF","Imprimer / PDF","طباعة / PDF"],
 ["תאריך","Date","التاريخ"],["סה\"כ פריטים","Total des éléments","مجموع البنود"],["לקוח","Client","الزبون"],["טל׳","Tél.","هاتف"],["מודד","Métreur","القائم بالقياس"],
@@ -378,7 +378,7 @@ const T = [
 ["מה צריך לתקן? ההערה תוצג לעובד.","Que faut-il corriger ? La remarque sera affichée à l'employé.","ما الذي يجب تصحيحه؟ ستظهر الملاحظة للموظف."],
 ["למשל: חסרה מידת הקבוע בחדר שינה","ex. : il manque la cote du fixe dans la chambre","مثلاً: ينقص قياس الثابت في غرفة النوم"],["החזר לעובד","Renvoyer à l'employé","إعادة للموظف"],
 ["אישור ושליחה לייצור","Validation et envoi en fabrication","الموافقة والإرسال للتصنيع"],["שליחה לייצור","Envoi en fabrication","الإرسال للتصنيع"],
-["לשלוח את הפרויקט ליצרן? מהרגע הזה הוא יראה את קובץ הייצור — בלי מחירים, בלי פרטי לקוח ובלי תמונות.","Envoyer le projet au fabricant ? Il verra dès maintenant le fichier de fabrication — sans prix, sans coordonnées du client ni photos.","إرسال المشروع للمصنّع؟ من هذه اللحظة سيرى ملف التصنيع — بدون أسعار ولا تفاصيل زبون ولا صور."],
+["לשלוח את הפרויקט ליצרן? מהרגע הזה הוא יראה את קובץ הייצור עם התמונות מהשטח — בלי מחירים ובלי פרטי לקוח.","Envoyer le projet au fabricant ? Il verra dès maintenant le fichier de fabrication avec les photos du chantier — sans prix ni coordonnées du client.","إرسال المشروع للمصنّع؟ من هذه اللحظة سيرى ملف التصنيع مع صور الموقع — بدون أسعار ولا تفاصيل زبون."],
 ["לשלוח ליצרן את הגרסה המעודכנת? היצרן יראה אותה במקום הקודמת.","Envoyer la version mise à jour au fabricant ? Elle remplacera la précédente.","إرسال النسخة المحدّثة للمصنّع؟ سيراها بدل السابقة."],
 ["שלח ליצרן","Envoyer au fabricant","إرسال للمصنّع"],["שלח עדכון","Envoyer la mise à jour","إرسال التحديث"],["שלח עדכון ליצרן","Envoyer la mise à jour au fabricant","إرسال التحديث للمصنّع"],
 ["בטל שליחה","Annuler l'envoi","إلغاء الإرسال"],["ביטול שליחה","Annulation de l'envoi","إلغاء الإرسال"],
@@ -474,9 +474,9 @@ window.I18N_RX = [
   [/^חסרים נתונים: (.+)\.\nאפשר לשמור ולהשלים אחר כך — אבל קובץ ליצרן ייחסם עד שהכל יושלם$/, F(
     (m, t) => "Données manquantes : " + list(m[1], t) + ".\nVous pouvez enregistrer et compléter plus tard — mais le fichier fabricant restera bloqué jusqu'à ce que tout soit complet",
     (m, t) => "بيانات ناقصة: " + list(m[1], t) + ".\nيمكن الحفظ والإكمال لاحقًا — لكن ملف المصنّع سيُحظر حتى يكتمل كل شيء")],
-  [/^לאשר את המדידות של (.+) ולשלוח ליצרן\? מהרגע הזה היצרן יראה את קובץ הייצור — בלי מחירים, בלי פרטי לקוח ובלי תמונות$/, F(
-    "Valider les mesures de $1 et les envoyer au fabricant ? Il verra dès maintenant le fichier de fabrication — sans prix, sans coordonnées du client ni photos",
-    "الموافقة على قياسات $1 وإرسالها للمصنّع؟ من هذه اللحظة سيرى المصنّع ملف التصنيع — بدون أسعار ولا تفاصيل زبون ولا صور")],
+  [/^לאשר את המדידות של (.+) ולשלוח ליצרן\? מהרגע הזה היצרן יראה את קובץ הייצור עם התמונות מהשטח — בלי מחירים ובלי פרטי לקוח$/, F(
+    "Valider les mesures de $1 et les envoyer au fabricant ? Il verra dès maintenant le fichier de fabrication avec les photos du chantier — sans prix ni coordonnées du client",
+    "الموافقة على قياسات $1 وإرسالها للمصنّع؟ من هذه اللحظة سيرى المصنّع ملف التصنيع مع صور الموقع — بدون أسعار ولا تفاصيل زبون")],
   [/^(.+) — לחיצה על תמונה מגדילה, ״בחר״ מציב בהדמיה$/, F((m, t) => t(m[1]) + " — touchez une image pour l'agrandir, « Choisir » la place dans la simulation", (m, t) => t(m[1]) + " — اضغط على الصورة لتكبيرها، \"اختر\" يضعها في المحاكاة")],
   [/^סדרה (.+) היא סדרת הזזה — הפריט שבחרת הוא ציר\/קיפ\. לוודא לפני שליחה$/, F("La série $1 est une série coulissante — l'élément choisi est battant/basculant. À vérifier avant l'envoi", "السلسلة $1 هي سلسلة جرّار — البند الذي اخترته مفصلي/قلّاب. تأكد قبل الإرسال")],
   [/^לא נמצאו תוצאות ל"(.*)$/, F("Aucun résultat pour \"$1", "لا توجد نتائج لـ \"$1")]
