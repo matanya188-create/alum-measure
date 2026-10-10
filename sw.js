@@ -10,6 +10,8 @@ const ASSETS = [
   "./icon-maskable-512.png",
   "./apple-touch-icon.png",
   "./three.min.js",
+  "./leaflet/leaflet.js",
+  "./leaflet/leaflet.css",
   "./i18n.js",
   "./fb/firebase-app.js",
   "./fb/firebase-auth.js",
