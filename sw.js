@@ -10,6 +10,9 @@ const ASSETS = [
   "./icon-maskable-512.png",
   "./apple-touch-icon.png",
   "./three.min.js",
+  "./fb/firebase-app.js",
+  "./fb/firebase-auth.js",
+  "./fb/firebase-firestore.js",
   "./view.jpg",
   "./wall.jpg",
   "./floor.jpg",
@@ -46,6 +49,9 @@ self.addEventListener("activate", e => {
 /* network-first לדף עצמו (כדי לקבל עדכונים), cache fallback לאופליין */
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
+  /* בקשות לשרתים חיצוניים (הענן של הצוות, התחברות גוגל) — ישירות לרשת, בלי מטמון.
+     ערוץ הסנכרון החי של Firestore הוא זרם שלא נגמר; שמירה שלו במטמון הייתה תוקעת אותו. */
+  if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     fetch(e.request)
       .then(res => {

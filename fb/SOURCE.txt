@@ -1,0 +1,6 @@
+Firebase JS SDK 13.0.0 (Apache-2.0) — ESM builds from https://www.gstatic.com/firebasejs/13.0.0/
+Vendored so the app works offline. Only change: auth/firestore import firebase-app via ./firebase-app.js instead of the gstatic URL.
+sha256 of the original gstatic files:
+  7cb48cbc5728f220562d05bd0aab8c17d8bda03c599ad8cb4ad0f042e4f65765  firebase-app.js
+  286224de4d870ef55e4301f718488fa77f146d60d6953b3a76f9a3883669b34a  firebase-auth.js
+  36a6733b2afdcafb82f5a76b02a557fa73a5edebf9729f464210aded0476be8e  firebase-firestore.js
