@@ -425,7 +425,7 @@ html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev{trans
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 79; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 80; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -4268,8 +4268,19 @@ function consentExit(){
     ov.querySelector('[data-m="back"]').onclick=()=>{ ov.remove(); consentShow(); };
   }, 300);
 }
+/* האישור נמצא בטלפון אבל חסר בשרת (נשלח בלי קליטה, או לפני שכללי השרת עודכנו) — משלימים, כדי שהמנהל יראה אותו */
+function consentSync(){
+  if(!trackIsWorker() || !consentOk() || Track.synced===Cloud.user.email) return;
+  const M=Cloud.m, me=Cloud.user.email, ref=M.doc(cloudCol("consents"), me);
+  Track.synced=me;
+  M.getDoc(ref).then(s=>{
+    const d=s.exists()?s.data():null;
+    if(d && d.ok===true && d.v===Track.cv) return;
+    return M.setDoc(ref, {v:Track.cv, ok:true, at:M.serverTimestamp(), by:me, name:String(Cloud.user.name||"").slice(0,60)});
+  }).catch(()=>{ Track.synced=""; });
+}
 function trackTick(){
-  if(consentNeeded()) consentCheck();
+  if(consentNeeded()) consentCheck(); else consentSync();
   const run=trackShouldRun();
   if(run && Track.watch==null) trackStart();
   else if(!run && Track.watch!=null) trackStop(true);
