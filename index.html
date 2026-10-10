@@ -405,7 +405,7 @@ html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev{trans
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 76; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 77; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -1065,7 +1065,10 @@ function i18nCanon(v){
 function i18nForeign(s){
   s=String(s||""); if(s.replace(/\s/g,"").length<2) return false;
   if(LANG!=="he" && i18nHas(s)) return false;
-  return Object.keys(I18N_SCRIPT).some(l=>l!==LANG && I18N_SCRIPT[l].test(s));
+  /* זר = השפה ששולטת בטקסט (הכי הרבה אותיות) אינה השפה שנבחרה. קוד גוון כמו K001 לא הופך טקסט עברי ל"צרפתית" */
+  let best="", n=0;
+  Object.keys(I18N_SCRIPT).forEach(l=>{ const c=(s.match(new RegExp(I18N_SCRIPT[l].source,"g"))||[]).length; if(c>n){ n=c; best=l; } });
+  return n>=3 && best!==LANG;
 }
 function i18nTrLink(s){
   return "https://translate.google.com/?sl=auto&tl="+(LANG==="he"?"iw":LANG)+"&op=translate&text="+encodeURIComponent(String(s).slice(0,1500));
