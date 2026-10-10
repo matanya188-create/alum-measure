@@ -336,6 +336,22 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
   .cell .cbadge span.bopen{background:#eee;border-color:#000;color:#000}
 }
 @media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important} }
+/* ===== שיתוף צוות (ענן) ===== */
+.cloud-pill{margin-inline-start:auto;font:inherit;font-size:.75rem;font-weight:700;padding:7px 12px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);box-shadow:var(--shadow);white-space:nowrap;cursor:pointer}
+.cloud-toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:calc(100vw - 32px);background:#101828;color:#fff;padding:10px 18px;border-radius:99px;font-size:.85rem;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s}
+.cloud-toast.show{opacity:1}
+.rowline.wrap{flex-wrap:wrap}
+.byline{font-size:.75rem;color:var(--ink2);margin-top:3px;font-weight:400}
+.act-day{font-size:.78rem;font-weight:800;color:var(--ink2);margin:16px 4px 8px}
+.act-row{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow)}
+.act-row.tap{cursor:pointer}
+.act-av{flex:none;width:34px;height:34px;border-radius:50%;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+.team-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.team-row:last-child{border-bottom:none}
+#teamEmail{width:100%}
+.prod-status{border-inline-start:4px solid var(--ok)}
+.prod-warn{color:var(--warn);font-weight:700;font-size:.85rem;margin-top:4px}
+.prod-warn a{color:inherit}
 /* ===== מסך תשלום (paywall) ===== */
 .paywall{position:fixed;inset:0;z-index:900;background:linear-gradient(160deg,#20315e,#2c4e9e);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
 .pw-card{background:var(--surface);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.4);width:100%;max-width:380px;padding:26px 22px;text-align:center}
@@ -358,7 +374,7 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 71; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 72; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -517,9 +533,20 @@ function load(){
   return d;
 }
 let DB = load();
+/* המראה המקומי: פתיחה מיידית ועבודה בלי קליטה. במצב צוות, אם האחסון מלא — שומרים בלי תמונות
+   (הן שמורות בענן ובמטמון שלו בטלפון), בלי להטריד בהודעה. */
+function saveLocal(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); return true; }
+  catch(e){
+    if(cloudActiveHere()){
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(DB,(k,v)=>(k==="photo"||k==="logo")?null:v)); return true; }catch(e2){}
+    }
+    return false;
+  }
+}
 function save(){
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
-  catch(e){ uiAlert("האחסון בדפדפן מלא — מחק תמונות מפריטים ישנים או ייצא גיבוי ומחק פרויקטים ישנים.","האחסון מלא"); }
+  if(!saveLocal() && !cloudActiveHere()) uiAlert("האחסון בדפדפן מלא — מחק תמונות מפריטים ישנים או ייצא גיבוי ומחק פרויקטים ישנים.","האחסון מלא");
+  cloudLocalChanged();
 }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 const esc = s => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -944,9 +971,23 @@ window.addEventListener("appinstalled", () => { installEvt = null; render(); });
 /* ================= ROUTER ================= */
 window.addEventListener("hashchange", render);
 function nav(h){ location.hash = h; }
+/* רשת ביטחון: אם מסך נכשל (למשל נתון פגום), מציגים הודעה וכפתור חזרה במקום מסך ריק */
 function render(){
+  try{ renderRoute(); }
+  catch(e){
+    console.error(e);
+    const app=document.getElementById("app");
+    if(app) app.innerHTML='<div class="card" style="margin-top:24px"><b>⚠️ המסך הזה לא הצליח להיפתח</b>'
+      +'<div class="muted" style="margin-top:6px">ייתכן שיש נתון פגום באחד הפריטים. שום דבר לא נמחק.</div>'
+      +'<div class="rowline wrap" style="margin-top:12px"><button class="btn small primary" onclick="nav(\'/\')">חזרה למסך הבית</button></div></div>';
+  }
+}
+function renderRoute(){
   const parts = location.hash.replace(/^#\/?/,"").split("/").filter(Boolean);
   const app = document.getElementById("app");
+  if(parts[0]!=="activity") cloudActivityStop();
+  if(parts[0]!=="team") cloudTeamStop();
+  if(cloudGate(parts)) return;
   if(parts[0]==="p" && parts[1]){
     const p = proj(parts[1]);
     if(!p){ nav("/"); return; }
@@ -959,6 +1000,10 @@ function render(){
   else if(parts[0]==="quotes"){ app.innerHTML = viewList("quote"); afterListRender(); }
   else if(parts[0]==="pricing"){ app.innerHTML = viewPricingList(); afterListRender(); }
   else if(parts[0]==="sim"){ app.innerHTML = viewSim(); afterSimRender(); }
+  else if(parts[0]==="activity"){ app.innerHTML = viewActivity(); afterActivityRender(); }
+  else if(parts[0]==="trash"){ app.innerHTML = viewTrash(); }
+  else if(parts[0]==="team"){ app.innerHTML = viewTeam(); afterTeamRender(); }
+  else if(parts[0]==="prod" && parts[1]){ app.innerHTML = viewProdOrder(parts[1]); }
   else if(parts[0]==="settings"){ app.innerHTML = viewSettings(); }
   else {
     app.innerHTML = viewHome();
@@ -970,6 +1015,7 @@ function render(){
 function countKind(k){ return DB.projects.filter(p=>(p.kind||"production")===k).length; }
 
 function viewHome(){
+  if(isMaker()) return cloudMakerHome();
   const showInstall = !isStandalone() && (installEvt || location.hostname.indexOf("github.io") >= 0);
   const menuItem = (icon,cls,title,sub,route)=>
     '<div class="menu-card" onclick="nav(\''+route+'\')">'
@@ -977,7 +1023,8 @@ function viewHome(){
     +'<div class="grow"><div class="mc-t">'+title+'</div><div class="mc-s">'+sub+'</div></div>'
     +'<div class="mc-arrow">‹</div></div>';
   return ''
-  +'<div class="topbar"><div><h1>אלום אלבז</h1><div class="sub">פנקס מדידות והצעות מחיר</div></div></div>'
+  +'<div class="topbar"><div><h1>אלום אלבז</h1><div class="sub">פנקס מדידות והצעות מחיר</div></div>'+cloudPillHTML()+'</div>'
+  +cloudHomeCard()
   +(showInstall
     ? '<div class="card banner"><div class="rowline">'
       +'<div class="grow"><b>📲 התקנת האפליקציה בטלפון</b><div class="muted">אייקון במסך הבית, מסך מלא, עובד גם בלי אינטרנט</div></div>'
@@ -986,8 +1033,9 @@ function viewHome(){
     : '')
   +menuItem("📐","pc3","פרויקטים","מדידות ייצור לשליחה ליצרן · "+countKind("production")+" פרויקטים","/projects")
   +menuItem("💰","pc1","מידות להצעת מחיר","מדידה מהירה לתמחור · "+countKind("quote")+" הצעות","/quotes")
-  +menuItem("📄","pc0","הצעת מחיר ללקוח","תמחור והפקת הצעה ללקוח","/pricing")
+  +(canPrice()?menuItem("📄","pc0","הצעת מחיר ללקוח","תמחור והפקת הצעה ללקוח","/pricing"):"")
   +menuItem("🧊","pc2","הדמיה ללקוח","בונים חלון ורואים אותו בתלת־ממד","/sim")
+  +(Cloud.ready&&Cloud.role!=="maker"?menuItem("🕒","pc0","פעילות הצוות","מי עשה מה ומתי — כל השינויים של הצוות","/activity"):"")
   +'<button class="btn primary fab fab-left" onclick="nav(\'/settings\')">⚙️ הגדרות</button>';
 }
 
@@ -1007,7 +1055,7 @@ function projCardHTML(p,i){
     +'<div class="pchip pc'+(i%4)+'">'+(listKind==="quote"?"💰":"🏠")+'</div>'
     +'<div class="grow">'
     +'<div class="title-md">'+esc(pname(p))+'</div>'
-    +'<div class="muted">'+esc(p.client||"")+(p.client&&p.date?" · ":"")+esc(fmtDate(p.date))+' · <span class="num">'+p.items.length+'</span> פריטים</div>'
+    +'<div class="muted">'+esc(p.client||"")+(p.client&&p.date?" · ":"")+esc(fmtDate(p.date))+' · <span class="num">'+p.items.length+'</span> פריטים'+cloudCardBy(p)+'</div>'
     +'</div>'+(extra||'<div style="font-size:1.3rem;color:var(--ink2)">‹</div>')+'</div></div>';
 }
 function viewList(kind){
@@ -1056,9 +1104,11 @@ function viewSettings(){
   return ''
   +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
   +'<div class="grow"><h1>הגדרות</h1></div></div>'
+  +cloudSettingsCard()
+  +(canPrice()?(''
   +'<div class="card"><label>לוגו החברה — מופיע בכל קובץ מיוצא (לצד בס״ד)</label>'
   +'<div class="rowline" style="margin-top:8px">'
-  +'<img src="'+(DB.settings.logo||DEFAULT_LOGO)+'" alt="לוגו" style="max-height:60px;max-width:150px;object-fit:contain;border-radius:8px">'
+  +'<img src="'+esc(DB.settings.logo||DEFAULT_LOGO)+'" alt="לוגו" style="max-height:60px;max-width:150px;object-fit:contain;border-radius:8px">'
   +'<div class="grow muted">'+(DB.settings.logo?'לוגו מותאם אישית (הוחלף)':'הלוגו של אלום אלבז מובנה באפליקציה — אין צורך להעלות כלום')+'</div>'
   +'</div>'
   +'<div class="rowline" style="margin-top:10px">'
@@ -1071,11 +1121,14 @@ function viewSettings(){
   +'<div class="field" style="margin:0"><label>מע״מ (%)</label><input class="num" inputmode="decimal" value="'+esc(DB.settings.vatRate)+'" oninput="App.sf(\'vatRate\',this.value)"></div>'
   +'</div>'
   +'<div class="muted" style="margin-top:6px">אלה ברירות מחדל למדידת-הצעה חדשה. אפשר לשנות בכל הצעה בנפרד.</div></div>'
+  ):'')
+  +(!isMaker()?(''
   +'<div class="card"><label>גיבוי ושחזור</label>'
   +'<div class="rowline" style="margin-top:8px">'
   +'<button class="btn small" onclick="App.backup()">⬇ גיבוי לקובץ</button>'
   +'<label class="btn small" style="margin:0"><input type="file" accept=".json" style="display:none" onchange="App.restore(this)">⬆ שחזור מגיבוי</label>'
-  +'</div><div class="muted" style="margin-top:8px">הנתונים נשמרים בדפדפן במכשיר הזה. מומלץ לייצא גיבוי מדי פעם.</div></div>'
+  +'</div><div class="muted" style="margin-top:8px">'+(cloudActiveHere()?'הנתונים משותפים לצוות בענן, ועותק נשמר גם בטלפון. גיבוי לקובץ הוא שכבת ביטחון נוספת.':'הנתונים נשמרים בדפדפן במכשיר הזה. מומלץ לייצא גיבוי מדי פעם.')+'</div></div>'
+  ):'')
   +'<div class="card"><label>אפליקציה</label>'
   +'<div class="rowline" style="margin-top:8px">'
   +'<button class="btn small" onclick="App.shareApp()">📤 שתף את האפליקציה</button>'
@@ -1096,6 +1149,7 @@ function viewProject(p){
       +(Number(it.qty)>1?' <span class="num">×'+esc(it.qty)+'</span>':'')
       +'</div>'
       +(missingList(it).length?'<div style="color:var(--danger);font-size:.8rem;font-weight:700;margin-top:2px">⚠ חסר: '+missingList(it).join(", ")+'</div>':'')
+      +cloudByline(it._m)
       +'</div>'
       +'<div class="acts">'
       +'<button class="iconbtn" title="למעלה" onclick="App.move(\''+p.id+'\','+i+',-1)">↑</button>'
@@ -1112,8 +1166,9 @@ function viewProject(p){
     : '<button class="btn small primary" '+(p.items.length?'':'disabled style="opacity:.5"')+' onclick="nav(\'/p/'+p.id+'/export\')">📄 קובץ ליצוא</button>';
   return ''
   +'<div class="topbar"><button class="backbtn" onclick="nav(\''+back+'\')">→</button>'
-  +'<div class="grow"><h1>'+esc(pname(p))+'</h1><div class="sub">'+(isQuote?"מדידת הצעה · ":"")+'<span class="num">'+p.items.length+'</span> פריטים</div></div>'
-  +actionBtn+'</div>'
+  +'<div class="grow"><h1>'+esc(pname(p))+'</h1><div class="sub">'+(isQuote?"מדידת הצעה · ":"")+'<span class="num">'+p.items.length+'</span> פריטים'+(Cloud.ready?' · <span class="cloud-pill-txt">'+esc(cloudPillText())+'</span>':'')+'</div>'+cloudByline(cloudLatest(p))+'</div>'
+  +((isQuote && !canPrice())?'':actionBtn)+'</div>'
+  +(isQuote?'':cloudProdStatus(p))
 
   +'<div class="card"><details'+(p.items.length?'':' open')+'><summary style="font-weight:700;cursor:pointer">פרטי הפרויקט (לשימוש פנימי)</summary>'
   +'<div style="margin-top:12px">'
@@ -1128,7 +1183,7 @@ function viewProject(p){
   +'</div>'
   +'<div class="field"><label>הערות פרויקט</label><textarea rows="2" oninput="App.pf(\''+p.id+'\',\'notes\',this.value)">'+esc(p.notes)+'</textarea></div>'
   +(isQuote?'<button class="btn small" style="margin-bottom:8px" onclick="App.convertToProduction(\''+p.id+'\')">📐 העתק לפרויקט ייצור</button><br>':'')
-  +'<button class="btn small danger" onclick="App.delProject(\''+p.id+'\')">מחק '+(isQuote?"מדידת הצעה":"פרויקט")+'</button>'
+  +(canDelProject()?'<button class="btn small danger" onclick="App.delProject(\''+p.id+'\')">מחק '+(isQuote?"מדידת הצעה":"פרויקט")+'</button>':'')
   +'</div></details></div>'
 
   +(items || '<div class="empty">אין פריטים עדיין.<br>מוסיפים את החלון או הדלת הראשונים.</div>')
@@ -1169,7 +1224,7 @@ function viewItem(p, iid){
   return ''
   +'<div class="topbar"><button class="backbtn" onclick="nav(\'/p/'+p.id+'\')">→</button>'
   +'<div class="grow"><h1>'+(draftIid?"עריכת פריט":"פריט חדש")+'</h1><div class="sub">'+esc(pname(p))+'</div></div>'
-  +(draftIid?'<button class="btn small danger" onclick="App.delItem()">מחק</button>':'')
+  +(draftIid&&canDelItem(((proj(draftPid)||{}).items||[]).find(x=>x.id===draftIid))?'<button class="btn small danger" onclick="App.delItem()">מחק</button>':'')
   +'</div>'
   + restoredBar
   +'<div class="preview-wrap" id="preview"></div>'
@@ -1406,7 +1461,7 @@ function renderItemForm(){
     +'<label class="btn small" style="margin:0">📷 צלם / העלה<input type="file" accept="image/*" capture="environment" style="display:none" onchange="App.photo(this)"></label>'
     +(draft.photo?'<button type="button" class="btn small danger" onclick="App.f(\'photo\',null);renderItemForm()">הסר תמונה</button>':'')
     +'</div>'
-    +(draft.photo?'<img class="photo-thumb" style="margin-top:10px" src="'+draft.photo+'" alt="תמונת הפתח">':'')
+    +(draft.photo?'<img class="photo-thumb" style="margin-top:10px" src="'+esc(draft.photo)+'" alt="תמונת הפתח">':'')
     +'</div></div>'
     +'<div style="height:8px"></div>';
 
@@ -1417,6 +1472,7 @@ function renderItemForm(){
 let expOpts = {mode:"factory", perPage:9, showName:true};
 
 function viewExport(p){
+  if(p._prod) expOpts.mode="factory";   /* יצרן — תמיד הקובץ הנקי */
   const problems = [];
   p.items.forEach((it,i)=>{
     const m = missingList(it);
@@ -1472,12 +1528,12 @@ function viewExport(p){
         +'<div class="cbadge">'+measureBadge(it)+'</div>'
         +'<div class="cinfo">'+info.join(" · ")+'</div>'
         +(it.notes?'<div class="cnote">'+esc(it.notes)+'</div>':'')
-        +(internal&&it.photo?'<img src="'+it.photo+'" alt="">':'')
+        +(internal&&it.photo?'<img src="'+esc(it.photo)+'" alt="">':'')
         +'</div>';
     }).join("");
     const strip = '<div class="sheet-top">'
       +'<span class="bsd">בס״ד</span>'
-      +'<img class="sheet-logo" src="'+(DB.settings.logo||DEFAULT_LOGO)+'" alt="לוגו">'
+      +'<img class="sheet-logo" src="'+esc(DB.settings.logo||DEFAULT_LOGO)+'" alt="לוגו">'
       +'</div>';
     return '<div class="sheet">'+strip+head
       +'<div class="sheet-grid" style="grid-template-columns:repeat('+cols+',1fr)">'+cells+'</div>'
@@ -1486,17 +1542,17 @@ function viewExport(p){
 
   return ''
   +'<div class="exp-tools no-print">'
-  +'<div class="rowline" style="margin-bottom:10px"><button class="backbtn" onclick="nav(\'/p/'+p.id+'\')">→</button>'
+  +'<div class="rowline" style="margin-bottom:10px"><button class="backbtn" onclick="nav(\''+(p._prod?'/':'/p/'+esc(p.id))+'\')">→</button>'
   +'<div class="grow"><h1 style="font-size:1.1rem">קובץ ליצוא — '+esc(pname(p))+'</h1></div>'
   +(blocked
     ? '<button class="btn" disabled style="opacity:.45">🖨 הדפס / שמור PDF</button>'
     : '<button class="btn primary" onclick="window.print()">🖨 הדפס / שמור PDF</button>')
   +'</div>'
   +'<div class="two">'
-  +'<div><label>ייעוד הקובץ</label><div class="seg">'
+  +(p._prod?'':'<div><label>ייעוד הקובץ</label><div class="seg">'
   +segBtn(expOpts.mode==="factory","ליצרן (נקי)","App.eo('mode','factory')")
   +segBtn(expOpts.mode==="internal","פנימי (מלא)","App.eo('mode','internal')")
-  +'</div></div>'
+  +'</div></div>')
   +'<div><label>פריטים בעמוד</label><div class="seg">'
   +segBtn(expOpts.perPage===4,"4","App.eo('perPage',4)")
   +segBtn(expOpts.perPage===6,"6","App.eo('perPage',6)")
@@ -1507,6 +1563,7 @@ function viewExport(p){
       +(expOpts.showName?"✓ ":"")+'הצג כתובת (שם הפרויקט) בכותרת</label>'
       +' <span class="muted">היצרן רואה רק את הכתובת — בלי שם לקוח, טלפון ותמונות.</span></div>'
     : '<div class="muted" style="margin-top:8px">הקובץ הפנימי כולל את כל פרטי הלקוח והתמונות.</div>')
+  +cloudProdButtons(p, problems.length>0)
   +'</div>'
   +(problems.length
     ? '<div class="errbanner no-print"><b>'
@@ -1592,7 +1649,7 @@ function viewQuoteExport(p){
       +'<td class="num">'+money(unit*qty)+'</td>'
       +'</tr>';
   }).join("");
-  const strip='<div class="sheet-top"><span class="bsd">בס״ד</span><img class="sheet-logo" src="'+(DB.settings.logo||DEFAULT_LOGO)+'" alt="לוגו"></div>';
+  const strip='<div class="sheet-top"><span class="bsd">בס״ד</span><img class="sheet-logo" src="'+esc(DB.settings.logo||DEFAULT_LOGO)+'" alt="לוגו"></div>';
   const head='<div class="sheet-head"><h2>הצעת מחיר</h2><div class="meta">'
     +(p.client?'<span>לקוח: <b>'+esc(p.client)+'</b></span>':'')
     +(p.phone?'<span>טל׳: <b class="num">'+esc(p.phone)+'</b></span>':'')
@@ -2521,7 +2578,7 @@ const App = {
   newProject(){ this._newContainer("production","/p/"); },
   newQuote(){ this._newContainer("quote","/p/"); },
   _newContainer(kind){
-    const p = {id:uid(), kind:kind, name:"", client:"", phone:"", address:"", date:todayISO(), measurer:"", notes:"", items:[]};
+    const p = {id:uid(), kind:kind, name:"", client:"", phone:"", address:"", date:todayISO(), measurer:(Cloud.ready&&Cloud.user?Cloud.user.name:""), notes:"", items:[]};
     if(kind==="quote"){ p.pricePerM2=DB.settings.pricePerM2||""; p.vatEnabled=true; p.vatRate=DB.settings.vatRate; }
     DB.projects.unshift(p); save(); nav("/p/"+p.id);
   },
@@ -2535,7 +2592,7 @@ const App = {
       const cp=JSON.parse(JSON.stringify(src));
       cp.id=uid(); cp.kind="production";
       delete cp.pricePerM2; delete cp.vatEnabled; delete cp.vatRate;
-      (cp.items||[]).forEach(it=>{ delete it.priceOverride; });
+      (cp.items||[]).forEach(it=>{ delete it.priceOverride; it.id=uid(); });
       DB.projects.unshift(cp); save(); nav("/p/"+cp.id);
     });
   },
@@ -2705,7 +2762,7 @@ const App = {
   delProject(pid){
     const cur=proj(pid);
     const back = cur && cur.kind==="quote" ? "/quotes" : "/projects";
-    uiConfirm("למחוק את הפריט על כל הפריטים שלו? אין דרך חזרה.",{title:"מחיקה",ok:"מחק",danger:true}).then(ok=>{
+    uiConfirm(cloudActiveHere()?"להעביר את הפרויקט עם כל הפריטים שלו לסל המחזור? הוא ייעלם אצל כל הצוות, ואפשר לשחזר אותו במשך "+TRASH_DAYS+" יום (הגדרות ← סל מחזור).":"למחוק את הפרויקט עם כל הפריטים שלו? אין דרך חזרה.",{title:"מחיקה",ok:"מחק",danger:true}).then(ok=>{
       if(!ok) return;
       DB.projects = DB.projects.filter(p=>p.id!==pid); save(); nav(back);
     });
@@ -2792,7 +2849,8 @@ const App = {
     rd.readAsDataURL(file);
   },
   saveItem(){
-    const p=proj(draftPid); if(!p) return;
+    const p=proj(draftPid);
+    if(!p){ if(cloudActiveHere()) uiAlert("הפרויקט הזה הועבר בינתיים לסל המחזור ע״י חבר צוות. אפשר לשחזר אותו (הגדרות ← סל מחזור) ואז לשמור שוב — הטיוטה שלך שמורה.","לא נשמר"); return; }
     const doSave=()=>{
       if(draftIid){
         const idx=p.items.findIndex(x=>x.id===draftIid);
@@ -2806,7 +2864,7 @@ const App = {
     } else doSave();
   },
   delItem(){
-    uiConfirm("למחוק את הפריט?",{title:"מחיקת פריט",ok:"מחק",danger:true}).then(ok=>{
+    uiConfirm(cloudActiveHere()?"להעביר את הפריט לסל המחזור? אפשר לשחזר אותו במשך "+TRASH_DAYS+" יום.":"למחוק את הפריט?",{title:"מחיקת פריט",ok:"מחק",danger:true}).then(ok=>{
       if(!ok) return;
       const p=proj(draftPid);
       p.items=p.items.filter(x=>x.id!==draftIid);
@@ -2904,6 +2962,7 @@ const App = {
       try{
         const data=JSON.parse(e.target.result);
         if(!data || !Array.isArray(data.projects)) throw 0;
+        if(cloudActiveHere()){ cloudRestoreBackup(data); return; }
         uiConfirm("השחזור יחליף את כל הנתונים הקיימים במכשיר. להמשיך?",{title:"שחזור מגיבוי",ok:"שחזר",danger:true}).then(ok=>{
           if(ok){ DB=data; if(!DB.settings) DB.settings={logo:null}; save(); render(); }
         });
@@ -2920,6 +2979,924 @@ document.addEventListener("click", e=>{
 });
 
 window.App=App; window.nav=nav; window.renderItemForm=renderItemForm;
+
+/* ================= CLOUD — שיתוף צוות בענן (Firebase) =================
+   כל הצוות עובד על אותם פרויקטים. העותק בטלפון (localStorage) נשאר כמראה:
+   פתיחה מיידית, ועבודה בלי קליטה; השינויים עולים לענן כשהקליטה חוזרת.
+
+   תפקידים (נאכפים בכללי השרת — firestore.rules; כאן רק מה שמוצג):
+     dev      = מפתח: הכל, כולל ניהול כל הצוות
+     manager  = מנהל: הכל, כולל מחירים, מחיקה, שליחה ליצרן, וניהול עובדים ויצרנים בלבד
+     employee = עובד: רואה ועורך את כל הפרויקטים והמדידות — בלי מחירים; מוחק רק פריטים שהוא הוסיף
+     maker    = יצרן: קריאה בלבד של "הזמנות ייצור" שמנהל שלח (בלי מחירים ובלי פרטי לקוח)
+
+   מבנה בענן (teams/{TEAM_ID}/...):
+     members/{email}   {role, by, at}
+     projects/{id}     {d: JSON פרטי הפרויקט בלי מחירים, ...מטא}
+     items/{id}        {pid, pos, d: JSON הפריט בלי תמונה ומחיר, photo, ...מטא}
+     prices/{pid}      {d: JSON מחירי הפרויקט ומחירים ידניים לפריטים}          — מנהל ומפתח בלבד
+     meta/settings     {d, logo}  ·  meta/pricing {d: מחירי ברירת מחדל}         — pricing: מנהל ומפתח בלבד
+     production/{pid}  {d: עותק קבוע של קובץ הייצור, sentAt, sentBy, ver}       — מה שהיצרן רואה
+     activity/{id}     {at, t0, op, by, byName, text, where, pid}
+   מטא בכל מסמך: cb/cn/ca = נוצר ע"י/שם/מתי, ub/un/ua = עודכן ע"י/שם/מתי, deleted (+deletedAt/By).
+   מחיקה = סל מחזור; מחיקה סופית רק אחרי TRASH_DAYS (נאכף בשרת, כולל תאריך המחיקה עצמו).
+   הסנכרון: כל שמירה משווה את DB למצב הידוע של הענן (Cloud.last) וכותבת רק את מה שהשתנה. */
+/* פרטי זיהוי ציבוריים של פרויקט Firebase (לא סוד — ההגנה היא כללי האבטחה בשרת) */
+const FB_CONFIG = {apiKey:"AIzaSyDX19_rWMZ-BDyO0DjvsGViJR75xE1nKMY", authDomain:"alum-elbaz.firebaseapp.com", projectId:"alum-elbaz", storageBucket:"alum-elbaz.firebasestorage.app", messagingSenderId:"631687751074", appId:"1:631687751074:web:e8bf773dbfdb62200dfefb"};
+const TEAM_ID = "albaz";
+const CLOUD_KEY = "alum_cloud_v1";
+const TRASH_DAYS = 30;
+/* בדיקות מקומיות מול אמולטור של Firebase: רק ב-localhost ורק עם ?emu=1 — לא קיים בכתובת האמיתית */
+const CLOUD_EMU = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]emu=1/.test(location.search);
+const cloudConfigured = () => CLOUD_EMU || !!FB_CONFIG.apiKey;
+const ROLES = {dev:"מפתח", manager:"מנהל", employee:"עובד", maker:"יצרן"};
+const PRICE_P = ["pricePerM2","vatEnabled","vatRate"];   /* מחירי פרויקט — במסמך נפרד שעובד ויצרן לא יכולים לקרוא */
+const PRICE_S = ["pricePerM2","vatRate"];                /* מחירי ברירת מחדל בהגדרות */
+
+const Cloud = {
+  state:"off", user:null, role:"", err:"",
+  m:null, db:null, auth:null,
+  projects:new Map(), items:new Map(), prices:new Map(), settings:null, pricing:null, production:new Map(),
+  last:new Map(), need:[], got:{}, ready:false, snapPend:{},
+  unsubs:[], pending:0, renderPending:false,
+  act:new Map(), actTimer:null, actUnsub:null, activity:null,
+  team:null, teamUnsub:null
+};
+
+/* ---- הרשאות לתצוגה (האכיפה בשרת) ---- */
+const cloudIsBoss = () => Cloud.role==="dev" || Cloud.role==="manager";
+function canBoss(){ return Cloud.ready && cloudIsBoss(); }
+function isMaker(){ return Cloud.ready && Cloud.role==="maker"; }
+function canPrice(){ return !cloudActiveHere() || cloudIsBoss(); }
+function canDelProject(){ return !cloudActiveHere() || cloudIsBoss(); }
+function canDelItem(it){
+  if(!cloudActiveHere() || cloudIsBoss()) return true;
+  return Cloud.role==="employee" && (!it || !it._m || !it._m.cb || it._m.cb===(Cloud.user&&Cloud.user.email));
+}
+
+/* ---- דגל מקומי לכל משתמש: תפקיד, והאם כבר העלה את הפרויקטים של הטלפון הזה ---- */
+function cloudFlags(){ try{ return JSON.parse(localStorage.getItem(CLOUD_KEY))||{}; }catch(e){ return {}; } }
+function cloudFlag(){ const u=Cloud.user; return u ? (cloudFlags()[TEAM_ID+"|"+u.email]||{}) : {}; }
+function cloudSetFlag(o){
+  const u=Cloud.user; if(!u) return;
+  const all=cloudFlags(), k=TEAM_ID+"|"+u.email;
+  all[k]=Object.assign({}, all[k]||{}, o);
+  try{ localStorage.setItem(CLOUD_KEY, JSON.stringify(all)); }catch(e){}
+}
+function cloudActiveHere(){ return Cloud.ready || (!!Cloud.user && !!cloudFlag().migrated); }
+function cloudLocalChanged(){ if(Cloud.ready) cloudPush(); }
+
+/* ---- המרה בין DB למסמכי ענן ---- */
+function cloudOmit(o, skip){ const r={}; for(const k in o){ if(skip.indexOf(k)<0) r[k]=o[k]; } return r; }
+function cloudSerProject(p){ return {d:JSON.stringify(cloudOmit(p, ["items","_m"].concat(PRICE_P)))}; }
+function cloudSerItem(it,pid,pos){ return {d:JSON.stringify(cloudOmit(it, ["photo","_m","priceOverride"])), photo:it.photo||null, pid:pid, pos:pos}; }
+function cloudSerPrices(p){
+  const o={}; PRICE_P.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; });
+  const ov={}; (p.items||[]).forEach(it=>{ if(it.priceOverride!==undefined && it.priceOverride!==null && String(it.priceOverride).trim()!=="") ov[it.id]=it.priceOverride; });
+  if(Object.keys(ov).length) o.items=ov;
+  return {d:JSON.stringify(o)};
+}
+function cloudSerSettings(s){ return {d:JSON.stringify(cloudOmit(s, ["logo"].concat(PRICE_S))), logo:s.logo||null}; }
+function cloudSerPricing(s){ const o={}; PRICE_S.forEach(k=>{ if(s[k]!==undefined) o[k]=s[k]; }); return {d:JSON.stringify(o)}; }
+function cloudLocalMap(){
+  const m=new Map(), boss=cloudIsBoss();
+  if(Cloud.role==="maker") return m;
+  DB.projects.forEach(p=>{
+    m.set("p:"+p.id, cloudSerProject(p));
+    if(boss){ const r=cloudSerPrices(p); if(r.d!=="{}" || Cloud.last.has("r:"+p.id)) m.set("r:"+p.id, r); }
+    (p.items||[]).forEach((it,i)=>m.set("i:"+it.id, cloudSerItem(it,p.id,i)));
+  });
+  if(boss){ m.set("s:main", cloudSerSettings(DB.settings||{})); m.set("s:pricing", cloudSerPricing(DB.settings||{})); }
+  return m;
+}
+function cloudLastOf(key,d){
+  const k=key[0];
+  const o = k==="i" ? {d:d.d, photo:d.photo||null, pid:d.pid, pos:d.pos} : key==="s:main" ? {d:d.d, logo:d.logo||null} : {d:d.d};
+  o.del=!!d.deleted; return o;
+}
+function cloudRef(key){
+  const M=Cloud.m, id=key.slice(2);
+  if(key[0]==="p") return M.doc(Cloud.db,"teams",TEAM_ID,"projects",id);
+  if(key[0]==="i") return M.doc(Cloud.db,"teams",TEAM_ID,"items",id);
+  if(key[0]==="r") return M.doc(Cloud.db,"teams",TEAM_ID,"prices",id);
+  return M.doc(Cloud.db,"teams",TEAM_ID,"meta", key==="s:pricing" ? "pricing" : "settings");
+}
+function cloudMapOf(key){ return key[0]==="p" ? Cloud.projects : key[0]==="i" ? Cloud.items : key[0]==="r" ? Cloud.prices : null; }
+const cloudCol = n => Cloud.m.collection(Cloud.db,"teams",TEAM_ID,n);
+const cloudMs = t => !t ? 0 : typeof t==="number" ? t : (t.toMillis ? t.toMillis() : (t.seconds ? t.seconds*1000 : 0));
+/* uid() מתחיל בזמן היצירה (base36) — כך ממיינים פרויקטים מהחדש לישן, כמו ברשימה המקומית */
+const cloudCreated = id => { const n=parseInt(String(id).slice(0,8),36); return isFinite(n)?n:0; };
+/* פענוח JSON מהענן: רק אובייקט רגיל נחשב תקין — רשימה, null או טקסט שבור מחזירים null */
+function cloudObj(s){ try{ const o=JSON.parse(s); return (o && typeof o==="object" && !Array.isArray(o)) ? o : null; }catch(e){ return null; } }
+const cloudIdOk = id => /^[a-z0-9]{6,40}$/.test(String(id));
+/* תמונה/לוגו מהענן מוצגים רק אם הם באמת תמונה מקודדת — כל דבר אחר נזרק */
+const cloudImgOk = s => typeof s==="string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(s);
+const cloudMeta = d => ({cb:d.cb||"", cn:d.cn||"", ca:cloudMs(d.ca), un:d.un||"", ub:d.ub||"", ua:cloudMs(d.ua)});
+const cloudEmailOk = em => /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(String(em));
+
+/* ---- אתחול ---- */
+async function cloudInit(){
+  if(!cloudConfigured()) return;
+  cloudSetState("loading");
+  try{
+    const mods = await Promise.all([import("./fb/firebase-app.js"), import("./fb/firebase-auth.js"), import("./fb/firebase-firestore.js")]);
+    Cloud.m = Object.assign({}, mods[0], mods[1], mods[2]);
+  }catch(e){ Cloud.err="רכיב הסנכרון לא נטען"; cloudSetState(navigator.onLine?"error":"offline"); return; }
+  const M=Cloud.m;
+  const cfg = CLOUD_EMU ? {apiKey:"demo-key", authDomain:"localhost", projectId:"demo-alum", appId:"demo"} : FB_CONFIG;
+  const app = M.initializeApp(cfg);
+  Cloud.auth = M.getAuth(app);
+  try{ Cloud.db = M.initializeFirestore(app, {ignoreUndefinedProperties:true, localCache:M.persistentLocalCache({tabManager:M.persistentMultipleTabManager()})}); }
+  catch(e){ Cloud.db = M.getFirestore(app); }
+  if(CLOUD_EMU){
+    M.connectAuthEmulator(Cloud.auth, "http://127.0.0.1:9099", {disableWarnings:true});
+    M.connectFirestoreEmulator(Cloud.db, "127.0.0.1", 8085);
+    window.__Cloud = Cloud;
+    window.__cloudTestSignIn = (email,name) => M.signInWithCredential(Cloud.auth,
+      M.GoogleAuthProvider.credential(JSON.stringify({sub:"u-"+email, email:email, email_verified:true, name:name})));
+  }
+  M.getRedirectResult(Cloud.auth).catch(e=>{ Cloud.err=cloudErrText(e); });
+  M.onAuthStateChanged(Cloud.auth, u=>{ if(u) cloudSignedIn(u); else cloudSignedOut(); });
+  window.addEventListener("online", ()=>{ if(Cloud.state==="offline" && Cloud.auth.currentUser) cloudSignedIn(Cloud.auth.currentUser); cloudPill(); });
+  window.addEventListener("offline", cloudPill);
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") cloudActFlush(); });
+}
+
+async function cloudSignedIn(u){
+  /* מזהה המשתמש בצוות: המייל (גוגל), ובעתיד גם מספר טלפון מאומת — כמו בכללי השרת */
+  Cloud.user = {uid:u.uid, email:String(u.email||u.phoneNumber||"").toLowerCase(), name:u.displayName || (u.email ? String(u.email).split("@")[0] : String(u.phoneNumber||""))};
+  const f=cloudFlag();
+  Cloud.role = f.role||"";
+  cloudSetState("loading");
+  const M=Cloud.m, mref=M.doc(Cloud.db,"teams",TEAM_ID,"members",Cloud.user.email);
+  let role="";
+  try{
+    const s=await M.getDoc(mref);
+    if(s.exists()) role=String(s.data().role||"");
+  }catch(e){
+    if(e.code==="unavailable"){ if(f.role) role=f.role; else { cloudSetState("offline"); return; } }
+    else if(e.code!=="permission-denied"){ Cloud.err=cloudErrText(e); cloudSetState("error"); return; }
+  }
+  if(!role){
+    /* לא ברשימה. אם הצוות עוד לא הוקם — ניסיון הקמה; כללי השרת מתירים זאת רק לבעל האפליקציה */
+    try{ await M.setDoc(M.doc(Cloud.db,"teams",TEAM_ID), {owner:Cloud.user.email, name:"אלום אלבז", createdAt:M.serverTimestamp()}); }catch(e){}
+    try{ await M.setDoc(mref, {role:"dev", by:Cloud.user.email, at:M.serverTimestamp()}); role="dev"; }
+    catch(e){ Cloud.role=""; cloudSetFlag({member:false, role:""}); cloudSetState("denied"); return; }
+  }
+  if(!ROLES[role]){ Cloud.role=""; cloudSetState("denied"); return; }
+  Cloud.role=role;
+  cloudSetFlag({member:true, role:role});
+  if(role==="maker"){ cloudStart(); return; }   /* יצרן לא מעלה כלום — קריאה בלבד */
+  if(!cloudFlag().migrated){
+    const n=DB.projects.length;
+    if(n>0){ cloudSetState("migrate"); cloudAskMigrate(n); return; }
+    cloudSetFlag({migrated:true});
+  }
+  cloudStart();
+}
+
+function cloudSignedOut(){
+  cloudStop(); cloudActivityStop(); cloudTeamStop();
+  Cloud.user=null; Cloud.ready=false; Cloud.role="";
+  cloudSetState("signedout");
+}
+
+/* ---- כניסה / יציאה ---- */
+async function cloudSignIn(){
+  const M=Cloud.m;
+  if(!M){ uiAlert("רכיב הסנכרון עוד לא נטען. בדוק שיש קליטה ונסה שוב.","התחברות"); return; }
+  const prov=new M.GoogleAuthProvider();
+  prov.setCustomParameters({prompt:"select_account"});
+  try{ await M.signInWithPopup(Cloud.auth, prov); }
+  catch(e){
+    if(e.code==="auth/popup-blocked" || e.code==="auth/operation-not-supported-in-this-environment"){
+      try{ await M.signInWithRedirect(Cloud.auth, prov); }catch(e2){ uiAlert(cloudErrText(e2),"התחברות נכשלה"); }
+    } else if(e.code!=="auth/popup-closed-by-user" && e.code!=="auth/cancelled-popup-request"){
+      uiAlert(cloudErrText(e),"התחברות נכשלה");
+    }
+  }
+}
+function cloudSignOut(){
+  uiConfirm("להתנתק מהצוות? מה שבטלפון יישאר, אבל לא יסונכרן עד שתתחבר שוב.",{title:"התנתקות",ok:"התנתק"}).then(ok=>{
+    if(ok){ cloudActFlush(); Cloud.m.signOut(Cloud.auth); }
+  });
+}
+function cloudSwitchUser(){ Cloud.m.signOut(Cloud.auth).then(()=>cloudSignIn()); }
+
+/* ---- העלאה ראשונה של הפרויקטים שבטלפון ---- */
+function cloudAskMigrate(n){
+  uiDialog({title:"העלאת הפרויקטים לצוות",
+    msg:"בטלפון הזה יש "+n+" פרויקטים ומדידות. כדי שכל הצוות יראה אותם, הם יועלו עכשיו לענן המשותף.\n\nלפני ההעלאה יישמר קובץ גיבוי בטלפון, ליתר ביטחון. שום דבר לא נמחק.",
+    ok:"גבה והעלה לצוות", cancel:"לא עכשיו"}).then(ok=>{
+    if(ok){ try{ App.backup(); }catch(e){} cloudMigrate(); }
+    else Cloud.m.signOut(Cloud.auth);
+  });
+}
+async function cloudMigrate(){
+  cloudSetState("migrating");
+  cloudFixDupIds();
+  const M=Cloud.m, have=new Set(), boss=cloudIsBoss();
+  let sHave=false, qHave=false;
+  try{ (await M.getDocs(cloudCol("projects"))).forEach(d=>have.add(d.id)); }catch(e){}
+  if(boss){
+    try{ sHave=(await M.getDoc(cloudRef("s:main"))).exists(); }catch(e){}
+    try{ qHave=(await M.getDoc(cloudRef("s:pricing"))).exists(); }catch(e){}
+  }
+  const local=cloudLocalMap();
+  let np=0;
+  DB.projects.forEach(p=>{
+    if(have.has(p.id)) return;
+    np++;
+    cloudWrite("p:"+p.id, "create", local.get("p:"+p.id), true);
+    if(local.has("r:"+p.id)) cloudWrite("r:"+p.id, "create", local.get("r:"+p.id), true);
+    (p.items||[]).forEach(it=>cloudWrite("i:"+it.id, "create", local.get("i:"+it.id), true));
+  });
+  if(boss && !sHave) cloudWrite("s:main", "create", local.get("s:main"), true);
+  if(boss && !qHave) cloudWrite("s:pricing", "create", local.get("s:pricing"), true);
+  if(np) cloudLogOnce("העלה "+np+" "+(np===1?"פרויקט":"פרויקטים")+" מהטלפון שלו לצוות", "", "");
+  cloudSetFlag({migrated:true});
+  cloudStart();
+}
+
+/* ---- האזנה לענן (לפי תפקיד) ---- */
+function cloudStart(){
+  cloudStop();
+  const M=Cloud.m, r=Cloud.role, boss=cloudIsBoss();
+  Cloud.projects=new Map(); Cloud.items=new Map(); Cloud.prices=new Map(); Cloud.settings=null; Cloud.pricing=null; Cloud.production=new Map();
+  Cloud.got={}; Cloud.snapPend={}; Cloud.ready=false;
+  Cloud.last = new Map();
+  Cloud.last = cloudLocalMap();          /* עד שהענן מוכן: "מה ידוע" = מצב הפתיחה המקומי — כך שינויים שנעשו בינתיים יזוהו ויועלו */
+  Cloud.need = r==="maker" ? ["s","x","me"] : boss ? ["p","i","r","s","q","x","me"] : ["p","i","s","x","me"];
+  cloudSetState("syncing");
+  const opt={includeMetadataChanges:true}, onErr=e=>cloudListenErr(e), L=(q,f)=>Cloud.unsubs.push(M.onSnapshot(q,opt,f,onErr));
+  if(r!=="maker"){
+    L(cloudCol("projects"), s=>cloudSnap("p",s));
+    L(cloudCol("items"), s=>cloudSnap("i",s));
+  }
+  if(boss){
+    L(cloudCol("prices"), s=>cloudSnap("r",s));
+    L(cloudRef("s:pricing"), s=>cloudSnapDoc("q",s));
+  }
+  L(cloudRef("s:main"), s=>cloudSnapDoc("s",s));
+  L(cloudCol("production"), s=>cloudSnapProd(s));
+  L(M.doc(Cloud.db,"teams",TEAM_ID,"members",Cloud.user.email), s=>cloudSnapMe(s));
+}
+function cloudStop(){ Cloud.unsubs.forEach(f=>{ try{ f(); }catch(e){} }); Cloud.unsubs=[]; }
+
+function cloudSnap(kind, s){
+  const map = kind==="p" ? Cloud.projects : kind==="i" ? Cloud.items : Cloud.prices;
+  Cloud.snapPend[kind]=s.metadata.hasPendingWrites;
+  /* מטמון ריק בזמן שיש נתונים בטלפון (למשל אחרי ניקוי נתוני דפדפן) — לא בונים מזה כלום; מחכים לשרת */
+  if(!Cloud.got[kind] && kind!=="r" && s.metadata.fromCache && s.empty && DB.projects.length){ cloudPill(); return; }
+  const changes=s.docChanges();
+  if(Cloud.got[kind] && !changes.length){ cloudPill(); return; }
+  if(Cloud.ready) cloudPush();
+  let ext=false, who="";
+  changes.forEach(ch=>{
+    const id=ch.doc.id, key=kind+":"+id;
+    if(ch.type==="removed"){ map.delete(id); if(Cloud.ready) Cloud.last.delete(key); ext=true; return; }
+    const d=ch.doc.data({serverTimestamps:"estimate"});
+    map.set(id, d);
+    if(Cloud.ready) Cloud.last.set(key, cloudLastOf(key,d));
+    if(!ch.doc.metadata.hasPendingWrites){ ext=true; if(d.ub && d.ub!==Cloud.user.email) who=d.un||d.ub; }
+  });
+  cloudGot(kind, ext, who);
+}
+function cloudSnapDoc(kind, s){
+  const key = kind==="s" ? "s:main" : "s:pricing";
+  Cloud.snapPend[kind]=s.metadata.hasPendingWrites;
+  if(Cloud.ready) cloudPush();
+  let ext=false, who="";
+  if(s.exists()){
+    const d=s.data({serverTimestamps:"estimate"});
+    if(kind==="s") Cloud.settings=d; else Cloud.pricing=d;
+    if(Cloud.ready) Cloud.last.set(key, cloudLastOf(key,d));
+    if(!s.metadata.hasPendingWrites){ ext=true; if(d.ub && d.ub!==Cloud.user.email) who=d.un||d.ub; }
+  } else { if(kind==="s") Cloud.settings=null; else Cloud.pricing=null; if(Cloud.ready) Cloud.last.delete(key); }
+  cloudGot(kind, ext, who);
+}
+function cloudSnapProd(s){
+  let ext=false, who="";
+  s.docChanges().forEach(ch=>{
+    if(ch.type==="removed"){ Cloud.production.delete(ch.doc.id); ext=true; return; }
+    const d=ch.doc.data({serverTimestamps:"estimate"});
+    Cloud.production.set(ch.doc.id, d);
+    if(!ch.doc.metadata.hasPendingWrites){ ext=true; if(d.sentBy && d.sentBy!==Cloud.user.email) who=d.sentByName||d.sentBy; }
+  });
+  cloudGot("x", ext, who);
+}
+function cloudSnapMe(s){
+  if(!Cloud.user || s.metadata.hasPendingWrites) return;   /* תפקיד משתנה רק לפי מה שהשרת אישר, לא לפי ניסיון כתיבה מקומי */
+  if(!s.exists()){ cloudLost(); return; }
+  const role=String(s.data().role||"");
+  if(!ROLES[role]){ cloudLost(); return; }
+  if(Cloud.role && role!==Cloud.role){
+    /* התפקיד שונה ע"י מנהל — מתחילים מחדש עם ההרשאות החדשות */
+    Cloud.role=role; cloudSetFlag({role:role}); cloudToast("התפקיד שלך עודכן: "+ROLES[role]);
+    if(role==="maker"){ cloudStart(); return; }
+    if(!cloudFlag().migrated) cloudSetFlag({migrated:true});
+    cloudStart(); return;
+  }
+  Cloud.role=role;
+  cloudGot("me", false, "");
+}
+function cloudLost(){ cloudStop(); cloudTeamStop(); cloudActivityStop(); Cloud.ready=false; Cloud.role=""; cloudSetFlag({member:false, role:""}); cloudSetState("denied"); }
+function cloudListenErr(e){
+  if(e && e.code==="permission-denied") cloudLost();
+  else { Cloud.err=cloudErrText(e); cloudSetState("error"); }
+}
+function cloudGot(kind, ext, who){
+  Cloud.got[kind]=true;
+  if(!Cloud.ready){ cloudMaybeReady(); cloudPill(); return; }
+  cloudRebuild();
+  if(ext) cloudRemoteChanged(who);
+  cloudPill();
+}
+
+/* כל המאזינים החזירו מצב ראשון — מעלים שינויים שנעשו לפני כן, ומכאן הענן הוא מקור האמת */
+function cloudMaybeReady(){
+  if(Cloud.ready || !Cloud.need.every(k=>Cloud.got[k])) return;
+  Cloud.ready=true;
+  cloudPush();
+  Cloud.last=new Map();
+  Cloud.projects.forEach((d,id)=>Cloud.last.set("p:"+id, cloudLastOf("p:",d)));
+  Cloud.items.forEach((d,id)=>Cloud.last.set("i:"+id, cloudLastOf("i:",d)));
+  Cloud.prices.forEach((d,id)=>Cloud.last.set("r:"+id, cloudLastOf("r:",d)));
+  if(Cloud.settings) Cloud.last.set("s:main", cloudLastOf("s:main",Cloud.settings));
+  if(Cloud.pricing) Cloud.last.set("s:pricing", cloudLastOf("s:pricing",Cloud.pricing));
+  if(cloudIsBoss()) cloudPurge();
+  cloudRebuild();
+  cloudSetState("ready");
+}
+
+/* ---- דחיפה: השוואת DB למצב הידוע, וכתיבה רק של מה שהשתנה ---- */
+function cloudPush(){
+  if(!Cloud.ready || Cloud.role==="maker") return;
+  const cur=cloudLocalMap(), dels=[];
+  Cloud.last.forEach((old,key)=>{ if(!old.del && !cur.has(key) && (key[0]==="p" || key[0]==="i")) dels.push(key); });
+  cur.forEach((v,key)=>{
+    const old=Cloud.last.get(key);
+    if(!old){ cloudWrite(key,"create",v); return; }
+    const ch={}; let n=0;
+    for(const f in v){ if(v[f]!==old[f]){ ch[f]=v[f]; n++; } }
+    if(old.del) cloudWrite(key,"restore",ch);
+    else if(n) cloudWrite(key,"update",ch);
+  });
+  dels.forEach(key=>{
+    /* פריט נמחק רק אם הפרויקט שלו קיים כאן — פריטים של פרויקט שבסל המחזור נשארים צמודים אליו */
+    if(key[0]==="i"){ const old=Cloud.last.get(key); if(!old || !cur.has("p:"+old.pid)) return; }
+    cloudWrite(key,"delete",{});
+  });
+}
+function cloudWrite(key, op, data, quiet){
+  const M=Cloud.m, u=Cloud.user, ts=M.serverTimestamp(), now=Date.now();
+  let payload;
+  if(op==="delete") payload={ub:u.email, un:u.name, ua:ts, deleted:true, deletedAt:ts, deletedBy:u.email, deletedByName:u.name};
+  else {
+    payload=Object.assign({}, data, {ub:u.email, un:u.name, ua:ts, deleted:false});
+    if(op==="create") Object.assign(payload, {cb:u.email, cn:u.name, ca:ts});
+    if(op==="restore") Object.assign(payload, {deletedAt:M.deleteField(), deletedBy:M.deleteField(), deletedByName:M.deleteField()});
+  }
+  Cloud.pending++; cloudPill();
+  M.setDoc(cloudRef(key), payload, {merge:true})
+    .catch(e=>cloudWriteErr(e))
+    .finally(()=>{ Cloud.pending=Math.max(0,Cloud.pending-1); cloudPill(); });
+  /* עדכון אופטימי — הענן יחזיר בדיוק את אותו מצב, אז לא מחכים לו */
+  const map=cloudMapOf(key), id=key.slice(2);
+  const prev = map ? (map.get(id)||{}) : ((key==="s:main" ? Cloud.settings : Cloud.pricing)||{});
+  const next = Object.assign({}, prev);
+  if(op!=="delete") Object.assign(next, data);
+  Object.assign(next, {ub:u.email, un:u.name, ua:now});
+  if(op==="create") Object.assign(next, {cb:u.email, cn:u.name, ca:now});
+  if(op==="delete") Object.assign(next, {deleted:true, deletedAt:now, deletedBy:u.email, deletedByName:u.name});
+  else { next.deleted=false; if(op==="restore"){ delete next.deletedAt; delete next.deletedBy; delete next.deletedByName; } }
+  if(map) map.set(id,next); else if(key==="s:main") Cloud.settings=next; else Cloud.pricing=next;
+  Cloud.last.set(key, cloudLastOf(key,next));
+  if(!quiet) cloudActivity(key, op, data);
+}
+/* כתיבה שנדחתה לא אומרת שהמשתמש הוסר מהצוות — את זה מזהה המאזין למסמך החבר */
+function cloudWriteErr(e){ cloudToast("שמירה לענן נכשלה: "+cloudErrText(e)); }
+
+/* ---- בנייה מחדש של DB מתוך מצב הענן ---- */
+function cloudRebuild(){
+  if(Cloud.role==="maker") return;          /* ליצרן אין פרויקטים — רק הזמנות ייצור */
+  const boss=cloudIsBoss(), projs=[], byId=new Map(), ovs=new Map();
+  Cloud.projects.forEach((d,id)=>{
+    if(d.deleted || !cloudIdOk(id)) return;
+    const p=cloudObj(d.d); if(!p) return;
+    p.id=id; p.items=[]; if(!p.kind) p.kind="production"; p._m=cloudMeta(d);
+    if(boss){
+      const r=Cloud.prices.get(id);
+      if(r && r.d){ try{ const o=cloudObj(r.d)||{}; PRICE_P.forEach(k=>{ if(o[k]!==undefined) p[k]=o[k]; }); if(o.items) ovs.set(id,o.items); }catch(e){} }
+    }
+    projs.push(p); byId.set(id,p);
+  });
+  const its=[];
+  Cloud.items.forEach((d,id)=>{
+    if(d.deleted || !cloudIdOk(id)) return;
+    const p=byId.get(d.pid); if(!p) return;
+    const it=cloudObj(d.d); if(!it) return;
+    it.id=id; it.photo=cloudImgOk(d.photo)?d.photo:null; it._m=cloudMeta(d);
+    const ov=ovs.get(d.pid); if(ov && ov[id]!==undefined) it.priceOverride=ov[id];
+    its.push({p:p, it:it, pos:Number(d.pos)||0, c:cloudCreated(id)});
+  });
+  its.sort((a,b)=>a.pos-b.pos || a.c-b.c).forEach(x=>x.p.items.push(x.it));
+  projs.sort((a,b)=>cloudCreated(b.id)-cloudCreated(a.id));
+  DB.projects=projs;
+  if(Cloud.settings && Cloud.settings.d){
+    try{
+      const s=cloudObj(Cloud.settings.d)||{};
+      s.logo=cloudImgOk(Cloud.settings.logo)?Cloud.settings.logo:null;
+      if(boss && Cloud.pricing && Cloud.pricing.d){ const q=cloudObj(Cloud.pricing.d)||{}; PRICE_S.forEach(k=>{ if(q[k]!==undefined) s[k]=q[k]; }); }
+      if(s.vatRate==null) s.vatRate=18;
+      DB.settings=s;
+    }catch(e){}
+  }
+  saveLocal();
+}
+
+/* ---- מחיקה סופית של מה שבסל המחזור יותר מ-TRASH_DAYS (רק מנהל/מפתח) ---- */
+function cloudPurge(){
+  const M=Cloud.m, lim=Date.now()-TRASH_DAYS*864e5;
+  const old=d=>d.deleted && cloudMs(d.deletedAt) && cloudMs(d.deletedAt)<lim;
+  Cloud.projects.forEach((d,id)=>{
+    if(!old(d)) return;
+    Cloud.items.forEach((di,iid)=>{ if(di.pid===id) M.deleteDoc(cloudRef("i:"+iid)).catch(()=>{}); });
+    M.deleteDoc(cloudRef("p:"+id)).catch(()=>{});
+  });
+  Cloud.items.forEach((d,id)=>{ if(old(d)) M.deleteDoc(cloudRef("i:"+id)).catch(()=>{}); });
+}
+
+/* ---- שליחה לייצור: עותק קבוע של קובץ היצרן (בלי מחירים, בלי פרטי לקוח ובלי תמונות) ---- */
+function prodSnapshot(p){
+  const P={id:p.id, kind:p.kind||"production", address:p.address||"", name:p.name||"", date:p.date||""};
+  const items=(p.items||[]).map(it=>cloudOmit(it, ["photo","_m","priceOverride"]));
+  return JSON.stringify({project:P, items:items});
+}
+function prodState(p){
+  const s=Cloud.ready && Cloud.production.get(p.id);
+  if(!s) return null;
+  return {doc:s, changed: s.d!==prodSnapshot(p)};
+}
+function cloudSendProd(pid){
+  const p=proj(pid); if(!p || !canBoss()) return;
+  const miss=p.items.filter(it=>missingList(it).length).length;
+  if(!p.items.length || miss){ uiAlert(miss?"חסרים נתונים ב-"+miss+" פריטים. משלימים אותם, ואז אפשר לשלוח ליצרן.":"אין פריטים בפרויקט.","אי אפשר לשלוח"); return; }
+  const prev=Cloud.production.get(pid);
+  uiConfirm(prev ? "לשלוח ליצרן את הגרסה המעודכנת? היצרן יראה אותה במקום הקודמת."
+                 : "לשלוח את הפרויקט ליצרן? מהרגע הזה הוא יראה את קובץ הייצור — בלי מחירים, בלי פרטי לקוח ובלי תמונות.",
+            {title:"שליחה לייצור", ok:prev?"שלח עדכון":"שלח ליצרן"}).then(ok=>{
+    if(!ok) return;
+    const M=Cloud.m, u=Cloud.user, ver=prev?(Number(prev.ver)||1)+1:1, snap=prodSnapshot(p);
+    M.setDoc(M.doc(cloudCol("production"), pid), {d:snap, sentAt:M.serverTimestamp(), sentBy:u.email, sentByName:u.name, ver:ver})
+      .catch(e=>uiAlert(cloudErrText(e),"השליחה נכשלה"));
+    Cloud.production.set(pid, {d:snap, sentAt:Date.now(), sentBy:u.email, sentByName:u.name, ver:ver});
+    cloudLogOnce(prev?"שלח ליצרן גרסה מעודכנת ("+ver+")":"שלח ליצרן", pname(p), pid);
+    cloudRender(); cloudToast(prev?"העדכון נשלח ליצרן ✓":"נשלח ליצרן ✓");
+  });
+}
+function cloudUnsendProd(pid){
+  const p=proj(pid); if(!p || !canBoss()) return;
+  uiConfirm("לבטל את השליחה ליצרן? הפרויקט ייעלם אצלו עד שתשלח שוב.",{title:"ביטול שליחה",ok:"בטל שליחה",danger:true}).then(ok=>{
+    if(!ok) return;
+    const M=Cloud.m;
+    M.deleteDoc(M.doc(cloudCol("production"), pid)).catch(e=>uiAlert(cloudErrText(e),"הביטול נכשל"));
+    Cloud.production.delete(pid);
+    cloudLogOnce("ביטל את השליחה ליצרן", pname(p), pid);
+    cloudRender();
+  });
+}
+/* שורת מצב בפרויקט — לכל הצוות */
+function cloudProdStatus(p){
+  const st=prodState(p); if(!st) return "";
+  const d=st.doc;
+  return '<div class="card prod-status"><div><b>🏭 נשלח ליצרן</b> · '+esc(cloudRel(cloudMs(d.sentAt)))+' · ע״י '+esc(d.sentByName||d.sentBy||"")
+    +(Number(d.ver)>1?' · גרסה <span class="num">'+esc(d.ver)+'</span>':'')+'</div>'
+    +(st.changed?'<div class="prod-warn">⚠ יש שינויים שעוד לא נשלחו ליצרן'+(canBoss()?' — <a href="#/p/'+esc(p.id)+'/export">שלח עדכון</a>':'')+'</div>':'')
+    +'</div>';
+}
+/* כפתורי שליחה במסך "קובץ ליצוא" — למנהל ולמפתח */
+function cloudProdButtons(p, blocked){
+  if(!canBoss() || p._prod || p.kind==="quote") return "";
+  const st=prodState(p);
+  if(blocked) return '<div class="muted" style="margin-top:8px">🏭 שליחה ליצרן תיפתח כשכל הנתונים יושלמו.</div>';
+  return '<div class="rowline wrap" style="margin-top:10px">'
+    +(!st ? '<button class="btn primary" onclick="cloudSendProd(\''+esc(p.id)+'\')">🏭 שלח ליצרן</button>'
+          : (st.changed ? '<button class="btn primary" onclick="cloudSendProd(\''+esc(p.id)+'\')">🏭 שלח עדכון ליצרן</button>'
+                        : '<span class="muted">🏭 היצרן רואה את הגרסה העדכנית</span>')
+            +'<button class="btn small danger" onclick="cloudUnsendProd(\''+esc(p.id)+'\')">בטל שליחה</button>')
+    +'</div>';
+}
+/* מסך הבית של היצרן: הזמנות הייצור שנשלחו אליו */
+function cloudMakerHome(){
+  const rows=[];
+  Cloud.production.forEach((d,id)=>{ if(cloudIdOk(id)) rows.push({id:id, d:d}); });
+  rows.sort((a,b)=>cloudMs(b.d.sentAt)-cloudMs(a.d.sentAt));
+  const list = rows.length ? rows.map(r=>{
+    const s=cloudObj(r.d.d)||{};
+    const P=(s.project&&typeof s.project==="object")?s.project:{}, n=Array.isArray(s.items)?s.items.length:0;
+    return '<div class="card tap" onclick="nav(\'/prod/'+esc(r.id)+'\')"><div class="rowline">'
+      +'<div class="pchip pc3">🏭</div><div class="grow"><div class="title-md">'+esc(pname(P))+'</div>'
+      +'<div class="muted">נשלח '+esc(cloudRel(cloudMs(r.d.sentAt)))+' ע״י '+esc(r.d.sentByName||"")+' · <span class="num">'+n+'</span> פריטים'
+      +(Number(r.d.ver)>1?' · <b>עודכן (גרסה <span class="num">'+esc(r.d.ver)+'</span>)</b>':'')+'</div></div>'
+      +'<div style="font-size:1.3rem;color:var(--ink2)">‹</div></div></div>';
+  }).join("") : '<div class="card muted">עוד לא נשלחו הזמנות ייצור. כשמנהל ישלח פרויקט, הוא יופיע כאן.</div>';
+  return '<div class="topbar"><div><h1>אלום אלבז</h1><div class="sub">הזמנות ייצור</div></div>'+cloudPillHTML()+'</div>'
+    +list
+    +'<button class="btn primary fab fab-left" onclick="nav(\'/settings\')">⚙️ הגדרות</button>';
+}
+function viewProdOrder(pid){
+  const d=Cloud.production.get(pid);
+  if(!d || !cloudIdOk(pid)){ return cloudTopbar("הזמנת ייצור","/")+'<div class="card muted">ההזמנה לא נמצאה (אולי השליחה בוטלה).</div>'; }
+  const s=cloudObj(d.d)||{};
+  const P=Object.assign({}, (s.project&&typeof s.project==="object")?s.project:{}, {id:pid, _prod:true});
+  P.items=(Array.isArray(s.items)?s.items:[]).filter(it=>it && typeof it==="object");
+  return viewExport(P);
+}
+
+/* ---- יומן פעילות ---- */
+function cloudActText(key, op){
+  const k=key[0], id=key.slice(2);
+  const projOf = pid => { const d=Cloud.projects.get(pid); return d ? cloudObj(d.d) : null; };
+  if(k==="s") return {text:"עדכן את ההגדרות", where:"", pid:""};
+  if(k==="r") return {text:"עדכן את התמחור", where:pname(projOf(id)||{}), pid:id};
+  if(k==="p"){
+    const p=projOf(id)||{}, w=p.kind==="quote"?"מדידת ההצעה":"הפרויקט";
+    const t={create:(p.kind==="quote"?"פתח מדידת הצעה חדשה":"פתח פרויקט חדש"), update:"עדכן את פרטי "+w, delete:"העביר לסל המחזור את "+w, restore:"שחזר מסל המחזור את "+w}[op];
+    return {text:t, where:pname(p), pid:id};
+  }
+  const d=Cloud.items.get(id)||{}, p=projOf(d.pid)||{};
+  const it=cloudObj(d.d)||{};
+  const lbl=TYPE(it.type).name+(it.location?" ב"+it.location:"");
+  const t={create:"הוסיף "+lbl, update:"עדכן "+lbl, delete:"מחק "+lbl, restore:"שחזר "+lbl}[op];
+  return {text:t, where:pname(p), pid:d.pid||""};
+}
+function cloudActivity(key, op, data){
+  if(key[0]==="i" && op==="update" && Object.keys(data).every(f=>f==="pos"||f==="pid")) return;   /* שינוי סדר — לא מעניין ביומן */
+  const now=Date.now(), e=Cloud.act.get(key);
+  /* עריכות של אותו דבר ב-10 הדקות הראשונות = שורה אחת ביומן (מתעדכנת), כדי שהקלדה לא תציף אותו */
+  if(op==="update" && e && now-e.t0<10*60000){ e.dirty=true; cloudActFlushSoon(); return; }
+  const ent={ref:Cloud.m.doc(cloudCol("activity")), key:key, op:op, t0:now, dirty:false};
+  Cloud.act.set(key, ent);
+  cloudActWrite(ent, true);
+}
+function cloudActWrite(ent, isNew){
+  const M=Cloud.m, u=Cloud.user; if(!M || !u) return;
+  const t=cloudActText(ent.key, ent.op), ts=M.serverTimestamp();
+  const data={at:ts, by:u.email, byName:u.name, text:t.text, where:t.where||"", pid:t.pid||""};
+  if(isNew){ data.t0=ts; data.op=ent.op; }
+  M.setDoc(ent.ref, data, {merge:!isNew}).catch(()=>{});
+  ent.dirty=false;
+}
+function cloudActFlushSoon(){ if(!Cloud.actTimer) Cloud.actTimer=setTimeout(cloudActFlush, 20000); }
+function cloudActFlush(){
+  if(Cloud.actTimer){ clearTimeout(Cloud.actTimer); Cloud.actTimer=null; }
+  Cloud.act.forEach(e=>{ if(e.dirty) cloudActWrite(e,false); });
+}
+function cloudLogOnce(text, where, pid){
+  const M=Cloud.m, u=Cloud.user, ts=M.serverTimestamp();
+  M.setDoc(M.doc(cloudCol("activity")), {at:ts, t0:ts, op:"log", by:u.email, byName:u.name, text:text, where:where||"", pid:pid||""}).catch(()=>{});
+}
+function cloudActivityStart(){
+  if(!Cloud.ready || Cloud.role==="maker") return;
+  if(Cloud.actUnsub){ renderActivityList(); return; }
+  const M=Cloud.m, q=M.query(cloudCol("activity"), M.orderBy("at","desc"), M.limit(150));
+  Cloud.actUnsub = M.onSnapshot(q, s=>{
+    Cloud.activity = s.docs.map(d=>Object.assign({id:d.id}, d.data({serverTimestamps:"estimate"})));
+    renderActivityList();
+  }, e=>{ const box=document.getElementById("actbox"); if(box) box.innerHTML='<div class="card muted">'+esc(cloudErrText(e))+'</div>'; });
+}
+function cloudActivityStop(){ if(Cloud.actUnsub){ Cloud.actUnsub(); Cloud.actUnsub=null; } }
+
+/* ---- שחזור מסל המחזור (מנהל/מפתח) ---- */
+function cloudRestore(key){
+  if(!canBoss()) return;
+  const id=key.slice(2);
+  if(key[0]==="p"){ if(!Cloud.projects.get(id)) return; cloudWrite(key,"restore",{}); }
+  else {
+    const d=Cloud.items.get(id); if(!d) return;
+    const pd=Cloud.projects.get(d.pid);
+    if(!pd || pd.deleted){ uiAlert("קודם צריך לשחזר את הפרויקט שהפריט שייך אליו.","שחזור"); return; }
+    const p=proj(d.pid);
+    cloudWrite(key,"restore",{pos:p?p.items.length:(Number(d.pos)||0)});
+  }
+  cloudRebuild(); cloudRender(); cloudToast("שוחזר ✓");
+}
+
+/* ---- ניהול צוות: מפתח מנהל את כולם; מנהל — רק עובדים ויצרנים ---- */
+function cloudRolesICanGive(){ return Cloud.role==="dev" ? ["manager","employee","maker"] : Cloud.role==="manager" ? ["employee","maker"] : []; }
+function cloudCanManage(em, role){
+  if(!canBoss() || em===Cloud.user.email) return false;
+  return Cloud.role==="dev" || role==="employee" || role==="maker";
+}
+function cloudTeamStart(){
+  if(!canBoss()) return;
+  if(Cloud.teamUnsub){ renderTeamList(); return; }
+  Cloud.teamUnsub = Cloud.m.onSnapshot(cloudCol("members"), s=>{
+    Cloud.team = s.docs.map(d=>({email:d.id, role:String(d.data().role||"")})).filter(x=>cloudEmailOk(x.email) && ROLES[x.role]);
+    const order={dev:0, manager:1, employee:2, maker:3};
+    Cloud.team.sort((a,b)=>order[a.role]-order[b.role] || a.email.localeCompare(b.email));
+    renderTeamList();
+  }, e=>{ const box=document.getElementById("teambox"); if(box) box.innerHTML='<div class="muted">'+esc(cloudErrText(e))+'</div>'; });
+}
+function cloudTeamStop(){ if(Cloud.teamUnsub){ Cloud.teamUnsub(); Cloud.teamUnsub=null; } Cloud.team=null; }
+function cloudSetMember(em, role, isNew){
+  const M=Cloud.m;
+  M.setDoc(M.doc(cloudCol("members"), em), {role:role, by:Cloud.user.email, at:M.serverTimestamp()})
+    .then(()=>{ cloudLogOnce((isNew?"הוסיף לצוות את ":"שינה את התפקיד של ")+em+" ל"+ROLES[role], "", ""); })
+    .catch(e=>uiAlert(cloudErrText(e), isNew?"הוספה נכשלה":"השינוי נכשל"));
+}
+function cloudAddMember(){
+  const inp=document.getElementById("teamEmail"), sel=document.getElementById("teamRole");
+  const em=String(inp&&inp.value||"").trim().toLowerCase(), role=sel?sel.value:"";
+  if(!cloudEmailOk(em)){ uiAlert("כתובת המייל לא תקינה.","הוספה לצוות"); return; }
+  if(cloudRolesICanGive().indexOf(role)<0){ uiAlert("אין לך הרשאה לתת את התפקיד הזה.","הוספה לצוות"); return; }
+  if(Cloud.team && Cloud.team.some(x=>x.email===em)){ uiAlert("המייל הזה כבר בצוות. אפשר לשנות לו תפקיד ברשימה.","הוספה לצוות"); return; }
+  cloudSetMember(em, role, true);
+  inp.value=""; cloudToast("נוסף לצוות כ"+ROLES[role]+" ✓");
+}
+function cloudChangeRole(em, role){
+  const cur=(Cloud.team||[]).find(x=>x.email===em);
+  if(!cur || !cloudCanManage(em, cur.role) || cloudRolesICanGive().indexOf(role)<0) return;
+  if(cur.role===role) return;
+  cloudSetMember(em, role, false);
+}
+function cloudRemoveMember(em){
+  const cur=(Cloud.team||[]).find(x=>x.email===em);
+  if(!cur || !cloudCanManage(em, cur.role)) return;
+  uiConfirm("להסיר את "+em+" מהצוות? הוא לא יוכל יותר לראות או לערוך כלום.",{title:"הסרה מהצוות",ok:"הסר",danger:true}).then(ok=>{
+    if(!ok) return;
+    const M=Cloud.m;
+    M.deleteDoc(M.doc(cloudCol("members"), em))
+      .then(()=>{ cloudLogOnce("הסיר מהצוות את "+em, "", ""); }).catch(e=>uiAlert(cloudErrText(e),"הסרה נכשלה"));
+  });
+}
+
+/* ---- תצוגה ---- */
+function cloudSetState(s){
+  Cloud.state=s; cloudPill();
+  const r=location.hash.replace(/^#\/?/,"").split("/")[0];
+  if(r==="" || r==="settings" || r==="team" || r==="trash" || r==="activity" || r==="prod") cloudRemoteChanged("");
+}
+function cloudRemoteChanged(who){
+  if(who) cloudToast("עודכן ע״י "+who);
+  const r=location.hash.replace(/^#\/?/,"").split("/")[0];
+  if(r==="sim") return;
+  const a=document.activeElement;
+  if((a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) || /\/item\//.test(location.hash)){ Cloud.renderPending=true; return; }
+  cloudRender();
+}
+/* רינדור מחדש בלי לקפוץ לראש הדף ובלי לסגור חלקים פתוחים */
+function cloudRender(){
+  Cloud.renderPending=false;
+  const r=location.hash.replace(/^#\/?/,"").split("/")[0];
+  if((r==="projects"||r==="quotes"||r==="pricing") && document.getElementById("listbox")){ renderList(); return; }
+  if(r==="activity" && document.getElementById("actbox")){ renderActivityList(); return; }
+  if(r==="team" && document.getElementById("teambox")){ renderTeamList(); return; }
+  const y=window.scrollY, open=[].map.call(document.querySelectorAll("#app details"), d=>d.open);
+  render();
+  const ds=document.querySelectorAll("#app details");
+  if(ds.length===open.length) [].forEach.call(ds,(d,i)=>{ d.open=open[i]; });
+  window.scrollTo(0,y);
+}
+document.addEventListener("focusout", ()=>{
+  if(!Cloud.renderPending) return;
+  setTimeout(()=>{
+    const a=document.activeElement;
+    if(Cloud.renderPending && !(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) && !/\/item\//.test(location.hash)) cloudRender();
+  }, 400);
+});
+window.addEventListener("hashchange", ()=>{ Cloud.renderPending=false; });
+
+/* שערי ניתוב לפי תפקיד: מחזיר true אם הפנה למסך אחר */
+function cloudGate(parts){
+  const r=parts[0]||"";
+  if(isMaker()){
+    if(r==="" || r==="settings" || r==="prod") return false;
+    nav("/"); return true;
+  }
+  if(r==="prod"){ nav("/"); return true; }
+  if(!canPrice() && (r==="pricing" || (r==="p" && (parts[2]==="pricing" || parts[2]==="quote-export")))){ nav("/"); return true; }
+  if((r==="trash" || r==="team") && Cloud.ready && !canBoss()){ nav("/settings"); return true; }
+  return false;
+}
+
+function cloudToast(msg){
+  let el=document.getElementById("cloudToast");
+  if(!el){ el=document.createElement("div"); el.id="cloudToast"; el.className="cloud-toast"; el.setAttribute("role","status"); document.body.appendChild(el); }
+  el.textContent=msg; el.classList.add("show");
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"), 2600);
+}
+function cloudPillText(){
+  const s=Cloud.state;
+  if(s==="ready"){
+    const sp=Cloud.snapPend, pend = Cloud.pending>0 || Object.keys(sp).some(k=>sp[k]);
+    if(pend && !navigator.onLine) return "⏳ יעלה כשתחזור קליטה";
+    if(pend) return "⏳ שומר…";
+    if(!navigator.onLine) return "📴 בלי קליטה";
+    return "☁️ מסונכרן";
+  }
+  return {loading:"⏳ מתחבר…", syncing:"⏳ מתחבר…", migrating:"⏳ מעלה…", migrate:"☁️ ממתין לאישור",
+          signedout:"☁️ לא מחובר", denied:"⛔ אין הרשאה", offline:"📴 בלי קליטה", error:"⚠️ תקלה בחיבור"}[s] || "";
+}
+function cloudPill(){
+  const t=cloudPillText();
+  const a=document.getElementById("cloudpill"); if(a) a.textContent=t;
+  [].forEach.call(document.querySelectorAll(".cloud-pill-txt"), el=>{ el.textContent=t; });
+}
+function cloudPillHTML(){
+  if(!cloudConfigured()) return "";
+  return '<button type="button" id="cloudpill" class="cloud-pill" onclick="nav(\'/settings\')">'+esc(cloudPillText())+'</button>';
+}
+function cloudRel(ms){
+  if(!ms) return "";
+  const s=(Date.now()-ms)/1000;
+  if(s<60) return "עכשיו";
+  if(s<3600) return "לפני "+Math.floor(s/60)+" דק׳";
+  const d=new Date(ms), now=new Date(), y=new Date(now.getTime()-864e5);
+  const hm=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  if(d.toDateString()===now.toDateString()) return "היום "+hm;
+  if(d.toDateString()===y.toDateString()) return "אתמול "+hm;
+  return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear()+" "+hm;
+}
+function cloudByline(m){
+  if(!Cloud.ready || !m || !m.un) return "";
+  return '<div class="byline">✎ '+esc(m.un)+' · '+esc(cloudRel(m.ua))+'</div>';
+}
+/* העדכון האחרון בפרויקט — של הפרטים או של אחד הפריטים */
+function cloudLatest(p){
+  let best=p._m||null;
+  (p.items||[]).forEach(it=>{ if(it._m && (!best || it._m.ua>best.ua)) best=it._m; });
+  return best;
+}
+function cloudCardBy(p){
+  if(!Cloud.ready) return "";
+  const m=cloudLatest(p), st=p.kind!=="quote" && prodState(p);
+  return ((m && m.un) ? ' · ✎ '+esc(m.un) : "") + (st ? ' · 🏭'+(st.changed?'⚠':'') : "");
+}
+function cloudErrText(e){
+  const c=(e&&e.code)||"";
+  const t={"auth/network-request-failed":"אין חיבור לאינטרנט.",
+    "auth/unauthorized-domain":"הכתובת של האפליקציה לא מאושרת בהגדרות Firebase (Authorized domains).",
+    "auth/operation-not-allowed":"כניסה עם Google לא הופעלה בהגדרות Firebase.",
+    "auth/popup-blocked":"הדפדפן חסם את חלון ההתחברות.",
+    "auth/internal-error":"תקלה פנימית בהתחברות. נסה שוב.",
+    "permission-denied":"אין הרשאה לפעולה הזו.",
+    "unavailable":"אין חיבור לשרת כרגע."}[c];
+  return (t||"משהו השתבש.")+(c?" ("+c+")":"");
+}
+
+function cloudHomeCard(){
+  if(!cloudConfigured()) return "";
+  const s=Cloud.state, u=Cloud.user;
+  if(s==="signedout") return '<div class="card banner"><div class="rowline wrap">'
+    +'<div class="grow"><b>☁️ שיתוף עם הצוות</b><div style="opacity:.9;font-size:.85rem;margin-top:2px">התחבר עם חשבון הגוגל שלך, וכל הצוות יראה את אותם פרויקטים ואת כל הפעילות.</div></div>'
+    +'<button class="btn" onclick="cloudSignIn()">התחבר עם Google</button></div></div>';
+  if(s==="denied") return '<div class="card"><b>⛔ החשבון '+esc(u?u.email:"")+' לא ברשימת הצוות</b>'
+    +'<div class="muted" style="margin-top:4px">בקש ממנהל להוסיף את המייל הזה (הגדרות ← הצוות). עד אז מה שבטלפון נשמר רק בו.</div>'
+    +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small" onclick="cloudSwitchUser()">התחבר עם חשבון אחר</button></div></div>';
+  if(s==="error") return '<div class="card"><b>⚠️ תקלה בחיבור לצוות</b><div class="muted" style="margin-top:4px">'+esc(Cloud.err)+'</div>'
+    +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small" onclick="location.reload()">נסה שוב</button></div></div>';
+  if(s==="offline") return '<div class="card"><b>📴 אין קליטה</b><div class="muted" style="margin-top:4px">האפליקציה עובדת בטלפון כרגיל. החיבור לצוות יושלם לבד כשתחזור קליטה.</div></div>';
+  return "";
+}
+function cloudSettingsCard(){
+  if(!cloudConfigured()) return "";
+  const s=Cloud.state, u=Cloud.user;
+  let body;
+  if(s==="ready"){
+    let trash=0;
+    Cloud.projects.forEach(d=>{ if(d.deleted) trash++; });
+    Cloud.items.forEach(d=>{ if(d.deleted){ const pd=Cloud.projects.get(d.pid); if(pd && !pd.deleted) trash++; } });
+    body='<div class="muted" style="margin-top:6px">מחובר כ: <b>'+esc(u.name)+'</b> · '+esc(u.email)+' · <b>'+esc(ROLES[Cloud.role]||"")+'</b></div>'
+      +'<div class="muted">מצב: <span class="cloud-pill-txt">'+esc(cloudPillText())+'</span></div>'
+      +'<div class="rowline wrap" style="margin-top:10px">'
+      +(Cloud.role!=="maker"?'<button class="btn small" onclick="nav(\'/activity\')">🕒 פעילות</button>':'')
+      +(canBoss()?'<button class="btn small" onclick="nav(\'/trash\')">🗑 סל מחזור ('+trash+')</button>'
+                 +'<button class="btn small" onclick="nav(\'/team\')">👥 הצוות</button>':'')
+      +'<button class="btn small" onclick="cloudSignOut()">התנתק</button></div>';
+  } else if(s==="signedout"){
+    body='<div class="muted" style="margin-top:6px">כרגע הפרויקטים נשמרים רק בטלפון הזה. אחרי התחברות הם משותפים לכל הצוות, ומתעדכנים אצל כולם תוך שניות.</div>'
+      +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small primary" onclick="cloudSignIn()">התחבר עם Google</button></div>';
+  } else if(s==="denied"){
+    body='<div class="muted" style="margin-top:6px">החשבון '+esc(u?u.email:"")+' לא ברשימת הצוות.</div>'
+      +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small" onclick="cloudSwitchUser()">התחבר עם חשבון אחר</button></div>';
+  } else body='<div class="muted" style="margin-top:6px">'+esc(cloudPillText())+(Cloud.err&&s==="error"?' · '+esc(Cloud.err):'')+'</div>';
+  return '<div class="card"><label>☁️ שיתוף עם הצוות</label>'+body+'</div>';
+}
+function cloudTopbar(title, back){
+  return '<div class="topbar"><button class="backbtn" onclick="nav(\''+back+'\')">→</button><div class="grow"><h1>'+title+'</h1></div></div>';
+}
+function viewActivity(){
+  return cloudTopbar("פעילות הצוות","/")
+    +'<div id="actbox">'+(Cloud.ready?'<div class="card muted">טוען…</div>':'<div class="card muted">הפעילות זמינה כשמחוברים לצוות.</div>')+'</div>';
+}
+function afterActivityRender(){ cloudActivityStart(); }
+function renderActivityList(){
+  const box=document.getElementById("actbox"); if(!box) return;
+  const rows=Cloud.activity||[];
+  if(!rows.length){ box.innerHTML='<div class="card muted">עוד אין פעילות. כל פעולה של חבר צוות תופיע כאן.</div>'; return; }
+  const now=new Date(), yd=new Date(now.getTime()-864e5);
+  let html="", lastDay="";
+  rows.forEach(r=>{
+    const ms=cloudMs(r.at), d=new Date(ms||Date.now());
+    const day = d.toDateString()===now.toDateString() ? "היום" : d.toDateString()===yd.toDateString() ? "אתמול" : d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear();
+    if(day!==lastDay){ html+='<div class="act-day">'+day+'</div>'; lastDay=day; }
+    const hm=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+    const live = r.pid && cloudIdOk(r.pid) && proj(r.pid);   /* שם הפרויקט מוצג כפי שהוא עכשיו */
+    const where = live ? pname(live) : String(r.where||"");
+    const nm=String(r.byName||r.by||"?");
+    html+='<div class="act-row'+(live?' tap':'')+'"'+(live?' onclick="nav(\'/p/'+esc(r.pid)+'\')"':'')+'>'
+      +'<div class="act-av">'+esc(nm.trim().charAt(0)||"?")+'</div>'
+      +'<div class="grow"><div><b>'+esc(nm)+'</b> '+esc(r.text||"")+'</div>'
+      +'<div class="muted">'+(where?esc(where)+' · ':'')+'<span class="num">'+hm+'</span></div></div></div>';
+  });
+  box.innerHTML=html;
+}
+function viewTrash(){
+  let body;
+  if(!canBoss()) body='<div class="card muted">סל המחזור זמין למנהלים.</div>';
+  else {
+    const rows=[], parse=s=>cloudObj(s)||{};
+    Cloud.projects.forEach((d,id)=>{ if(d.deleted && cloudIdOk(id)) rows.push({key:"p:"+id, d:d}); });
+    Cloud.items.forEach((d,id)=>{ if(!d.deleted || !cloudIdOk(id)) return; const pd=Cloud.projects.get(d.pid); if(pd && !pd.deleted) rows.push({key:"i:"+id, d:d}); });
+    rows.sort((a,b)=>cloudMs(b.d.deletedAt)-cloudMs(a.d.deletedAt));
+    body = rows.length ? rows.map(r=>{
+      let title, sub;
+      if(r.key[0]==="p"){
+        const p=parse(r.d.d), id=r.key.slice(2);
+        let n=0; Cloud.items.forEach(di=>{ if(di.pid===id && !di.deleted) n++; });
+        title=(p.kind==="quote"?"💰 ":"🏠 ")+pname(p); sub=(p.kind==="quote"?"מדידת הצעה":"פרויקט")+" · "+n+" פריטים";
+      } else {
+        const it=parse(r.d.d), pp=parse((Cloud.projects.get(r.d.pid)||{}).d);
+        title="▫️ "+TYPE(it.type).name+(it.location?" · "+it.location:""); sub="מתוך "+pname(pp);
+      }
+      const days=Math.max(0, TRASH_DAYS-Math.floor((Date.now()-cloudMs(r.d.deletedAt))/864e5));
+      return '<div class="card"><div class="rowline">'
+        +'<div class="grow"><div class="title-md">'+esc(title)+'</div><div class="muted">'+esc(sub)+'</div>'
+        +'<div class="byline">נמחק ע״י '+esc(r.d.deletedByName||r.d.deletedBy||"")+' · '+esc(cloudRel(cloudMs(r.d.deletedAt)))+' · יימחק לצמיתות בעוד '+days+' ימים</div></div>'
+        +'<button class="btn small" onclick="cloudRestore(\''+esc(r.key)+'\')">↩ שחזר</button></div></div>';
+    }).join("") : '<div class="card muted">סל המחזור ריק.</div>';
+  }
+  return cloudTopbar("סל מחזור","/settings")
+    +'<div class="muted" style="margin:0 4px 12px">מה שנמחק נשמר כאן '+TRASH_DAYS+' יום, ומנהל יכול לשחזר אותו. אחרי זה הוא נמחק לצמיתות.</div>'+body;
+}
+function viewTeam(){
+  if(!canBoss()) return cloudTopbar("הצוות","/settings")+'<div class="card muted">ניהול הצוות זמין למנהלים.</div>';
+  const give=cloudRolesICanGive();
+  return cloudTopbar("הצוות","/settings")
+    +'<div class="card"><label>מי בצוות</label><div id="teambox"><div class="muted" style="margin-top:8px">טוען…</div></div></div>'
+    +'<div class="card"><label>הוספת אדם לצוות</label>'
+    +'<input id="teamEmail" type="email" inputmode="email" autocomplete="off" dir="ltr" placeholder="name@gmail.com" style="margin-top:8px">'
+    +'<div class="rowline" style="margin-top:8px"><select id="teamRole" class="grow">'+give.map(r=>'<option value="'+r+'"'+(r==="employee"?" selected":"")+'>'+ROLES[r]+'</option>').join("")+'</select>'
+    +'<button class="btn small primary" onclick="cloudAddMember()">הוסף</button></div>'
+    +'<div class="muted" style="margin-top:8px">האדם נכנס לאפליקציה עם חשבון הגוגל של המייל הזה. '
+    +'<b>עובד</b> רואה ועורך מדידות, בלי מחירים. <b>יצרן</b> רואה רק פרויקטים שנשלחו לייצור.'
+    +(Cloud.role==="dev"?' <b>מנהל</b> רואה הכל ומנהל עובדים ויצרנים.':'')+'</div></div>';
+}
+function afterTeamRender(){ cloudTeamStart(); }
+function renderTeamList(){
+  const box=document.getElementById("teambox"); if(!box) return;
+  const rows=Cloud.team; if(!rows){ return; }
+  const me=Cloud.user.email, give=cloudRolesICanGive();
+  box.innerHTML=rows.map(x=>{
+    const can=cloudCanManage(x.email, x.role);
+    return '<div class="team-row"><div class="grow"><div>'+esc(x.email)+(x.email===me?' <span class="muted">(אתה)</span>':'')+'</div>'
+      +(can ? '<select data-em="'+esc(x.email)+'" onchange="cloudChangeRole(this.dataset.em,this.value)" style="margin-top:4px">'
+              +give.map(r=>'<option value="'+r+'"'+(r===x.role?" selected":"")+'>'+ROLES[r]+'</option>').join("")+'</select>'
+            : '<div class="muted">'+esc(ROLES[x.role]||"")+'</div>')
+      +'</div>'
+      +(can?'<button class="btn small danger" data-em="'+esc(x.email)+'" onclick="cloudRemoveMember(this.dataset.em)">הסר</button>':'')
+      +'</div>';
+  }).join("");
+}
+
+/* שחזור מגיבוי במצב צוות: מוסיף מה שחסר (גם מתוך סל המחזור), לא מוחק ולא דורס */
+function cloudRestoreBackup(data){
+  uiConfirm("השחזור יוסיף לצוות פרויקטים ופריטים מהקובץ שלא קיימים כרגע (כולל כאלה שבסל המחזור). שום דבר קיים לא יימחק או ישתנה.",{title:"שחזור מגיבוי",ok:"שחזר"}).then(ok=>{
+    if(!ok) return;
+    let np=0, ni=0;
+    data.projects.forEach(bp=>{
+      if(!bp || typeof bp!=="object" || !cloudIdOk(bp.id)) return;
+      const its=(Array.isArray(bp.items)?bp.items:[]).filter(it=>it && typeof it==="object" && cloudIdOk(it.id));
+      const cur=proj(bp.id);
+      if(!cur){ bp.items=its; DB.projects.unshift(bp); np++; ni+=its.length; return; }
+      its.forEach(it=>{ if(!cur.items.some(x=>x.id===it.id)){ cur.items.push(it); ni++; } });
+    });
+    cloudFixDupIds(); save(); render();
+    uiAlert("נוספו "+np+" פרויקטים ו-"+ni+" פריטים.","שחזור מגיבוי");
+  });
+}
+/* פריטים שהועתקו בעבר עם אותו מזהה לשני פרויקטים — מקבלים מזהה חדש לפני שעולים לענן */
+function cloudFixDupIds(){
+  const seen=new Set(); let fixed=0;
+  DB.projects.forEach(p=>(p.items||[]).forEach(it=>{
+    if(!it.id || seen.has(it.id)){ it.id=uid(); fixed++; }
+    seen.add(it.id);
+  }));
+  if(fixed) saveLocal();
+  return fixed;
+}
 
 /* ===== paywall (הדגמת תשלום) ===== */
 async function sha256hex(s){
@@ -2974,6 +3951,7 @@ if(payTestMode){ try{ localStorage.removeItem(LICENSE_KEY); }catch(e){} }
 
 render();
 if((PAYWALL.on || payTestMode) && !paywallLicensed()) showPaywall();
+cloudInit();
 </script>
 
 <script>

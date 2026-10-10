@@ -2986,7 +2986,8 @@ window.App=App; window.nav=nav; window.renderItemForm=renderItemForm;
    מטא בכל מסמך: cb/cn/ca = נוצר ע"י/שם/מתי, ub/un/ua = עודכן ע"י/שם/מתי, deleted (+deletedAt/By).
    מחיקה = סל מחזור; מחיקה סופית רק אחרי TRASH_DAYS (נאכף בשרת, כולל תאריך המחיקה עצמו).
    הסנכרון: כל שמירה משווה את DB למצב הידוע של הענן (Cloud.last) וכותבת רק את מה שהשתנה. */
-const FB_CONFIG = {apiKey:"", authDomain:"", projectId:"", storageBucket:"", messagingSenderId:"", appId:""};
+/* פרטי זיהוי ציבוריים של פרויקט Firebase (לא סוד — ההגנה היא כללי האבטחה בשרת) */
+const FB_CONFIG = {apiKey:"AIzaSyDX19_rWMZ-BDyO0DjvsGViJR75xE1nKMY", authDomain:"alum-elbaz.firebaseapp.com", projectId:"alum-elbaz", storageBucket:"alum-elbaz.firebasestorage.app", messagingSenderId:"631687751074", appId:"1:631687751074:web:e8bf773dbfdb62200dfefb"};
 const TEAM_ID = "albaz";
 const CLOUD_KEY = "alum_cloud_v1";
 const TRASH_DAYS = 30;
@@ -3107,7 +3108,8 @@ async function cloudInit(){
 }
 
 async function cloudSignedIn(u){
-  Cloud.user = {uid:u.uid, email:String(u.email||"").toLowerCase(), name:u.displayName || String(u.email||"").split("@")[0]};
+  /* מזהה המשתמש בצוות: המייל (גוגל), ובעתיד גם מספר טלפון מאומת — כמו בכללי השרת */
+  Cloud.user = {uid:u.uid, email:String(u.email||u.phoneNumber||"").toLowerCase(), name:u.displayName || (u.email ? String(u.email).split("@")[0] : String(u.phoneNumber||""))};
   const f=cloudFlag();
   Cloud.role = f.role||"";
   cloudSetState("loading");
