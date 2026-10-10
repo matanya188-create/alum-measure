@@ -359,6 +359,13 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .tm-lbl{position:absolute;top:37px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#fff;border-radius:8px;padding:1px 7px;font-size:.72rem;font-weight:700;color:#161a20;box-shadow:0 1px 4px rgba(0,0,0,.25);direction:rtl}
 .tm-dot{width:12px;height:12px;border-radius:50%;flex:none}
 .tm-acts{display:flex;flex-wrap:wrap;gap:6px}
+.consent-ov{z-index:1000}
+.modal.consent{max-width:440px}
+.modal.consent .msg{white-space:normal;font-size:.9rem;line-height:1.6}
+.modal.consent .msg p{margin:0 0 8px}
+.modal.consent .msg ul{margin:2px 0 10px;padding-inline-start:20px}
+.modal.consent .btns{flex-direction:column}
+.tm-day select{min-width:0}
 .track-badge{font-size:.72rem;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(18,178,171,.12);color:#0b7f7a;white-space:nowrap}
 #teamEmail{width:100%}
 .prod-status{border-inline-start:4px solid var(--ok)}
@@ -3460,6 +3467,7 @@ async function cloudDevRelease(){
   }catch(e){
     if(!(e && (e.code==="permission-denied" || e.code==="not-found"))){ uiAlert(cloudErrText(e),"התנתקות נכשלה"); return; }
   }
+  consentForget();
   cloudDevSave(null);
   try{ await u.delete(); }catch(e){ try{ await M.signOut(Cloud.auth); }catch(e2){} }
 }
@@ -3491,10 +3499,10 @@ function cloudSignOut(){
     return;
   }
   uiConfirm("להתנתק מהצוות? מה שבטלפון יישאר, אבל לא יסונכרן עד שתתחבר שוב.",{title:"התנתקות",ok:"התנתק"}).then(ok=>{
-    if(ok){ cloudActFlush(); Cloud.m.signOut(Cloud.auth); }
+    if(ok){ cloudActFlush(); consentForget(); Cloud.m.signOut(Cloud.auth); }
   });
 }
-function cloudSwitchUser(){ cloudDevSave(null); Cloud.m.signOut(Cloud.auth).then(()=>cloudSignIn()); }
+function cloudSwitchUser(){ cloudDevSave(null); consentForget(); Cloud.m.signOut(Cloud.auth).then(()=>cloudSignIn()); }
 
 /* ---- העלאה ראשונה של הפרויקטים שבטלפון ---- */
 function cloudAskMigrate(n){
@@ -4167,42 +4175,88 @@ function cloudReleaseDevice(em){
 }
 
 /* ================= מיקום הצוות — המנהל רואה את העובדים והיצרן על מפה =================
-   בטלפון של עובד/יצרן המיקום נשלח רק כשהאפליקציה פתוחה, ורק בשעות העבודה שהמנהל הגדיר
-   (אפליקציית דפדפן לא יכולה לשלוח מיקום ברקע). בפעם הראשונה העובד רואה הסבר, והטלפון מבקש ממנו אישור.
+   בטלפון של עובד/יצרן המיקום נשלח רק כשהאפליקציה פתוחה על המסך, ורק אחרי שאישר את הנוסח
+   (אפליקציית דפדפן לא יכולה לשלוח מיקום ברקע). המנהל יכול לכבות את השיתוף לכולם בהגדרות.
    כל עוד המיקום משותף — מסומן אצלו "📍 מיקום משותף".
      locs/{מזהה}    {lat,lng,acc,at,by,day,name}  — המיקום האחרון
      trackpts/{id}  {lat,lng,acc,at,by,day}       — נקודות המסלול; נמחקות אחרי TRACK_DAYS ימים
    קריאה — רק מנהל ומפתח; כל אחד כותב רק את המיקום של עצמו, בשעת השרת (נאכף ב-firestore.rules). */
-const TRACK_DAYS=7, TRACK_ACK_KEY="alum_track_ack_v1";
-const Track={watch:null, last:null, lastPt:null, err:"", asking:false, locMs:60000, ptMs:120000, ptMaxMs:600000};
-function trackCfg(){ const s=DB.settings||{}; return {on:s.trackOn!==false, wd:s.trackWd||"07:00-19:00", fr:s.trackFr||"07:00-13:00"}; }
-function trackRange(r){ const m=/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/.exec(String(r||"")); return m ? [(+m[1])*60+(+m[2]), (+m[3])*60+(+m[4])] : null; }
-/* שעות העבודה: א׳–ה׳ ו-ו׳ לפי ההגדרות; בשבת — אף פעם */
-function trackHoursNow(d){
-  d=d||new Date(); const c=trackCfg(); if(!c.on) return false;
-  const wd=d.getDay(), r = wd<=4 ? trackRange(c.wd) : wd===5 ? trackRange(c.fr) : null;
-  if(!r) return false;
-  const m=d.getHours()*60+d.getMinutes(); return m>=r[0] && m<r[1];
-}
+const TRACK_DAYS=7, CONSENT_KEY="alum_consent_v1";
+/* cv = גרסת נוסח ההסכמה: מעלים אותה רק כשהנוסח משתנה — ואז כולם מתבקשים לאשר שוב */
+const Track={watch:null, last:null, lastPt:null, err:"", asking:false, locMs:60000, ptMs:120000, ptMaxMs:600000, cv:1};
+function trackCfg(){ const s=DB.settings||{}; return {on:s.trackOn!==false}; }
 const trackDay = d => { d=d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
 function trackDist(a,b){ const R=6371000, k=Math.PI/180, dLa=(b.lat-a.lat)*k, dLo=(b.lng-a.lng)*k;
   const h=Math.sin(dLa/2)**2+Math.cos(a.lat*k)*Math.cos(b.lat*k)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
 const trackIsWorker = () => Cloud.ready && (Cloud.role==="employee" || Cloud.role==="maker");
-function trackShouldRun(){ return trackIsWorker() && !!navigator.geolocation && trackHoursNow() && Track.err!=="denied"; }
-function trackAcked(){ try{ return !!(JSON.parse(localStorage.getItem(TRACK_ACK_KEY))||{})[TEAM_ID+"|"+Cloud.user.email]; }catch(e){ return false; } }
-function trackAck(){ try{ const o=JSON.parse(localStorage.getItem(TRACK_ACK_KEY))||{}; o[TEAM_ID+"|"+Cloud.user.email]=1; localStorage.setItem(TRACK_ACK_KEY, JSON.stringify(o)); }catch(e){} }
+function trackShouldRun(){ return trackIsWorker() && trackCfg().on && !!navigator.geolocation && Track.err!=="denied" && consentOk(); }
+/* ---- הסכמה לשיתוף מיקום (הנוסח שמתניה אישר) ----
+   עובד/יצרן חייב לאשר כדי להשתמש באפליקציה: "אני מאשר/ת" או "צא מהאפליקציה".
+   התשובה נשמרת בטלפון וגם בשרת עם תאריך (consents/{מזהה}) — המנהל רואה במפה מי אישר ומתי. */
+function consentMine(){ try{ return (JSON.parse(localStorage.getItem(CONSENT_KEY))||{})[TEAM_ID+"|"+Cloud.user.email]||null; }catch(e){ return null; } }
+function consentSaveLocal(ok){ try{ const o=JSON.parse(localStorage.getItem(CONSENT_KEY))||{}; o[TEAM_ID+"|"+Cloud.user.email]={v:Track.cv, ok:!!ok}; localStorage.setItem(CONSENT_KEY, JSON.stringify(o)); }catch(e){} }
+function consentOk(){ const c=Cloud.user && consentMine(); return !!(c && c.ok && c.v===Track.cv); }
+/* צריך לשאול: עובד/יצרן, השיתוף פעיל אצל המנהל, ואין אישור לנוסח הנוכחי */
+function consentNeeded(){ return trackIsWorker() && trackCfg().on && !consentOk(); }
+/* מתי שואלים (החלטת מתניה): פעם אחת בכניסה הראשונה, ושוב רק אחרי התנתקות וכניסה מחדש
+   (או אם הנוסח השתנה, או אם לחץ "צא מהאפליקציה"). כניסות רגילות — לא שואלים. */
+function consentCheck(){
+  if(!consentNeeded() || Track.asking || document.querySelector(".consent-ov")) return;
+  consentShow();
+}
+/* בהתנתקות — שוכחים את האישור בטלפון הזה, כדי שבכניסה הבאה יוצג שוב */
+function consentForget(){ try{ const o=JSON.parse(localStorage.getItem(CONSENT_KEY))||{}; if(Cloud.user) delete o[TEAM_ID+"|"+Cloud.user.email]; localStorage.setItem(CONSENT_KEY, JSON.stringify(o)); }catch(e){} }
+function consentShow(){
+  Track.asking=true;
+  const old=document.querySelector(".consent-ov"); if(old) old.remove();
+  const ov=document.createElement("div"); ov.className="modal-overlay consent-ov";
+  ov.innerHTML='<div class="modal consent" role="dialog" aria-modal="true">'
+    +'<h3>📍 שיתוף מיקום בזמן העבודה</h3>'
+    +'<div class="msg">'
+    +'<p>אלום אלבז משתמשת באפליקציה כדי לתאם את העבודה בשטח.</p>'
+    +'<p>כשהאפליקציה פתוחה בטלפון שלך, המיקום שלך נשלח למנהל ומוצג לו על מפה.</p>'
+    +'<b>מתי המיקום משותף</b><ul>'
+    +'<li>רק כשהאפליקציה פתוחה על המסך. כשהיא סגורה או שהמסך כבוי, לא נשלח כלום.</li>'
+    +'<li>כל עוד המיקום משותף, יופיע אצלך הסימון "📍 מיקום משותף".</li></ul>'
+    +'<b>מה נשמר</b><ul>'
+    +'<li>המיקום האחרון שלך, והמסלול שלך בכל יום.</li>'
+    +'<li>המיקום והמסלול נמחקים אוטומטית אחרי '+TRACK_DAYS+' ימים.</li></ul>'
+    +'<p><b>מי רואה:</b> רק המנהל ומנהל האפליקציה. עובדים אחרים והיצרן לא רואים את המיקום שלך.</p>'
+    +'<p><b>למה:</b> כדי לתאם את העבודה בשטח, לדעת מי קרוב לאיזה לקוח, ולהגיע אליך כשצריך.</p>'
+    +'<p>אפשר לפנות למנהל בכל שאלה, ולבקש לראות מה נשמר עליך או למחוק אותו.</p>'
+    +'</div>'
+    +'<div class="btns"><button class="btn primary" data-m="ok">אני מאשר/ת</button><button class="btn" data-m="exit">צא מהאפליקציה</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('[data-m="ok"]').onclick=()=>{ ov.remove(); consentAnswer(true); };
+  ov.querySelector('[data-m="exit"]').onclick=()=>{ ov.remove(); consentAnswer(false); };
+}
+function consentAnswer(ok){
+  const M=Cloud.m;
+  consentSaveLocal(ok);
+  M.setDoc(M.doc(cloudCol("consents"), Cloud.user.email), {v:Track.cv, ok:!!ok, at:M.serverTimestamp(), by:Cloud.user.email, name:String(Cloud.user.name||"").slice(0,60)}).catch(()=>{});
+  Track.asking=false;
+  if(ok){ trackTick(); return; }
+  consentExit();
+}
+/* "צא מהאפליקציה": מנסים לסגור; אם הדפדפן לא מרשה לסגור — מסך חוסם עד שמאשרים */
+function consentExit(){
+  trackStop();
+  try{ window.close(); }catch(e){}
+  setTimeout(()=>{
+    if(document.querySelector(".consent-exit")) return;
+    const ov=document.createElement("div"); ov.className="modal-overlay consent-ov consent-exit";
+    ov.innerHTML='<div class="modal" role="dialog" aria-modal="true"><h3>יצאת מהאפליקציה</h3>'
+      +'<div class="msg">כדי להשתמש באפליקציה צריך לאשר את שיתוף המיקום בזמן העבודה. אפשר לסגור את החלון.</div>'
+      +'<div class="btns"><button class="btn" data-m="back">חזרה להודעה</button></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('[data-m="back"]').onclick=()=>{ ov.remove(); consentShow(); };
+  }, 300);
+}
 function trackTick(){
+  if(consentNeeded()) consentCheck();
   const run=trackShouldRun();
-  if(run && Track.watch==null){
-    if(!trackAcked()){
-      if(!Track.asking){
-        Track.asking=true;
-        uiDialog({title:"📍 שיתוף מיקום עם המנהל", ok:"הבנתי",
-          msg:"בשעות העבודה, כשהאפליקציה פתוחה, המנהל רואה במפה איפה אתה נמצא ואת המסלול של היום. מחוץ לשעות העבודה לא נשלח כלום. הטלפון יבקש עכשיו אישור לשתף מיקום."})
-          .then(()=>{ Track.asking=false; trackAck(); trackTick(); });
-      }
-    } else trackStart();
-  } else if(!run && Track.watch!=null) trackStop(true);
+  if(run && Track.watch==null) trackStart();
+  else if(!run && Track.watch!=null) trackStop(true);
   trackStatus();
 }
 function trackStart(){
@@ -4243,8 +4297,8 @@ function trackStatusText(){
   if(!trackCfg().on) return "📍 שיתוף המיקום כבוי";
   if(!navigator.geolocation) return "📍 הטלפון הזה לא תומך במיקום";
   if(Track.err==="denied") return "📍 לא משותף — לא אושרה הרשאת מיקום בטלפון";
+  if(!consentOk()) return "📍 ממתין לאישור שיתוף מיקום";
   if(Track.watch!=null) return "📍 המיקום שלך משותף עם המנהל עכשיו";
-  if(!trackHoursNow()) return "📍 לא משותף עכשיו — מחוץ לשעות העבודה";
   return "📍 ממתין לאישור שיתוף מיקום";
 }
 function trackStatus(){
@@ -4253,39 +4307,40 @@ function trackStatus(){
   const r=document.getElementById("trackRetry"); if(r) r.hidden = Track.err!=="denied";
 }
 function trackBadgeHTML(){ return trackIsWorker() ? '<span id="trackBadge" class="track-badge"'+(Track.watch==null?' hidden':'')+'>📍 מיקום משותף</span>' : ''; }
-function trackHoursHTML(){ const c=trackCfg(); return 'א׳–ה׳ <bdi dir="ltr">'+esc(c.wd)+'</bdi> · ו׳ <bdi dir="ltr">'+esc(c.fr)+'</bdi>'; }
 /* בהגדרות של עובד/יצרן: מתי המיקום משותף (שקיפות) */
 function trackWorkerCard(){
   if(!trackIsWorker()) return "";
   return '<div class="card"><label>📍 מיקום</label>'
     +'<div id="trackStatus" style="margin-top:6px;font-weight:700">'+esc(trackStatusText())+'</div>'
-    +'<div class="muted" style="margin-top:4px">המנהל רואה את המיקום שלך רק בשעות העבודה, וכשהאפליקציה פתוחה. מחוץ לשעות לא נשלח כלום.</div>'
-    +'<div class="muted">שעות העבודה: '+trackHoursHTML()+'</div>'
+    +'<div class="muted" style="margin-top:4px">המנהל רואה את המיקום שלך רק כשהאפליקציה פתוחה. כשהיא סגורה או שהמסך כבוי, לא נשלח כלום.</div>'
     +'<button id="trackRetry" class="btn small" style="margin-top:8px"'+(Track.err==="denied"?'':' hidden')+' onclick="trackRetry()">נסה שוב</button>'
     +'</div>';
 }
-/* בהגדרות של מנהל/מפתח: הפעלה ושעות העבודה */
+/* בהגדרות של מנהל/מפתח: הפעלה וכיבוי לכולם */
 function trackSettingsCard(){
   if(!canBoss()) return "";
-  const c=trackCfg(), wd=c.wd.split("-"), fr=c.fr.split("-");
-  const tm=(k,i,v)=>'<input type="time" dir="ltr" class="num" style="flex:1;min-width:0;width:auto" value="'+esc(v||"")+'" onchange="trackSetHours(\''+k+'\','+i+',this.value)">';
+  const c=trackCfg();
   return '<div class="card"><label>📍 מיקום הצוות</label>'
     +'<div class="seg" style="margin-top:8px">'+segBtn(c.on,"פעיל","App.sf('trackOn',true);render()")+segBtn(!c.on,"כבוי","App.sf('trackOn',false);render()")+'</div>'
-    +'<div class="field" style="margin:10px 0 0"><label>א׳–ה׳</label><div class="rowline" style="gap:6px">'+tm("trackWd",0,wd[0])+'<span>–</span>'+tm("trackWd",1,wd[1])+'</div></div>'
-    +'<div class="field" style="margin:8px 0 0"><label>ו׳</label><div class="rowline" style="gap:6px">'+tm("trackFr",0,fr[0])+'<span>–</span>'+tm("trackFr",1,fr[1])+'</div></div>'
-    +'<div class="muted" style="margin-top:8px">העובדים והיצרן משתפים מיקום רק בשעות האלה, וכשהאפליקציה פתוחה אצלם. בשבת — לא. המסלול נשמר '+TRACK_DAYS+' ימים.</div>'
+    +'<div class="muted" style="margin-top:8px">העובדים והיצרן משתפים מיקום רק כשהאפליקציה פתוחה אצלם, ורק אחרי שאישרו. המיקום והמסלול נשמרים '+TRACK_DAYS+' ימים.</div>'
     +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small primary" onclick="nav(\'/map\')">🗺 פתח את מפת הצוות</button></div>'
     +'</div>';
 }
-function trackSetHours(k,i,v){
-  if(!/^\d{2}:\d{2}$/.test(v) || (k!=="trackWd" && k!=="trackFr")) return;
-  const cur=trackCfg()[k==="trackWd"?"wd":"fr"].split("-"); cur[i]=v;
-  const r=trackRange(cur.join("-")); if(!r || r[0]>=r[1]) return;
-  DB.settings[k]=cur.join("-"); save();
-}
 
 /* ---- מפת הצוות (מנהל/מפתח) ---- */
-const TMap={map:null, layer:null, unsub:null, locs:new Map(), routeKey:"", route:null, routeInfo:"", fitted:false, purged:false};
+const TMap={map:null, layer:null, unsub:null, unsub2:null, cons:new Map(), locs:new Map(), routeKey:"", route:null, routeInfo:"", fitted:false, purged:false, day:""};
+/* 7 הימים האחרונים לבחירת מסלול: היום, אתמול, ואז תאריכים */
+function tmapDays(){
+  const out=[];
+  for(let i=0;i<TRACK_DAYS;i++){ const d=new Date(Date.now()-i*864e5); out.push({v:trackDay(d), t: i===0?"היום": i===1?"אתמול": d.getDate()+"/"+(d.getMonth()+1)}); }
+  return out;
+}
+const tmapDayLabel = v => (tmapDays().find(o=>o.v===v)||{t:v}).t;
+function tmapSetDay(v){
+  if(!tmapDays().some(o=>o.v===v)) return;
+  TMap.day=v;
+  if(TMap.routeKey){ const k=TMap.routeKey; TMap.routeKey=""; tmapRoute(k); }
+}
 function leafletLoad(){
   if(window.L && window.L.map) return Promise.resolve();
   if(leafletLoad.p) return leafletLoad.p;
@@ -4298,15 +4353,17 @@ function leafletLoad(){
   return leafletLoad.p;
 }
 function viewTeamMap(){
+  if(!tmapDays().some(o=>o.v===TMap.day)) TMap.day=trackDay();
   if(!canBoss()) return cloudTopbar("מפת הצוות","/")+'<div class="card muted">מפת הצוות זמינה למנהלים.</div>';
   const c=trackCfg();
   return cloudTopbar("מפת הצוות","/")
     +'<div class="card tmap-card"><div id="tmap" dir="ltr"></div></div>'
+    +'<div class="card tm-day"><div class="rowline"><label style="margin:0">מסלול של יום</label>'
+    +'<select id="tmday" class="grow" onchange="tmapSetDay(this.value)">'+tmapDays().map(o=>'<option value="'+o.v+'"'+(o.v===TMap.day?' selected':'')+'>'+esc(o.t)+'</option>').join("")+'</select></div></div>'
     +'<div id="tmaplist"></div>'
     +'<div class="muted" style="margin:4px 4px 6px">'+(c.on
-        ? 'המיקום מתעדכן רק כשהאפליקציה פתוחה אצל העובד, ובשעות העבודה. המסלול נשמר '+TRACK_DAYS+' ימים.'
-        : 'שיתוף המיקום כבוי — אפשר להפעיל בהגדרות.')+'</div>'
-    +'<div class="muted" style="margin:0 4px 12px">שעות העבודה: '+trackHoursHTML()+'</div>';
+        ? 'המיקום מתעדכן רק כשהאפליקציה פתוחה אצל העובד. המיקום והמסלול נשמרים '+TRACK_DAYS+' ימים.'
+        : 'שיתוף המיקום כבוי — אפשר להפעיל בהגדרות.')+'</div>';
 }
 function afterTeamMapRender(){
   if(!canBoss()) return;
@@ -4326,13 +4383,18 @@ function tmapData(){
   TMap.unsub=Cloud.m.onSnapshot(cloudCol("locs"), s=>{
     const m=new Map();
     s.forEach(d=>{ const x=d.data({serverTimestamps:"estimate"});
-      if(typeof x.lat==="number" && typeof x.lng==="number" && Math.abs(x.lat)<=90 && Math.abs(x.lng)<=180)
+      if(typeof x.lat==="number" && typeof x.lng==="number" && Math.abs(x.lat)<=90 && Math.abs(x.lng)<=180 && cloudMs(x.at)>Date.now()-TRACK_DAYS*864e5)
         m.set(d.id, {lat:x.lat, lng:x.lng, acc:Math.max(0, Number(x.acc)||0), at:cloudMs(x.at), name:String(x.name||"").slice(0,60)}); });
     TMap.locs=m; tmapDraw(); tmapList();
+  }, ()=>{});
+  TMap.unsub2=Cloud.m.onSnapshot(cloudCol("consents"), s=>{
+    const m=new Map(); s.forEach(d=>{ const x=d.data({serverTimestamps:"estimate"}); m.set(d.id, {ok:x.ok===true, v:Number(x.v)||0, at:cloudMs(x.at)}); });
+    TMap.cons=m; tmapList();
   }, ()=>{});
 }
 function tmapStop(){
   if(TMap.unsub){ try{ TMap.unsub(); }catch(e){} TMap.unsub=null; }
+  if(TMap.unsub2){ try{ TMap.unsub2(); }catch(e){} TMap.unsub2=null; }
   if(TMap.map){ try{ TMap.map.remove(); }catch(e){} TMap.map=null; }
   TMap.layer=null; TMap.route=null; TMap.routeKey=""; TMap.routeInfo=""; TMap.locs=new Map();
 }
@@ -4375,16 +4437,19 @@ function tmapList(){
   box.innerHTML=ppl.map(p=>{
     const l=p.loc, q=l?(l.lat+","+l.lng):"", on=TMap.routeKey===p.key;
     const st = !l ? 'אין מיקום עדיין' : '📍 '+cloudRel(l.at)+(l.acc?' · דיוק ~'+l.acc+' מ׳':'');
+    const c=TMap.cons.get(p.key), dd=ms=>{ const d=new Date(ms); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); };
+    const cs = !c ? 'טרם אישר שיתוף מיקום' : c.v!==Track.cv ? 'טרם אישר את הנוסח החדש' : (c.ok ? '✓ אישר שיתוף מיקום · ' : '✗ לא אישר שיתוף מיקום · ')+dd(c.at);
     return '<div class="card tm-row" data-k="'+esc(p.key)+'"><div class="rowline wrap">'
       +'<span class="tm-dot '+tmapAge(l)+'"></span>'
       +'<div class="grow"><div><b>'+esc(p.name)+'</b>'+(p.role?' <span class="muted">· '+esc(ROLES[p.role]||"")+'</span>':'')+'</div>'
       +'<div class="muted">'+esc(st)+'</div>'
+      +'<div class="muted">'+esc(cs)+'</div>'
       +(on && TMap.routeInfo ? '<div class="muted">'+esc(TMap.routeInfo)+'</div>' : '')
       +'</div>'
       +(l ? '<div class="tm-acts">'
           +'<a class="btn small" href="https://www.google.com/maps/search/?api=1&query='+q+'" target="_blank" rel="noopener noreferrer">📍 גוגל מפות</a>'
           +'<a class="btn small" href="https://www.google.com/maps/dir/?api=1&destination='+q+'" target="_blank" rel="noopener noreferrer">🧭 נווט</a>'
-          +'<button class="btn small'+(on?' primary':'')+'" data-k="'+esc(p.key)+'" onclick="tmapRoute(this.dataset.k)">'+(on?'הסתר מסלול':'מסלול היום')+'</button>'
+          +'<button class="btn small'+(on?' primary':'')+'" data-k="'+esc(p.key)+'" onclick="tmapRoute(this.dataset.k)">'+(on?'הסתר מסלול':'מסלול')+'</button>'
           +'</div>' : '')
       +'</div></div>';
   }).join("");
@@ -4393,24 +4458,27 @@ function tmapRoute(key){
   if(TMap.routeKey===key){ TMap.routeKey=""; TMap.route=null; TMap.routeInfo=""; tmapDraw(); tmapList(); return; }
   const M=Cloud.m;
   TMap.routeKey=key; TMap.route=null; TMap.routeInfo="טוען מסלול…"; tmapList();
-  M.getDocs(M.query(cloudCol("trackpts"), M.where("by","==",key), M.where("day","==",trackDay()))).then(s=>{
-    if(TMap.routeKey!==key) return;
+  const day=TMap.day||trackDay();
+  M.getDocs(M.query(cloudCol("trackpts"), M.where("by","==",key), M.where("day","==",day))).then(s=>{
+    if(TMap.routeKey!==key || (TMap.day||trackDay())!==day) return;
     const pts=[];
     s.forEach(d=>{ const x=d.data({serverTimestamps:"estimate"}); if(typeof x.lat==="number" && typeof x.lng==="number") pts.push({lat:x.lat, lng:x.lng, at:cloudMs(x.at)}); });
     pts.sort((a,b)=>a.at-b.at);
     TMap.route=pts;
     const hm=ms=>{ const d=new Date(ms); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
-    TMap.routeInfo = pts.length ? "מסלול היום: "+pts.length+" נקודות · "+hm(pts[0].at)+"–"+hm(pts[pts.length-1].at) : "אין מסלול היום";
+    TMap.routeInfo = pts.length ? tmapDayLabel(day)+": "+pts.length+" נקודות · "+hm(pts[0].at)+"–"+hm(pts[pts.length-1].at) : "אין מסלול ביום הזה";
     if(TMap.map && pts.length>1) TMap.map.fitBounds(pts.map(x=>[x.lat,x.lng]), {padding:[40,40], maxZoom:16});
     tmapDraw(); tmapList();
   }).catch(e=>{ TMap.routeInfo=cloudErrText(e); tmapList(); });
 }
-/* מחיקת מסלולים ישנים (מעל TRACK_DAYS ימים) — כשמנהל פותח את המפה */
+/* מחיקת מסלולים ומיקומים ישנים (מעל TRACK_DAYS ימים) — כשמנהל פותח את המפה */
 function tmapPurge(){
   if(TMap.purged || !canBoss()) return; TMap.purged=true;
-  const M=Cloud.m, cut=trackDay(new Date(Date.now()-(TRACK_DAYS+1)*864e5));
+  const M=Cloud.m, cut=trackDay(new Date(Date.now()-(TRACK_DAYS+1)*864e5)), old=Date.now()-TRACK_DAYS*864e5-3600e3;
   M.getDocs(M.query(cloudCol("trackpts"), M.where("day","<",cut), M.limit(400)))
     .then(s=>s.forEach(d=>M.deleteDoc(d.ref).catch(()=>{}))).catch(()=>{});
+  M.getDocs(cloudCol("locs"))
+    .then(s=>s.forEach(d=>{ const at=cloudMs(d.data().at); if(at && at<old) M.deleteDoc(d.ref).catch(()=>{}); })).catch(()=>{});
 }
 setInterval(()=>{ try{ trackTick(); }catch(e){} }, 60000);
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible"){ try{ trackTick(); }catch(e){} } });
