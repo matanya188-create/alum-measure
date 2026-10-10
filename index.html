@@ -363,6 +363,19 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .team-row:last-child{border-bottom:none}
 .team-acts{display:flex;flex-direction:column;gap:6px;flex:none}
 .cloud-in{display:flex;flex-direction:column;gap:8px}
+/* מפת הצוות */
+.tmap-card{padding:0;overflow:hidden;position:relative;z-index:0;isolation:isolate}
+#tmap{height:min(58vh,460px);width:100%;background:#e8ecf2}
+.leaflet-container img{max-width:none!important;max-height:none!important}
+.tm-ic{background:none;border:none}
+.tm-pin{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.95rem;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.tm-pin.fresh,.tm-dot.fresh{background:#12b2ab}
+.tm-pin.recent,.tm-dot.recent{background:#e39b2d}
+.tm-pin.old,.tm-dot.old,.tm-dot.none{background:#8a93a5}
+.tm-lbl{position:absolute;top:37px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#fff;border-radius:8px;padding:1px 7px;font-size:.72rem;font-weight:700;color:#161a20;box-shadow:0 1px 4px rgba(0,0,0,.25);direction:rtl}
+.tm-dot{width:12px;height:12px;border-radius:50%;flex:none}
+.tm-acts{display:flex;flex-wrap:wrap;gap:6px}
+.track-badge{font-size:.72rem;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(18,178,171,.12);color:#0b7f7a;white-space:nowrap}
 #teamEmail{width:100%}
 .prod-status{border-inline-start:4px solid var(--ok)}
 .prod-warn{color:var(--warn);font-weight:700;font-size:.85rem;margin-top:4px}
@@ -405,7 +418,7 @@ html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev{trans
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 77; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 78; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -1179,6 +1192,7 @@ function renderRoute(){
   else if(parts[0]==="activity"){ app.innerHTML = viewActivity(); afterActivityRender(); }
   else if(parts[0]==="trash"){ app.innerHTML = viewTrash(); }
   else if(parts[0]==="team"){ app.innerHTML = viewTeam(); afterTeamRender(); }
+  else if(parts[0]==="map"){ app.innerHTML = viewTeamMap(); afterTeamMapRender(); }
   else if(parts[0]==="prod" && parts[1]){ app.innerHTML = viewProdOrder(parts[1]); }
   else if(parts[0]==="settings"){ app.innerHTML = viewSettings(); }
   else {
@@ -1199,7 +1213,7 @@ function viewHome(){
     +'<div class="grow"><div class="mc-t">'+title+'</div><div class="mc-s">'+sub+'</div></div>'
     +'<div class="mc-arrow">‹</div></div>';
   return ''
-  +'<div class="topbar"><div><h1>אלום אלבז</h1><div class="sub">פנקס מדידות והצעות מחיר</div></div>'+cloudPillHTML()+'</div>'
+  +'<div class="topbar"><div><h1>אלום אלבז</h1><div class="sub">פנקס מדידות והצעות מחיר</div></div>'+cloudPillHTML()+trackBadgeHTML()+'</div>'
   +cloudHomeCard()
   +cloudQueueCard()
   +(showInstall
@@ -1213,6 +1227,7 @@ function viewHome(){
   +(canPrice()?menuItem("📄","pc0","הצעת מחיר ללקוח","תמחור והפקת הצעה ללקוח","/pricing"):"")
   +menuItem("🧊","pc2","הדמיה ללקוח","בונים חלון ורואים אותו בתלת־ממד","/sim")
   +(Cloud.ready&&Cloud.role!=="maker"?menuItem("🕒","pc0","פעילות הצוות","מי עשה מה ומתי — כל השינויים של הצוות","/activity"):"")
+  +(canBoss()?menuItem("📍","pc3","מפת הצוות","איפה העובדים והיצרן עכשיו","/map"):"")
   +'<button class="btn primary fab fab-left" onclick="nav(\'/settings\')">⚙️ הגדרות</button>';
 }
 
@@ -1282,6 +1297,8 @@ function viewSettings(){
   +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
   +'<div class="grow"><h1>הגדרות</h1></div></div>'
   +cloudSettingsCard()
+  +trackWorkerCard()
+  +trackSettingsCard()
   +langCard()
   +(canPrice()?(''
   +'<div class="card"><label>לוגו החברה — מופיע בכל קובץ מיוצא (לצד בס״ד)</label>'
@@ -3464,7 +3481,7 @@ async function cloudDevRelease(){
 }
 
 function cloudSignedOut(){
-  cloudStop(); cloudActivityStop(); cloudTeamStop();
+  trackStop(); tmapStop(); cloudStop(); cloudActivityStop(); cloudTeamStop();
   Cloud.user=null; Cloud.ready=false; Cloud.role="";
   cloudSetState("signedout");
 }
@@ -3589,7 +3606,10 @@ function cloudSnap(kind, s){
 function cloudSnapDoc(kind, s){
   const key = kind==="s" ? "s:main" : "s:pricing";
   Cloud.snapPend[kind]=s.metadata.hasPendingWrites;
-  if(Cloud.ready) cloudPush();
+  /* מסמך הגדרות שנוצר עכשיו אצל מנהל אחר ולא היה ידוע כאן — מאמצים אותו כמו שהוא.
+     (אחרת ההשוואה רואה את ברירות המחדל המקומיות כ"חדשות", ויוצרת אותו מחדש מעל השינוי של המנהל השני) */
+  const fresh = Cloud.ready && s.exists() && !Cloud.last.has(key) && !s.metadata.hasPendingWrites;
+  if(Cloud.ready && !fresh) cloudPush();
   let ext=false, who="";
   if(s.exists()){
     const d=s.data({serverTimestamps:"estimate"});
@@ -3628,7 +3648,7 @@ function cloudSnapMe(s){
   Cloud.role=role;
   cloudGot("me", false, "");
 }
-function cloudLost(){ cloudStop(); cloudTeamStop(); cloudActivityStop(); Cloud.ready=false; Cloud.role=""; cloudSetFlag({member:false, role:""}); cloudSetState("denied"); }
+function cloudLost(){ trackStop(); tmapStop(); cloudStop(); cloudTeamStop(); cloudActivityStop(); Cloud.ready=false; Cloud.role=""; cloudSetFlag({member:false, role:""}); cloudSetState("denied"); }
 function cloudListenErr(e){
   if(e && e.code==="permission-denied") cloudLost();
   else { Cloud.err=cloudErrText(e); cloudSetState("error"); }
@@ -3655,6 +3675,7 @@ function cloudMaybeReady(){
   if(cloudIsBoss()) cloudPurge();
   cloudRebuild();
   cloudSetState("ready");
+  trackTick();
 }
 
 /* ---- דחיפה: השוואת DB למצב הידוע, וכתיבה רק של מה שהשתנה ---- */
@@ -3996,7 +4017,7 @@ function cloudMakerHome(){
       +(Number(r.d.ver)>1?' · <b>עודכן (גרסה <span class="num">'+esc(r.d.ver)+'</span>)</b>':'')+'</div></div>'
       +'<div class="chev" style="font-size:1.3rem;color:var(--ink2)">‹</div></div></div>';
   }).join("") : '<div class="card muted">עוד לא נשלחו הזמנות ייצור. כשמנהל ישלח פרויקט, הוא יופיע כאן.</div>';
-  return '<div class="topbar"><div><h1>אלום אלבז</h1><div class="sub">הזמנות ייצור</div></div>'+cloudPillHTML()+'</div>'
+  return '<div class="topbar"><div><h1>אלום אלבז</h1><div class="sub">הזמנות ייצור</div></div>'+cloudPillHTML()+trackBadgeHTML()+'</div>'
     +list
     +'<button class="btn primary fab fab-left" onclick="nav(\'/settings\')">⚙️ הגדרות</button>';
 }
@@ -4096,6 +4117,7 @@ function cloudTeamStart(){
     const order={dev:0, manager:1, employee:2, maker:3};
     Cloud.team.sort((a,b)=>order[a.role]-order[b.role] || a.email.localeCompare(b.email));
     renderTeamList();
+    if(document.getElementById("tmaplist")){ tmapList(); tmapDraw(); }
   }, e=>{ const box=document.getElementById("teambox"); if(box) box.innerHTML='<div class="muted">'+esc(cloudErrText(e))+'</div>'; });
 }
 function cloudTeamStop(){ if(Cloud.teamUnsub){ Cloud.teamUnsub(); Cloud.teamUnsub=null; } Cloud.team=null; }
@@ -4160,6 +4182,255 @@ function cloudReleaseDevice(em){
   });
 }
 
+/* ================= מיקום הצוות — המנהל רואה את העובדים והיצרן על מפה =================
+   בטלפון של עובד/יצרן המיקום נשלח רק כשהאפליקציה פתוחה, ורק בשעות העבודה שהמנהל הגדיר
+   (אפליקציית דפדפן לא יכולה לשלוח מיקום ברקע). בפעם הראשונה העובד רואה הסבר, והטלפון מבקש ממנו אישור.
+   כל עוד המיקום משותף — מסומן אצלו "📍 מיקום משותף".
+     locs/{מזהה}    {lat,lng,acc,at,by,day,name}  — המיקום האחרון
+     trackpts/{id}  {lat,lng,acc,at,by,day}       — נקודות המסלול; נמחקות אחרי TRACK_DAYS ימים
+   קריאה — רק מנהל ומפתח; כל אחד כותב רק את המיקום של עצמו, בשעת השרת (נאכף ב-firestore.rules). */
+const TRACK_DAYS=7, TRACK_ACK_KEY="alum_track_ack_v1";
+const Track={watch:null, last:null, lastPt:null, err:"", asking:false, locMs:60000, ptMs:120000, ptMaxMs:600000};
+function trackCfg(){ const s=DB.settings||{}; return {on:s.trackOn!==false, wd:s.trackWd||"07:00-19:00", fr:s.trackFr||"07:00-13:00"}; }
+function trackRange(r){ const m=/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/.exec(String(r||"")); return m ? [(+m[1])*60+(+m[2]), (+m[3])*60+(+m[4])] : null; }
+/* שעות העבודה: א׳–ה׳ ו-ו׳ לפי ההגדרות; בשבת — אף פעם */
+function trackHoursNow(d){
+  d=d||new Date(); const c=trackCfg(); if(!c.on) return false;
+  const wd=d.getDay(), r = wd<=4 ? trackRange(c.wd) : wd===5 ? trackRange(c.fr) : null;
+  if(!r) return false;
+  const m=d.getHours()*60+d.getMinutes(); return m>=r[0] && m<r[1];
+}
+const trackDay = d => { d=d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+function trackDist(a,b){ const R=6371000, k=Math.PI/180, dLa=(b.lat-a.lat)*k, dLo=(b.lng-a.lng)*k;
+  const h=Math.sin(dLa/2)**2+Math.cos(a.lat*k)*Math.cos(b.lat*k)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
+const trackIsWorker = () => Cloud.ready && (Cloud.role==="employee" || Cloud.role==="maker");
+function trackShouldRun(){ return trackIsWorker() && !!navigator.geolocation && trackHoursNow() && Track.err!=="denied"; }
+function trackAcked(){ try{ return !!(JSON.parse(localStorage.getItem(TRACK_ACK_KEY))||{})[TEAM_ID+"|"+Cloud.user.email]; }catch(e){ return false; } }
+function trackAck(){ try{ const o=JSON.parse(localStorage.getItem(TRACK_ACK_KEY))||{}; o[TEAM_ID+"|"+Cloud.user.email]=1; localStorage.setItem(TRACK_ACK_KEY, JSON.stringify(o)); }catch(e){} }
+function trackTick(){
+  const run=trackShouldRun();
+  if(run && Track.watch==null){
+    if(!trackAcked()){
+      if(!Track.asking){
+        Track.asking=true;
+        uiDialog({title:"📍 שיתוף מיקום עם המנהל", ok:"הבנתי",
+          msg:"בשעות העבודה, כשהאפליקציה פתוחה, המנהל רואה במפה איפה אתה נמצא ואת המסלול של היום. מחוץ לשעות העבודה לא נשלח כלום. הטלפון יבקש עכשיו אישור לשתף מיקום."})
+          .then(()=>{ Track.asking=false; trackAck(); trackTick(); });
+      }
+    } else trackStart();
+  } else if(!run && Track.watch!=null) trackStop(true);
+  trackStatus();
+}
+function trackStart(){
+  Track.err="";
+  Track.watch=navigator.geolocation.watchPosition(trackPos, e=>{
+    if(e && e.code===1){ Track.err="denied"; trackStop(true); } else Track.err="nofix";
+    trackStatus();
+  }, {enableHighAccuracy:true, maximumAge:30000, timeout:60000});
+}
+function trackStop(keepErr){
+  if(Track.watch!=null){ try{ navigator.geolocation.clearWatch(Track.watch); }catch(e){} }
+  Track.watch=null; Track.last=null; Track.lastPt=null;
+  if(!keepErr) Track.err="";
+  trackStatus();
+}
+function trackRetry(){ Track.err=""; trackTick(); }
+function trackPos(p){
+  if(!trackShouldRun() || !navigator.onLine || !Cloud.user) return;   /* בלי קליטה לא שולחים — אחרת שעת השרת לא תהיה שעת המדידה */
+  const c=p.coords, now=Date.now();
+  const pt={lat:Math.round(c.latitude*1e6)/1e6, lng:Math.round(c.longitude*1e6)/1e6, acc:Math.min(99999, Math.round(c.accuracy||0))};
+  if(!isFinite(pt.lat) || !isFinite(pt.lng)) return;
+  Track.err="";
+  const M=Cloud.m, me=Cloud.user.email, day=trackDay(), ts=M.serverTimestamp();
+  const A=Track.last;   /* המיקום האחרון: לכל היותר פעם בדקה (או כשזז הרבה) */
+  if(!A || now-A.t>=Track.locMs || (trackDist(A,pt)>200 && now-A.t>=15000)){
+    Track.last=Object.assign({t:now}, pt);
+    M.setDoc(M.doc(cloudCol("locs"), me), {lat:pt.lat, lng:pt.lng, acc:pt.acc, at:ts, by:me, day:day, name:String(Cloud.user.name||"").slice(0,60)}).catch(()=>{});
+  }
+  const P=Track.lastPt;   /* נקודה במסלול: כשזז 50 מ׳ אחרי 2 דקות, או לפחות פעם ב-10 דקות */
+  if(pt.acc<=250 && (!P || now-P.t>=Track.ptMaxMs || (now-P.t>=Track.ptMs && trackDist(P,pt)>50))){
+    Track.lastPt=Object.assign({t:now}, pt);
+    M.addDoc(cloudCol("trackpts"), {lat:pt.lat, lng:pt.lng, acc:pt.acc, at:ts, by:me, day:day}).catch(()=>{});
+  }
+  trackStatus();
+}
+function trackStatusText(){
+  if(!trackIsWorker()) return "";
+  if(!trackCfg().on) return "📍 שיתוף המיקום כבוי";
+  if(!navigator.geolocation) return "📍 הטלפון הזה לא תומך במיקום";
+  if(Track.err==="denied") return "📍 לא משותף — לא אושרה הרשאת מיקום בטלפון";
+  if(Track.watch!=null) return "📍 המיקום שלך משותף עם המנהל עכשיו";
+  if(!trackHoursNow()) return "📍 לא משותף עכשיו — מחוץ לשעות העבודה";
+  return "📍 ממתין לאישור שיתוף מיקום";
+}
+function trackStatus(){
+  const b=document.getElementById("trackBadge"); if(b) b.hidden = Track.watch==null;
+  const s=document.getElementById("trackStatus"); if(s) s.textContent=trackStatusText();
+  const r=document.getElementById("trackRetry"); if(r) r.hidden = Track.err!=="denied";
+}
+function trackBadgeHTML(){ return trackIsWorker() ? '<span id="trackBadge" class="track-badge"'+(Track.watch==null?' hidden':'')+'>📍 מיקום משותף</span>' : ''; }
+function trackHoursHTML(){ const c=trackCfg(); return 'א׳–ה׳ <bdi dir="ltr">'+esc(c.wd)+'</bdi> · ו׳ <bdi dir="ltr">'+esc(c.fr)+'</bdi>'; }
+/* בהגדרות של עובד/יצרן: מתי המיקום משותף (שקיפות) */
+function trackWorkerCard(){
+  if(!trackIsWorker()) return "";
+  return '<div class="card"><label>📍 מיקום</label>'
+    +'<div id="trackStatus" style="margin-top:6px;font-weight:700">'+esc(trackStatusText())+'</div>'
+    +'<div class="muted" style="margin-top:4px">המנהל רואה את המיקום שלך רק בשעות העבודה, וכשהאפליקציה פתוחה. מחוץ לשעות לא נשלח כלום.</div>'
+    +'<div class="muted">שעות העבודה: '+trackHoursHTML()+'</div>'
+    +'<button id="trackRetry" class="btn small" style="margin-top:8px"'+(Track.err==="denied"?'':' hidden')+' onclick="trackRetry()">נסה שוב</button>'
+    +'</div>';
+}
+/* בהגדרות של מנהל/מפתח: הפעלה ושעות העבודה */
+function trackSettingsCard(){
+  if(!canBoss()) return "";
+  const c=trackCfg(), wd=c.wd.split("-"), fr=c.fr.split("-");
+  const tm=(k,i,v)=>'<input type="time" dir="ltr" class="num" style="flex:1;min-width:0;width:auto" value="'+esc(v||"")+'" onchange="trackSetHours(\''+k+'\','+i+',this.value)">';
+  return '<div class="card"><label>📍 מיקום הצוות</label>'
+    +'<div class="seg" style="margin-top:8px">'+segBtn(c.on,"פעיל","App.sf('trackOn',true);render()")+segBtn(!c.on,"כבוי","App.sf('trackOn',false);render()")+'</div>'
+    +'<div class="field" style="margin:10px 0 0"><label>א׳–ה׳</label><div class="rowline" style="gap:6px">'+tm("trackWd",0,wd[0])+'<span>–</span>'+tm("trackWd",1,wd[1])+'</div></div>'
+    +'<div class="field" style="margin:8px 0 0"><label>ו׳</label><div class="rowline" style="gap:6px">'+tm("trackFr",0,fr[0])+'<span>–</span>'+tm("trackFr",1,fr[1])+'</div></div>'
+    +'<div class="muted" style="margin-top:8px">העובדים והיצרן משתפים מיקום רק בשעות האלה, וכשהאפליקציה פתוחה אצלם. בשבת — לא. המסלול נשמר '+TRACK_DAYS+' ימים.</div>'
+    +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small primary" onclick="nav(\'/map\')">🗺 פתח את מפת הצוות</button></div>'
+    +'</div>';
+}
+function trackSetHours(k,i,v){
+  if(!/^\d{2}:\d{2}$/.test(v) || (k!=="trackWd" && k!=="trackFr")) return;
+  const cur=trackCfg()[k==="trackWd"?"wd":"fr"].split("-"); cur[i]=v;
+  const r=trackRange(cur.join("-")); if(!r || r[0]>=r[1]) return;
+  DB.settings[k]=cur.join("-"); save();
+}
+
+/* ---- מפת הצוות (מנהל/מפתח) ---- */
+const TMap={map:null, layer:null, unsub:null, locs:new Map(), routeKey:"", route:null, routeInfo:"", fitted:false, purged:false};
+function leafletLoad(){
+  if(window.L && window.L.map) return Promise.resolve();
+  if(leafletLoad.p) return leafletLoad.p;
+  leafletLoad.p=new Promise((res,rej)=>{
+    const css=document.createElement("link"); css.rel="stylesheet"; css.href="leaflet/leaflet.css"; document.head.appendChild(css);
+    const s=document.createElement("script"); s.src="leaflet/leaflet.js";
+    s.onload=()=>res(); s.onerror=()=>{ leafletLoad.p=null; rej(new Error("leaflet")); };
+    document.head.appendChild(s);
+  });
+  return leafletLoad.p;
+}
+function viewTeamMap(){
+  if(!canBoss()) return cloudTopbar("מפת הצוות","/")+'<div class="card muted">מפת הצוות זמינה למנהלים.</div>';
+  const c=trackCfg();
+  return cloudTopbar("מפת הצוות","/")
+    +'<div class="card tmap-card"><div id="tmap" dir="ltr"></div></div>'
+    +'<div id="tmaplist"></div>'
+    +'<div class="muted" style="margin:4px 4px 6px">'+(c.on
+        ? 'המיקום מתעדכן רק כשהאפליקציה פתוחה אצל העובד, ובשעות העבודה. המסלול נשמר '+TRACK_DAYS+' ימים.'
+        : 'שיתוף המיקום כבוי — אפשר להפעיל בהגדרות.')+'</div>'
+    +'<div class="muted" style="margin:0 4px 12px">שעות העבודה: '+trackHoursHTML()+'</div>';
+}
+function afterTeamMapRender(){
+  if(!canBoss()) return;
+  cloudTeamStart(); tmapData(); tmapList(); tmapPurge();
+  leafletLoad().then(()=>{
+    const el=document.getElementById("tmap"); if(!el || el._leaflet_id) return;
+    if(TMap.map){ try{ TMap.map.remove(); }catch(e){} }
+    TMap.map=L.map(el).setView([31.8, 34.8], 8);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:19,
+      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'}).addTo(TMap.map);
+    TMap.layer=L.layerGroup().addTo(TMap.map); TMap.fitted=false;
+    tmapDraw();
+  }).catch(()=>{ const el=document.getElementById("tmap"); if(el) el.innerHTML='<div class="muted" style="padding:24px;text-align:center">המפה לא נטענה — בדוק שיש קליטה.</div>'; });
+}
+function tmapData(){
+  if(TMap.unsub || !Cloud.ready) return;
+  TMap.unsub=Cloud.m.onSnapshot(cloudCol("locs"), s=>{
+    const m=new Map();
+    s.forEach(d=>{ const x=d.data({serverTimestamps:"estimate"});
+      if(typeof x.lat==="number" && typeof x.lng==="number" && Math.abs(x.lat)<=90 && Math.abs(x.lng)<=180)
+        m.set(d.id, {lat:x.lat, lng:x.lng, acc:Math.max(0, Number(x.acc)||0), at:cloudMs(x.at), name:String(x.name||"").slice(0,60)}); });
+    TMap.locs=m; tmapDraw(); tmapList();
+  }, ()=>{});
+}
+function tmapStop(){
+  if(TMap.unsub){ try{ TMap.unsub(); }catch(e){} TMap.unsub=null; }
+  if(TMap.map){ try{ TMap.map.remove(); }catch(e){} TMap.map=null; }
+  TMap.layer=null; TMap.route=null; TMap.routeKey=""; TMap.routeInfo=""; TMap.locs=new Map();
+}
+window.addEventListener("hashchange", ()=>{ if(location.hash.replace(/^#\/?/,"").split("/")[0]!=="map") tmapStop(); });
+/* מי מופיע: עובדים ויצרנים מהצוות, וגם כל מי ששלח מיקום */
+function tmapPeople(){
+  const out=new Map();
+  (Cloud.team||[]).forEach(x=>{ if(x.role==="employee"||x.role==="maker") out.set(x.email, {key:x.email, role:x.role, name:x.name||""}); });
+  TMap.locs.forEach((l,k)=>{ const o=out.get(k)||{key:k, role:"", name:""}; o.loc=l; if(!o.name) o.name=l.name; out.set(k,o); });
+  return [...out.values()].map(o=>Object.assign(o, {name:o.name||cloudWho(o.key)}))
+    .sort((a,b)=>(b.loc?b.loc.at:0)-(a.loc?a.loc.at:0) || a.name.localeCompare(b.name));
+}
+const tmapAge = l => !l ? "none" : Date.now()-l.at<5*60000 ? "fresh" : Date.now()-l.at<30*60000 ? "recent" : "old";
+function tmapDraw(){
+  if(!TMap.map || !TMap.layer || !window.L) return;
+  TMap.layer.clearLayers();
+  const pts=[];
+  tmapPeople().forEach(p=>{
+    if(!p.loc) return;
+    const l=p.loc, ll=[l.lat,l.lng];
+    if(l.acc>30 && l.acc<3000) L.circle(ll, {radius:l.acc, color:"#12b2ab", weight:1, fillOpacity:.08, interactive:false}).addTo(TMap.layer);
+    const ic=L.divIcon({className:"tm-ic", iconSize:[34,34], iconAnchor:[17,17],
+      html:'<div class="tm-pin '+tmapAge(l)+'">'+esc(p.name.trim().charAt(0)||"?")+'</div><div class="tm-lbl">'+esc(p.name)+'</div>'});
+    L.marker(ll, {icon:ic, keyboard:false}).addTo(TMap.layer).on("click", ()=>tmapFocus(p.key));
+    pts.push(ll);
+  });
+  const R=TMap.route;
+  if(R && R.length>1) L.polyline(R.map(x=>[x.lat,x.lng]), {color:"#2c4e9e", weight:4, opacity:.8}).addTo(TMap.layer);
+  if(R && R.length) [R[0], R[R.length-1]].forEach((x,i)=>L.circleMarker([x.lat,x.lng], {radius:6, color:"#2c4e9e", weight:3, fillColor:i?"#2c4e9e":"#fff", fillOpacity:1}).addTo(TMap.layer));
+  if(!TMap.fitted && pts.length){ TMap.fitted=true; if(pts.length===1) TMap.map.setView(pts[0], 15); else TMap.map.fitBounds(pts, {padding:[40,40], maxZoom:16}); }
+}
+function tmapFocus(key){
+  const l=TMap.locs.get(key); if(TMap.map && l) TMap.map.setView([l.lat,l.lng], Math.max(TMap.map.getZoom(), 15));
+  const el=[...document.querySelectorAll(".tm-row")].find(e=>e.dataset.k===key); if(el) el.scrollIntoView({block:"nearest", behavior:"smooth"});
+}
+function tmapList(){
+  const box=document.getElementById("tmaplist"); if(!box) return;
+  const ppl=tmapPeople();
+  if(!ppl.length){ box.innerHTML='<div class="card muted">עוד אין עובדים או יצרן בצוות.</div>'; return; }
+  box.innerHTML=ppl.map(p=>{
+    const l=p.loc, q=l?(l.lat+","+l.lng):"", on=TMap.routeKey===p.key;
+    const st = !l ? 'אין מיקום עדיין' : '📍 '+cloudRel(l.at)+(l.acc?' · דיוק ~'+l.acc+' מ׳':'');
+    return '<div class="card tm-row" data-k="'+esc(p.key)+'"><div class="rowline wrap">'
+      +'<span class="tm-dot '+tmapAge(l)+'"></span>'
+      +'<div class="grow"><div><b>'+esc(p.name)+'</b>'+(p.role?' <span class="muted">· '+esc(ROLES[p.role]||"")+'</span>':'')+'</div>'
+      +'<div class="muted">'+esc(st)+'</div>'
+      +(on && TMap.routeInfo ? '<div class="muted">'+esc(TMap.routeInfo)+'</div>' : '')
+      +'</div>'
+      +(l ? '<div class="tm-acts">'
+          +'<a class="btn small" href="https://www.google.com/maps/search/?api=1&query='+q+'" target="_blank" rel="noopener noreferrer">📍 גוגל מפות</a>'
+          +'<a class="btn small" href="https://www.google.com/maps/dir/?api=1&destination='+q+'" target="_blank" rel="noopener noreferrer">🧭 נווט</a>'
+          +'<button class="btn small'+(on?' primary':'')+'" data-k="'+esc(p.key)+'" onclick="tmapRoute(this.dataset.k)">'+(on?'הסתר מסלול':'מסלול היום')+'</button>'
+          +'</div>' : '')
+      +'</div></div>';
+  }).join("");
+}
+function tmapRoute(key){
+  if(TMap.routeKey===key){ TMap.routeKey=""; TMap.route=null; TMap.routeInfo=""; tmapDraw(); tmapList(); return; }
+  const M=Cloud.m;
+  TMap.routeKey=key; TMap.route=null; TMap.routeInfo="טוען מסלול…"; tmapList();
+  M.getDocs(M.query(cloudCol("trackpts"), M.where("by","==",key), M.where("day","==",trackDay()))).then(s=>{
+    if(TMap.routeKey!==key) return;
+    const pts=[];
+    s.forEach(d=>{ const x=d.data({serverTimestamps:"estimate"}); if(typeof x.lat==="number" && typeof x.lng==="number") pts.push({lat:x.lat, lng:x.lng, at:cloudMs(x.at)}); });
+    pts.sort((a,b)=>a.at-b.at);
+    TMap.route=pts;
+    const hm=ms=>{ const d=new Date(ms); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
+    TMap.routeInfo = pts.length ? "מסלול היום: "+pts.length+" נקודות · "+hm(pts[0].at)+"–"+hm(pts[pts.length-1].at) : "אין מסלול היום";
+    if(TMap.map && pts.length>1) TMap.map.fitBounds(pts.map(x=>[x.lat,x.lng]), {padding:[40,40], maxZoom:16});
+    tmapDraw(); tmapList();
+  }).catch(e=>{ TMap.routeInfo=cloudErrText(e); tmapList(); });
+}
+/* מחיקת מסלולים ישנים (מעל TRACK_DAYS ימים) — כשמנהל פותח את המפה */
+function tmapPurge(){
+  if(TMap.purged || !canBoss()) return; TMap.purged=true;
+  const M=Cloud.m, cut=trackDay(new Date(Date.now()-(TRACK_DAYS+1)*864e5));
+  M.getDocs(M.query(cloudCol("trackpts"), M.where("day","<",cut), M.limit(400)))
+    .then(s=>s.forEach(d=>M.deleteDoc(d.ref).catch(()=>{}))).catch(()=>{});
+}
+setInterval(()=>{ try{ trackTick(); }catch(e){} }, 60000);
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible"){ try{ trackTick(); }catch(e){} } });
+
 /* ---- תצוגה ---- */
 function cloudSetState(s){
   Cloud.state=s; cloudPill();
@@ -4181,6 +4452,7 @@ function cloudRender(){
   if((r==="projects"||r==="quotes"||r==="pricing") && document.getElementById("listbox")){ renderList(); return; }
   if(r==="activity" && document.getElementById("actbox")){ renderActivityList(); return; }
   if(r==="team" && document.getElementById("teambox")){ renderTeamList(); return; }
+  if(r==="map" && document.getElementById("tmap")){ tmapList(); return; }   /* לא בונים את המפה מחדש בכל עדכון */
   const y=window.scrollY, open=[].map.call(document.querySelectorAll("#app details"), d=>d.open);
   render();
   const ds=document.querySelectorAll("#app details");
@@ -4206,6 +4478,7 @@ function cloudGate(parts){
   if(r==="prod"){ nav("/"); return true; }
   if(!canPrice() && (r==="pricing" || (r==="p" && (parts[2]==="pricing" || parts[2]==="quote-export")))){ nav("/"); return true; }
   if((r==="trash" || r==="team") && Cloud.ready && !canBoss()){ nav("/settings"); return true; }
+  if(r==="map" && Cloud.ready && !canBoss()){ nav("/"); return true; }
   if(r==="p" && parts[2]==="export" && !canExport()){ nav("/p/"+parts[1]); return true; }
   return false;
 }
