@@ -267,6 +267,9 @@ const T = [
 ["שיתוף עם הצוות","Partage avec l'équipe","المشاركة مع الفريق"],
 ["התחבר עם חשבון הגוגל שלך, וכל הצוות יראה את אותם פרויקטים ואת כל הפעילות.","Connectez-vous avec votre compte Google : toute l'équipe verra les mêmes projets et toute l'activité.","سجّل الدخول بحساب Google الخاص بك، وسيرى كل الفريق نفس المشاريع وكل النشاط."],
 ["התחבר עם Google","Se connecter avec Google","الدخول عبر Google"],
+["נווט ללקוח ב-Waze","Naviguer vers le client avec Waze","التنقل إلى الزبون عبر Waze"],["בדרך אל","En route vers","في الطريق إلى"],["יצא","Parti","غادر"],
+["act|יצא בדרך ללקוח","est parti chez le client","انطلق إلى الزبون"],["יצא בדרך ללקוח","Parti chez le client","انطلق إلى الزبون"],
+
 ["המיקום האחרון שלך, והמסלול שלך בכל יום.","Votre dernière position, et votre trajet de chaque jour.","موقعك الأخير، ومسارك في كل يوم."],
 ["המיקום והמסלול נמחקים אוטומטית אחרי {n} ימים.","La position et le trajet sont supprimés automatiquement après {n} jours.","يُحذف الموقع والمسار تلقائيًا بعد {n} أيام."],
 ["העובדים והיצרן משתפים מיקום רק כשהאפליקציה פתוחה אצלם, ורק אחרי שאישרו. המיקום והמסלול נשמרים {n} ימים.","Les employés et le fabricant ne partagent leur position que lorsque l'application est ouverte chez eux, et seulement après avoir accepté. La position et le trajet sont conservés {n} jours.","يشارك الموظفون والمصنّع موقعهم فقط عندما يكون التطبيق مفتوحًا لديهم، وبعد موافقتهم فقط. يُحفظ الموقع والمسار {n} أيام."],

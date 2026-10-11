@@ -366,6 +366,8 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .modal.consent .msg ul{margin:2px 0 10px;padding-inline-start:20px}
 .modal.consent .btns{flex-direction:column}
 .tm-day select{min-width:0}
+a.btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.tm-nav{font-size:.85rem;font-weight:700;color:#0b7f7a;margin-top:2px}
 .track-badge{font-size:.72rem;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(18,178,171,.12);color:#0b7f7a;white-space:nowrap}
 #teamEmail{width:100%}
 .prod-status{border-inline-start:4px solid var(--ok)}
@@ -1356,6 +1358,7 @@ function viewProject(p){
   +((isQuote ? !canPrice() : !canExport())?'':actionBtn)+'</div>'
   +cloudReviewCard(p)
   +(isQuote?'':cloudProdStatus(p))
+  +navCard(p)
 
   +'<div class="card"><details'+(p.items.length?'':' open')+'><summary style="font-weight:700;cursor:pointer">פרטי הפרויקט (לשימוש פנימי)</summary>'
   +'<div style="margin-top:12px">'
@@ -1375,6 +1378,17 @@ function viewProject(p){
 
   +(items || '<div class="empty">אין פריטים עדיין.<br>מוסיפים את החלון או הדלת הראשונים.</div>')
   +'<button class="btn primary fab" onclick="nav(\'/p/'+p.id+'/item/new\')">+ הוסף פריט</button>';
+}
+
+/* ---------- ניווט ללקוח (Waze) ----------
+   Waze נפתח כאפליקציה נפרדת, ולכן שיתוף המיקום נעצר עד שחוזרים לאפליקציה.
+   ברגע הלחיצה נרשם ביומן "יצא בדרך ללקוח" — והמנהל רואה במפת הצוות לאן העובד נוסע ומתי יצא. */
+const wazeUrl = addr => "https://waze.com/ul?q="+encodeURIComponent(String(addr||"").trim())+"&navigate=yes";
+function navCard(p){
+  const a=String(p.address||"").trim();
+  if(!a || p._prod) return "";
+  return '<div class="card"><div class="rowline wrap"><div class="grow">📍 <span data-tr>'+esc(a)+'</span></div>'
+    +'<a class="btn small primary" href="'+esc(wazeUrl(a))+'" target="_blank" rel="noopener noreferrer" data-pid="'+esc(p.id)+'" onclick="cloudNavLog(this.dataset.pid)">🚗 נווט ללקוח ב-Waze</a></div></div>';
 }
 
 /* ---------- item editor ---------- */
@@ -4067,6 +4081,13 @@ function cloudLogOnce(text, where, pid){
   const M=Cloud.m, u=Cloud.user, ts=M.serverTimestamp();
   M.setDoc(M.doc(cloudCol("activity")), {at:ts, t0:ts, op:"log", by:u.email, byName:u.name, text:text, where:where||"", pid:pid||""}).catch(()=>{});
 }
+/* יציאה לניווט: שורה ביומן (השרת מאמת מי ומתי). ct = שעון הטלפון ברגע הלחיצה — למקרה שהשליחה מתעכבת כש-Waze נפתח */
+function cloudNavLog(pid){
+  const p=proj(pid); if(!p || !Cloud.ready || Cloud.role==="maker") return;
+  try{ trackFlush(); }catch(e){}   /* קודם המיקום — נקודת היציאה נשמרת על המפה */
+  const M=Cloud.m, u=Cloud.user, ts=M.serverTimestamp();
+  M.setDoc(M.doc(cloudCol("activity")), {at:ts, t0:ts, op:"nav", by:u.email, byName:u.name, text:"יצא בדרך ללקוח", where:pname(p).slice(0,200), pid:pid, ct:Date.now()}).catch(()=>{});
+}
 function cloudActivityStart(){
   if(!Cloud.ready || Cloud.role==="maker") return;
   if(Cloud.actUnsub){ renderActivityList(); return; }
@@ -4074,6 +4095,7 @@ function cloudActivityStart(){
   Cloud.actUnsub = M.onSnapshot(q, s=>{
     Cloud.activity = s.docs.map(d=>Object.assign({id:d.id}, d.data({serverTimestamps:"estimate"})));
     renderActivityList();
+    if(document.getElementById("tmaplist")){ tmapList(); tmapDraw(); }
   }, e=>{ const box=document.getElementById("actbox"); if(box) box.innerHTML='<div class="card muted">'+esc(cloudErrText(e))+'</div>'; });
 }
 function cloudActivityStop(){ if(Cloud.actUnsub){ Cloud.actUnsub(); Cloud.actUnsub=null; } }
@@ -4279,17 +4301,28 @@ function trackStart(){
 }
 function trackStop(keepErr){
   if(Track.watch!=null){ try{ navigator.geolocation.clearWatch(Track.watch); }catch(e){} }
-  Track.watch=null; Track.last=null; Track.lastPt=null;
+  Track.watch=null; Track.last=null; Track.lastPt=null; Track.cur=null;
   if(!keepErr) Track.err="";
   trackStatus();
 }
 function trackRetry(){ Track.err=""; trackTick(); }
+/* שליחה מיידית של המיקום הכי עדכני (בלי לחכות לדקה) — רגע לפני שהעובד יוצא לניווט ב-Waze */
+function trackFlush(){
+  const c=Track.cur;
+  if(!c || !trackShouldRun() || !navigator.onLine || !Cloud.user) return false;
+  const M=Cloud.m, me=Cloud.user.email, day=trackDay(), ts=M.serverTimestamp(), now=Date.now();
+  Track.last={t:now, lat:c.lat, lng:c.lng, acc:c.acc}; Track.lastPt={t:now, lat:c.lat, lng:c.lng, acc:c.acc};
+  M.setDoc(M.doc(cloudCol("locs"), me), {lat:c.lat, lng:c.lng, acc:c.acc, at:ts, by:me, day:day, name:String(Cloud.user.name||"").slice(0,60)}).catch(()=>{});
+  M.addDoc(cloudCol("trackpts"), {lat:c.lat, lng:c.lng, acc:c.acc, at:ts, by:me, day:day}).catch(()=>{});
+  return true;
+}
 function trackPos(p){
   if(!trackShouldRun() || !navigator.onLine || !Cloud.user) return;   /* בלי קליטה לא שולחים — אחרת שעת השרת לא תהיה שעת המדידה */
   const c=p.coords, now=Date.now();
   const pt={lat:Math.round(c.latitude*1e6)/1e6, lng:Math.round(c.longitude*1e6)/1e6, acc:Math.min(99999, Math.round(c.accuracy||0))};
   if(!isFinite(pt.lat) || !isFinite(pt.lng)) return;
   Track.err="";
+  Track.cur=Object.assign({t:now}, pt);   /* המיקום הכי עדכני שידוע — גם אם עוד לא נשלח */
   const M=Cloud.m, me=Cloud.user.email, day=trackDay(), ts=M.serverTimestamp();
   const A=Track.last;   /* המיקום האחרון: לכל היותר פעם בדקה (או כשזז הרבה) */
   if(!A || now-A.t>=Track.locMs || (trackDist(A,pt)>200 && now-A.t>=15000)){
@@ -4378,7 +4411,7 @@ function viewTeamMap(){
 }
 function afterTeamMapRender(){
   if(!canBoss()) return;
-  cloudTeamStart(); tmapData(); tmapList(); tmapPurge();
+  cloudTeamStart(); cloudActivityStart(); tmapData(); tmapList(); tmapPurge();
   leafletLoad().then(()=>{
     const el=document.getElementById("tmap"); if(!el || el._leaflet_id) return;
     if(TMap.map){ try{ TMap.map.remove(); }catch(e){} }
@@ -4418,6 +4451,15 @@ function tmapPeople(){
   return [...out.values()].map(o=>Object.assign(o, {name:o.name||cloudWho(o.key)}))
     .sort((a,b)=>(b.loc?b.loc.at:0)-(a.loc?a.loc.at:0) || a.name.localeCompare(b.name));
 }
+/* בדרך ללקוח: יצא לניווט בשלוש השעות האחרונות, ומאז לא התקבל ממנו מיקום (כלומר עוד לא חזר לאפליקציה) */
+function tmapNav(p){
+  const r=(Cloud.activity||[]).find(x=>x.op==="nav" && x.by===p.key);
+  if(!r) return null;
+  const at=cloudMs(r.at), ct=Number(r.ct)||0, t0=(ct && Math.abs(ct-at)<10*60000) ? ct : at;
+  if(!t0 || Date.now()-t0>3*3600e3) return null;
+  if(p.loc && p.loc.at>t0+90000) return null;
+  return {where:String(r.where||"").slice(0,200), t:t0};
+}
 const tmapAge = l => !l ? "none" : Date.now()-l.at<5*60000 ? "fresh" : Date.now()-l.at<30*60000 ? "recent" : "old";
 function tmapDraw(){
   if(!TMap.map || !TMap.layer || !window.L) return;
@@ -4428,7 +4470,7 @@ function tmapDraw(){
     const l=p.loc, ll=[l.lat,l.lng];
     if(l.acc>30 && l.acc<3000) L.circle(ll, {radius:l.acc, color:"#12b2ab", weight:1, fillOpacity:.08, interactive:false}).addTo(TMap.layer);
     const ic=L.divIcon({className:"tm-ic", iconSize:[34,34], iconAnchor:[17,17],
-      html:'<div class="tm-pin '+tmapAge(l)+'">'+esc(p.name.trim().charAt(0)||"?")+'</div><div class="tm-lbl">'+esc(p.name)+'</div>'});
+      html:'<div class="tm-pin '+tmapAge(l)+'">'+esc(p.name.trim().charAt(0)||"?")+'</div><div class="tm-lbl">'+(tmapNav(p)?'🚗 ':'')+esc(p.name)+'</div>'});
     L.marker(ll, {icon:ic, keyboard:false}).addTo(TMap.layer).on("click", ()=>tmapFocus(p.key));
     pts.push(ll);
   });
@@ -4446,7 +4488,7 @@ function tmapList(){
   const ppl=tmapPeople();
   if(!ppl.length){ box.innerHTML='<div class="card muted">עוד אין עובדים או יצרן בצוות.</div>'; return; }
   box.innerHTML=ppl.map(p=>{
-    const l=p.loc, q=l?(l.lat+","+l.lng):"", on=TMap.routeKey===p.key;
+    const l=p.loc, q=l?(l.lat+","+l.lng):"", on=TMap.routeKey===p.key, nv=tmapNav(p);
     const st = !l ? 'אין מיקום עדיין' : '📍 '+cloudRel(l.at)+(l.acc?' · דיוק ~'+l.acc+' מ׳':'');
     const c=TMap.cons.get(p.key), dd=ms=>{ const d=new Date(ms); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); };
     const cs = !c ? 'טרם אישר שיתוף מיקום' : c.v!==Track.cv ? 'טרם אישר את הנוסח החדש' : (c.ok ? '✓ אישר שיתוף מיקום · ' : '✗ לא אישר שיתוף מיקום · ')+dd(c.at);
@@ -4454,6 +4496,7 @@ function tmapList(){
       +'<span class="tm-dot '+tmapAge(l)+'"></span>'
       +'<div class="grow"><div><b>'+esc(p.name)+'</b>'+(p.role?' <span class="muted">· '+esc(ROLES[p.role]||"")+'</span>':'')+'</div>'
       +'<div class="muted">'+esc(st)+'</div>'
+      +(nv ? '<div class="tm-nav">🚗 <span>בדרך אל</span> <b data-tr>'+esc(nv.where)+'</b> · <span>יצא: '+esc(cloudRel(nv.t))+'</span></div>' : '')
       +'<div class="muted">'+esc(cs)+'</div>'
       +(on && TMap.routeInfo ? '<div class="muted">'+esc(TMap.routeInfo)+'</div>' : '')
       +'</div>'
