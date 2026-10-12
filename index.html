@@ -50,6 +50,8 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
+/* רכיב שמסומן hidden נעלם באמת — גם אם יש לו display משלו (כמו כפתור) */
+[hidden]{display:none!important}
 body{
   background:var(--paper); color:var(--ink);
   font-family:"Segoe UI","Heebo","Assistant",Tahoma,Arial,sans-serif;
@@ -427,7 +429,7 @@ html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev{trans
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 81; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 82; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
