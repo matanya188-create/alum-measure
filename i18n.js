@@ -267,6 +267,8 @@ const T = [
 ["שיתוף עם הצוות","Partage avec l'équipe","المشاركة مع الفريق"],
 ["התחבר עם חשבון הגוגל שלך, וכל הצוות יראה את אותם פרויקטים ואת כל הפעילות.","Connectez-vous avec votre compte Google : toute l'équipe verra les mêmes projets et toute l'activité.","سجّل الدخول بحساب Google الخاص بك، وسيرى كل الفريق نفس المشاريع وكل النشاط."],
 ["התחבר עם Google","Se connecter avec Google","الدخول عبر Google"],
+["בחלון שהטלפון יפתח עכשיו בוחרים \"אפשר\". בלי זה אי אפשר להשתמש באפליקציה.","Dans la fenêtre que le téléphone va ouvrir, choisissez « Autoriser ». Sans cela, l'application ne peut pas être utilisée.","في النافذة التي سيفتحها الهاتف الآن اختر \"سماح\". بدون ذلك لا يمكن استخدام التطبيق."],
+
 ["אישרת את שיתוף המיקום באפליקציה, אבל עוד לא אישרת אותו בטלפון.","Vous avez accepté le partage de position dans l'application, mais pas encore sur le téléphone.","وافقتَ على مشاركة الموقع في التطبيق، لكنك لم توافق بعد في الهاتف."],
 ["לחץ על \"אפשר מיקום\" — הטלפון ישאל אותך, ובוחרים \"אפשר\".","Appuyez sur « Autoriser la position » — le téléphone vous le demandera, choisissez « Autoriser ».","اضغط \"السماح بالموقع\" — سيسألك الهاتف، فاختر \"سماح\"."],
 ["כדי להמשיך, מאפשרים לאפליקציה גישה למיקום. ברגע שתאפשר, האפליקציה תמשיך לבד.","Pour continuer, autorisez l'application à accéder à la position. Dès que c'est fait, l'application continue toute seule.","للمتابعة، اسمح للتطبيق بالوصول إلى الموقع. فور السماح، سيتابع التطبيق تلقائيًا."],

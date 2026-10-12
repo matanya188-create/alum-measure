@@ -4252,11 +4252,14 @@ function consentShow(){
     +'<p><b>מי רואה:</b> רק המנהל ומנהל האפליקציה. עובדים אחרים והיצרן לא רואים את המיקום שלך.</p>'
     +'<p><b>למה:</b> כדי לתאם את העבודה בשטח, לדעת מי קרוב לאיזה לקוח, ולהגיע אליך כשצריך.</p>'
     +'<p>אפשר לפנות למנהל בכל שאלה, ולבקש לראות מה נשמר עליך או למחוק אותו.</p>'
+    +'<p class="consent-note"><b>בחלון שהטלפון יפתח עכשיו בוחרים "אפשר". בלי זה אי אפשר להשתמש באפליקציה.</b></p>'
     +'</div>'
     +'<div class="btns"><button class="btn primary" data-m="ok">אני מאשר/ת</button><button class="btn" data-m="exit">צא מהאפליקציה</button></div></div>';
   document.body.appendChild(ov);
   ov.querySelector('[data-m="ok"]').onclick=()=>{ ov.remove(); consentAnswer(true); };
   ov.querySelector('[data-m="exit"]').onclick=()=>{ ov.remove(); consentAnswer(false); };
+  /* ההכנה לחלון של הטלפון מוצגת רק כשהטלפון באמת עומד לשאול (אם ההרשאה כבר ניתנה — אין חלון) */
+  locPermState().then(st=>{ if(st==="granted"){ const n=ov.querySelector(".consent-note"); if(n) n.remove(); } });
 }
 function consentAnswer(ok){
   const M=Cloud.m;
