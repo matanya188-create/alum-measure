@@ -267,6 +267,19 @@ const T = [
 ["שיתוף עם הצוות","Partage avec l'équipe","المشاركة مع الفريق"],
 ["התחבר עם חשבון הגוגל שלך, וכל הצוות יראה את אותם פרויקטים ואת כל הפעילות.","Connectez-vous avec votre compte Google : toute l'équipe verra les mêmes projets et toute l'activité.","سجّل الدخول بحساب Google الخاص بك، وسيرى كل الفريق نفس المشاريع وكل النشاط."],
 ["התחבר עם Google","Se connecter avec Google","الدخول عبر Google"],
+["אישרת את שיתוף המיקום באפליקציה, אבל עוד לא אישרת אותו בטלפון.","Vous avez accepté le partage de position dans l'application, mais pas encore sur le téléphone.","وافقتَ على مشاركة الموقع في التطبيق، لكنك لم توافق بعد في الهاتف."],
+["לחץ על \"אפשר מיקום\" — הטלפון ישאל אותך, ובוחרים \"אפשר\".","Appuyez sur « Autoriser la position » — le téléphone vous le demandera, choisissez « Autoriser ».","اضغط \"السماح بالموقع\" — سيسألك الهاتف، فاختر \"سماح\"."],
+["כדי להמשיך, מאפשרים לאפליקציה גישה למיקום. ברגע שתאפשר, האפליקציה תמשיך לבד.","Pour continuer, autorisez l'application à accéder à la position. Dès que c'est fait, l'application continue toute seule.","للمتابعة، اسمح للتطبيق بالوصول إلى الموقع. فور السماح، سيتابع التطبيق تلقائيًا."],
+["אפשר מיקום","Autoriser la position","السماح بالموقع"],
+
+["צריך לאפשר מיקום בטלפון","Il faut autoriser la localisation sur le téléphone","يجب السماح بالموقع في الهاتف"],
+["אישרת את שיתוף המיקום באפליקציה, אבל הטלפון חוסם אותו.","Vous avez accepté le partage de position dans l'application, mais le téléphone le bloque.","وافقتَ على مشاركة الموقع في التطبيق، لكن الهاتف يحظره."],
+["כדי להמשיך, מאפשרים לאפליקציה גישה למיקום ולוחצים \"נסה שוב\".","Pour continuer, autorisez l'application à accéder à la position puis appuyez sur « Réessayer ».","للمتابعة، اسمح للتطبيق بالوصول إلى الموقع ثم اضغط \"حاول مجددًا\"."],
+["איך מאפשרים","Comment autoriser","كيفية السماح"],
+["באנדרואיד: לחיצה על סמל המנעול ליד הכתובת, ואז הרשאות ← מיקום ← אפשר.","Sur Android : touchez l'icône du cadenas près de l'adresse, puis Autorisations → Position → Autoriser.","في أندرويد: اضغط على رمز القفل بجانب العنوان، ثم الأذونات ← الموقع ← سماح."],
+["באייפון: הגדרות ← פרטיות ואבטחה ← שירותי מיקום ← אתרי Safari ← בזמן השימוש.","Sur iPhone : Réglages → Confidentialité et sécurité → Service de localisation → Sites web Safari → Lorsque l'app est active.","في iPhone: الإعدادات ← الخصوصية والأمان ← خدمات الموقع ← مواقع Safari ← أثناء استخدام التطبيق."],
+["חסם את המיקום בטלפון","A bloqué la localisation sur le téléphone","حظر الموقع في الهاتف"],["act|חסם את המיקום בטלפון","a bloqué la localisation sur le téléphone","حظر الموقع في الهاتف"],
+
 ["נווט ללקוח ב-Waze","Naviguer vers le client avec Waze","التنقل إلى الزبون عبر Waze"],["בדרך אל","En route vers","في الطريق إلى"],["יצא","Parti","غادر"],
 ["act|יצא בדרך ללקוח","est parti chez le client","انطلق إلى الزبون"],["יצא בדרך ללקוח","Parti chez le client","انطلق إلى الزبون"],
 
