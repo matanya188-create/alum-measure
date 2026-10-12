@@ -59,6 +59,8 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 }
 .topbar h1{font-size:1.3rem;font-weight:800;letter-spacing:-.01em}
 .topbar .sub{font-size:.82rem;color:var(--ink2);margin-top:2px}
+/* מסך הבית: מצב החיבור ותג המיקום יורדים שורה כשאין מקום (טלפון צר, שפה ארוכה) */
+.topbar.home-top{flex-wrap:wrap;row-gap:6px}
 .backbtn{
   flex:none;width:42px;height:42px;border-radius:14px;background:var(--surface);
   box-shadow:var(--shadow);font-size:1.2rem;display:flex;align-items:center;justify-content:center;
@@ -348,7 +350,17 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .team-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
 .team-row:last-child{border-bottom:none}
 .team-acts{display:flex;flex-direction:column;gap:6px;flex:none}
-.cloud-in{display:flex;flex-direction:column;gap:8px}
+/* מסך הכניסה (בלי התחברות לצוות אין שימוש באפליקציה) */
+.gate{max-width:440px;margin:0 auto;padding-top:28px;text-align:center}
+.gate-logo{width:104px;height:104px;object-fit:contain;display:block;margin:0 auto 10px;border-radius:18px}
+.gate h1{font-size:1.5rem;font-weight:800}
+.gate .sub{color:var(--ink2);font-size:.9rem;margin:2px 0 18px}
+.gate .card{text-align:start}
+.gate-card>b{display:block;font-size:1.05rem;overflow-wrap:anywhere}
+.gate-card>.muted{margin-top:6px}
+.gate-btns{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.gate-note{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--warn-bg);color:var(--warn);font-weight:700;font-size:.9rem}
+.gate-ver{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:4px}
 /* מפת הצוות */
 .tmap-card{padding:0;overflow:hidden;position:relative;z-index:0;isolation:isolate}
 #tmap{height:min(58vh,460px);width:100%;background:#e8ecf2}
@@ -1174,6 +1186,10 @@ function renderRoute(){
   const app = document.getElementById("app");
   if(parts[0]!=="activity") cloudActivityStop();
   if(parts[0]!=="team") cloudTeamStop();
+  if(!gateOpen()){   /* בלי התחברות לצוות — רק מסך הכניסה, מכל כתובת */
+    if(parts.length){ try{ history.replaceState(null,"",location.pathname+location.search+"#/"); }catch(e){} }
+    app.innerHTML = viewGate(); window.scrollTo(0,0); return;
+  }
   if(cloudGate(parts)) return;
   if(parts[0]==="p" && parts[1]){
     const p = proj(parts[1]);
@@ -1211,7 +1227,7 @@ function viewHome(){
     +'<div class="grow"><div class="mc-t">'+title+'</div><div class="mc-s">'+sub+'</div></div>'
     +'<div class="mc-arrow">‹</div></div>';
   return ''
-  +'<div class="topbar"><div><h1>אלום אלבז</h1><div class="sub">פנקס מדידות והצעות מחיר</div></div>'+cloudPillHTML()+trackBadgeHTML()+'</div>'
+  +'<div class="topbar home-top"><div><h1>אלום אלבז</h1><div class="sub">פנקס מדידות והצעות מחיר</div></div>'+cloudPillHTML()+trackBadgeHTML()+'</div>'
   +cloudHomeCard()
   +cloudQueueCard()
   +(showInstall
@@ -3230,7 +3246,8 @@ const Cloud = {
   last:new Map(), need:[], got:{}, ready:false, snapPend:{},
   unsubs:[], pending:0, renderPending:false,
   act:new Map(), actTimer:null, actUnsub:null, activity:null,
-  team:null, teamUnsub:null, claiming:false, prodPh:null
+  team:null, teamUnsub:null, claiming:false, prodPh:null,
+  leaving:false, checking:false, wiping:false
 };
 
 /* ---- הרשאות לתצוגה (האכיפה בשרת) ---- */
@@ -3255,6 +3272,47 @@ function cloudSetFlag(o){
 }
 function cloudActiveHere(){ return Cloud.ready || (!!Cloud.user && !!cloudFlag().migrated); }
 function cloudLocalChanged(){ if(Cloud.ready) cloudPush(); }
+
+/* ---- נעילה בלי התחברות (החלטת מתניה 12/10) ----
+   בלי התחברות לצוות אין שימוש באפליקציה: מי שלא מחובר רואה רק מסך כניסה.
+   בטלפון נשמר מי החבר שהעותק המקומי שייך לו (k), והאם הוא מחובר כרגע (in) —
+   כך האפליקציה נפתחת מיד, וגם בלי קליטה, למי שכבר בפנים.
+   · התנתק בעצמו — רק נעילה; מה שבטלפון נשאר, ונפתח שוב כשהוא נכנס.
+   · מנהל הסיר אותו / שחרר לו את המכשיר — העותק נמחק מהטלפון (רק אחרי שהשרת עצמו אישר את ההסרה).
+   זו נעילה בצד הטלפון; ההגנה על נתוני הצוות עצמם היא כללי השרת. */
+const GATE_KEY="alum_gate_v1", WIPE_KEY="alum_wipe_v1";
+function gateGet(){ try{ return JSON.parse(localStorage.getItem(GATE_KEY))||{}; }catch(e){ return {}; } }
+function gateSet(o){ try{ if(o) localStorage.setItem(GATE_KEY, JSON.stringify(o)); else localStorage.removeItem(GATE_KEY); }catch(e){} }
+function gateOut(){ const g=gateGet(); if(g.in){ g.in=false; gateSet(g); } }
+function wipeGet(){ try{ return JSON.parse(localStorage.getItem(WIPE_KEY))||null; }catch(e){ return null; } }
+function wipeSet(o){ try{ if(o) localStorage.setItem(WIPE_KEY, JSON.stringify(o)); else localStorage.removeItem(WIPE_KEY); }catch(e){} }
+function gateOpen(){
+  if(!cloudConfigured()) return true;
+  const s=Cloud.state;
+  if(s==="ready" || s==="syncing" || s==="migrate" || s==="migrating") return true;
+  if(s==="signedout" || s==="denied") return false;
+  return !!gateGet().in;   /* עוד לא התברר (טוען / בלי קליטה / תקלה): לפי הפתיחה הקודמת */
+}
+/* מחיקת העותק המקומי של נתוני הצוות מהטלפון: פרויקטים, מדידות, תמונות, הגדרות ומחירים, טיוטה והדמיה.
+   לא נוגע בענן — רץ רק כשהסנכרון עצור, ולא עובר דרך save(), כדי ששום מחיקה לא תעלה לצוות. */
+function localDrop(){
+  if(Cloud.ready) return;
+  [LS_KEY, DRAFT_KEY, SIM_KEY].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+  DB=load(); draft=null; draftPid=null; draftIid=null; sim=loadSimState(); simSel=null;
+}
+/* החבר הוסר מהצוות או שהמכשיר שלו שוחרר, והשרת אישר את זה: נועלים, מוחקים את העותק שבטלפון,
+   וטוענים מחדש — בטעינה מתנקה גם מטמון הענן שבטלפון (cloudInit). טלפון שלא החזיק עותק של החבר הזה רק ננעל. */
+function cloudRemoved(){
+  const u=Cloud.user, k=u ? TEAM_ID+"|"+u.email : "", g=gateGet();
+  cloudLost();
+  if(!k || g.k!==k || Cloud.wiping) return;
+  Cloud.wiping=true;
+  consentForget(); cloudDevSave(null);
+  localDrop();
+  gateSet(null);
+  wipeSet({at:Date.now(), cache:true});
+  setTimeout(()=>location.reload(), 60);
+}
 
 /* ---- המרה בין DB למסמכי ענן ---- */
 function cloudOmit(o, skip){ const r={}; for(const k in o){ if(skip.indexOf(k)<0) r[k]=o[k]; } return r; }
@@ -3356,10 +3414,15 @@ async function cloudInit(){
     window.__cloudTestSignIn = (email,name) => M.signInWithCredential(Cloud.auth,
       M.GoogleAuthProvider.credential(JSON.stringify({sub:"u-"+email, email:email, email_verified:true, name:name})));
   }
+  /* אחרי הסרה מהצוות: מנקים גם את מטמון הענן שבטלפון — לפני השימוש הראשון במסד. נכשל (למשל חלון נוסף פתוח)? ננסה שוב בפתיחה הבאה */
+  const w=wipeGet();
+  if(w && w.cache){
+    try{ await cloudTimeout(M.clearIndexedDbPersistence(Cloud.db), 4000); w.cache=false; wipeSet(w); }catch(e){}
+  }
   M.getRedirectResult(Cloud.auth).catch(e=>{ Cloud.err=cloudErrText(e); });
   M.onAuthStateChanged(Cloud.auth, u=>{ if(u) cloudSignedIn(u); else cloudSignedOut(); });
-  window.addEventListener("online", ()=>{ if(Cloud.state==="offline" && Cloud.auth.currentUser) cloudSignedIn(Cloud.auth.currentUser); cloudPill(); });
-  window.addEventListener("offline", cloudPill);
+  window.addEventListener("online", ()=>{ if(Cloud.state==="offline" && Cloud.auth.currentUser) cloudSignedIn(Cloud.auth.currentUser); cloudPill(); if(!gateOpen()) render(); });
+  window.addEventListener("offline", ()=>{ cloudPill(); if(!gateOpen()) render(); });
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="hidden") cloudActFlush(); });
 }
 
@@ -3371,10 +3434,11 @@ async function cloudSignedIn(u){
   Cloud.role = f.role||"";
   cloudSetState("loading");
   const M=Cloud.m, mref=M.doc(Cloud.db,"teams",TEAM_ID,"members",Cloud.user.email);
-  let role="";
+  let role="", sure=false;   /* sure = השרת עצמו ענה שהמייל לא ברשימה (לא מטמון) */
   try{
     const s=await M.getDoc(mref);
     if(s.exists()) role=String(s.data().role||"");
+    else sure=!s.metadata.fromCache;
   }catch(e){
     if(e.code==="unavailable"){ if(f.role) role=f.role; else { cloudSetState("offline"); return; } }
     else if(e.code!=="permission-denied"){ Cloud.err=cloudErrText(e); cloudSetState("error"); return; }
@@ -3383,15 +3447,20 @@ async function cloudSignedIn(u){
     /* לא ברשימה. אם הצוות עוד לא הוקם — ניסיון הקמה; כללי השרת מתירים זאת רק לבעל האפליקציה */
     try{ await M.setDoc(M.doc(Cloud.db,"teams",TEAM_ID), {owner:Cloud.user.email, name:"אלום אלבז", createdAt:M.serverTimestamp()}); }catch(e){}
     try{ await M.setDoc(mref, {role:"dev", by:Cloud.user.email, at:M.serverTimestamp()}); role="dev"; }
-    catch(e){ Cloud.role=""; cloudSetFlag({member:false, role:""}); cloudSetState("denied"); return; }
+    catch(e){ if(sure) cloudRemoved(); else cloudLost(); return; }
   }
-  if(!ROLES[role]){ Cloud.role=""; cloudSetState("denied"); return; }
+  if(!ROLES[role]){ cloudLost(); return; }
   cloudEnter(role);
 }
 /* חבר צוות מאושר: תפקיד, העלאה ראשונה של מה שבטלפון, והאזנה לענן */
 function cloudEnter(role){
   Cloud.role=role;
   cloudSetFlag({member:true, role:role});
+  /* חבר אחר היה מחובר בטלפון הזה: העותק שלו לא עובר לחשבון הזה (וגם לא מוצע להעלאה או לגיבוי) —
+     הנתונים נטענים מהענן לפי ההרשאות של מי שנכנס עכשיו */
+  const k=TEAM_ID+"|"+Cloud.user.email, g=gateGet();
+  if(g.k && g.k!==k) localDrop();
+  gateSet({k:k, in:true}); wipeSet(null);
   if(role==="maker"){ cloudStart(); return; }   /* יצרן לא מעלה כלום — קריאה בלבד */
   if(!cloudFlag().migrated){
     const n=DB.projects.length;
@@ -3407,11 +3476,11 @@ async function cloudDevSignedIn(u){
   if(Cloud.claiming || !u) return;
   const M=Cloud.m, loc=cloudDevLocal();
   cloudSetState("loading");
-  let phone="", mem=null;
+  let phone="", mem=null, sure=false;   /* sure = מצב המספר נקרא מהשרת עצמו (לא מטמון) */
   try{
     const ds=await M.getDoc(M.doc(Cloud.db,"devices",u.uid));
     if(ds.exists()) phone=String(ds.data().phone||"");
-    if(cloudPhoneOk(phone)){ const ms=await M.getDoc(M.doc(Cloud.db,"teams",TEAM_ID,"members",phone)); if(ms.exists()) mem=ms.data(); }
+    if(cloudPhoneOk(phone)){ const ms=await M.getDoc(M.doc(Cloud.db,"teams",TEAM_ID,"members",phone)); sure=!ms.metadata.fromCache; if(ms.exists()) mem=ms.data(); }
   }catch(e){
     if(e.code==="unavailable"){
       if(!(loc && loc.uid===u.uid && cloudPhoneOk(loc.phone))){ cloudSetState("offline"); return; }
@@ -3425,9 +3494,8 @@ async function cloudDevSignedIn(u){
   const name=String((mem&&mem.name)||(loc&&loc.phone===phone&&loc.name)||cloudPhoneShow(phone)).slice(0,60);
   Cloud.user={uid:u.uid, email:phone, name:name, phone:true};
   const role=String((mem&&mem.role)||"");
-  if(!mem || mem.dev!==u.uid || (role!=="employee" && role!=="maker")){
-    Cloud.role=""; cloudSetFlag({member:false, role:""}); cloudSetState("denied"); return;
-  }
+  if(!mem || mem.dev!==u.uid){ if(sure) cloudRemoved(); else cloudLost(); return; }   /* המספר הוסר או שהמכשיר שוחרר */
+  if(role!=="employee" && role!=="maker"){ cloudLost(); return; }
   cloudDevSave({uid:u.uid, phone:phone, name:name});
   cloudEnter(role);
 }
@@ -3478,13 +3546,14 @@ async function cloudDevRelease(){
   if(!u || !u.isAnonymous) return;
   if(!navigator.onLine){ uiAlert("צריך קליטה כדי להתנתק — אחרת המספר יישאר נעול לטלפון הזה.","התנתקות"); return; }
   cloudActFlush();
+  Cloud.leaving=true;   /* התנתקות של העובד עצמו: רק נעילה — לא מוחקים את מה שבטלפון */
   try{
     const b=M.writeBatch(Cloud.db);
     if(cloudPhoneOk(phone)) b.update(M.doc(Cloud.db,"teams",TEAM_ID,"members",phone), {dev:null, devAt:null, devInfo:null});
     b.delete(M.doc(Cloud.db,"devices",u.uid));
     await cloudTimeout(b.commit(), 15000);
   }catch(e){
-    if(!(e && (e.code==="permission-denied" || e.code==="not-found"))){ uiAlert(cloudErrText(e),"התנתקות נכשלה"); return; }
+    if(!(e && (e.code==="permission-denied" || e.code==="not-found"))){ Cloud.leaving=false; uiAlert(cloudErrText(e),"התנתקות נכשלה"); return; }
   }
   consentForget();
   cloudDevSave(null);
@@ -3493,7 +3562,8 @@ async function cloudDevRelease(){
 
 function cloudSignedOut(){
   consentClose(); trackStop(); tmapStop(); cloudStop(); cloudActivityStop(); cloudTeamStop();
-  Cloud.user=null; Cloud.ready=false; Cloud.role="";
+  Cloud.user=null; Cloud.ready=false; Cloud.role=""; Cloud.leaving=false;
+  gateOut();
   cloudSetState("signedout");
 }
 
@@ -3514,11 +3584,11 @@ async function cloudSignIn(){
 }
 function cloudSignOut(){
   if(Cloud.user && Cloud.user.phone){
-    uiConfirm("להתנתק? המספר "+cloudPhoneShow(Cloud.user.email)+" ישתחרר מהטלפון הזה, ואפשר יהיה להיכנס איתו בטלפון אחר. מה שבטלפון יישאר.",{title:"התנתקות",ok:"התנתק"}).then(ok=>{ if(ok) cloudDevRelease(); });
+    uiConfirm("להתנתק? האפליקציה תינעל עד שתיכנס שוב. המספר "+cloudPhoneShow(Cloud.user.email)+" ישתחרר מהטלפון הזה, ואפשר יהיה להיכנס איתו בטלפון אחר. מה שנשמר לא יימחק.",{title:"התנתקות",ok:"התנתק"}).then(ok=>{ if(ok) cloudDevRelease(); });
     return;
   }
-  uiConfirm("להתנתק מהצוות? מה שבטלפון יישאר, אבל לא יסונכרן עד שתתחבר שוב.",{title:"התנתקות",ok:"התנתק"}).then(ok=>{
-    if(ok){ cloudActFlush(); consentForget(); Cloud.m.signOut(Cloud.auth); }
+  uiConfirm("להתנתק? האפליקציה תינעל בטלפון הזה עד שתתחבר שוב. מה שנשמר לא יימחק.",{title:"התנתקות",ok:"התנתק"}).then(ok=>{
+    if(ok){ cloudActFlush(); consentForget(); Cloud.leaving=true; Cloud.m.signOut(Cloud.auth).catch(()=>{ Cloud.leaving=false; }); }
   });
 }
 function cloudSwitchUser(){ cloudDevSave(null); consentForget(); Cloud.m.signOut(Cloud.auth).then(()=>cloudSignIn()); }
@@ -3641,14 +3711,16 @@ function cloudSnapProd(s){
   cloudGot("x", ext, who);
 }
 function cloudSnapMe(s){
-  if(!Cloud.user || s.metadata.hasPendingWrites) return;   /* תפקיד משתנה רק לפי מה שהשרת אישר, לא לפי ניסיון כתיבה מקומי */
-  if(!s.exists()){ cloudLost(); return; }
-  const md=s.data(), role=String(md.role||"");
-  if(Cloud.user.phone){
-    if(md.dev!==Cloud.user.uid){ cloudLost(); return; }
-    if(md.name) Cloud.user.name=String(md.name).slice(0,60);
+  if(!Cloud.user || Cloud.leaving || s.metadata.hasPendingWrites) return;   /* תפקיד משתנה רק לפי מה שהשרת אישר, לא לפי ניסיון כתיבה מקומי */
+  const md=s.exists()?s.data():null, role=String((md&&md.role)||"");
+  const gone = !md || (!!Cloud.user.phone && md.dev!==Cloud.user.uid);   /* הוסר מהצוות / המכשיר שוחרר */
+  if(gone || !ROLES[role]){
+    /* רק תשובה מהשרת היא ראיה. מטמון חסר או ישן (בלי קליטה) — מחכים לשרת: לא נועלים ולא מוחקים */
+    if(s.metadata.fromCache) return;
+    if(gone) cloudRemoved(); else cloudLost();
+    return;
   }
-  if(!ROLES[role]){ cloudLost(); return; }
+  if(Cloud.user.phone && md.name) Cloud.user.name=String(md.name).slice(0,60);
   if(Cloud.role && role!==Cloud.role){
     /* התפקיד שונה ע"י מנהל — מתחילים מחדש עם ההרשאות החדשות */
     Cloud.role=role; cloudSetFlag({role:role}); cloudToast("התפקיד שלך עודכן: "+ROLES[role]);
@@ -3660,10 +3732,21 @@ function cloudSnapMe(s){
   Cloud.role=role;
   cloudGot("me", false, "");
 }
-function cloudLost(){ consentClose(); trackStop(); tmapStop(); cloudStop(); cloudTeamStop(); cloudActivityStop(); Cloud.ready=false; Cloud.role=""; cloudSetFlag({member:false, role:""}); cloudSetState("denied"); }
+function cloudLost(){ consentClose(); trackStop(); tmapStop(); cloudStop(); cloudTeamStop(); cloudActivityStop(); Cloud.ready=false; Cloud.role=""; cloudSetFlag({member:false, role:""}); gateOut(); cloudSetState("denied"); }
 function cloudListenErr(e){
-  if(e && e.code==="permission-denied") cloudLost();
-  else { Cloud.err=cloudErrText(e); cloudSetState("error"); }
+  if(!(e && e.code==="permission-denied")){ Cloud.err=cloudErrText(e); cloudSetState("error"); return; }
+  /* השרת דחה קריאה. זו עוד לא ראיה שהחבר הוסר (גם תקלת הרשאות נראית כך) — שואלים את השרת על החבר עצמו:
+     הוסר / המכשיר שוחרר ← נעילה ומחיקה · התפקיד השתנה ← התחלה מחדש · עדיין חבר ← תקלה, בלי למחוק כלום */
+  const u=Cloud.user, M=Cloud.m;
+  if(!u || Cloud.leaving || Cloud.checking) return;
+  Cloud.checking=true;
+  M.getDocFromServer(M.doc(Cloud.db,"teams",TEAM_ID,"members",u.email)).then(s=>{
+    if(Cloud.user!==u || Cloud.leaving) return;
+    const r0=Cloud.role;
+    cloudSnapMe(s);
+    if(Cloud.user===u && Cloud.role && Cloud.role===r0 && Cloud.state!=="denied"){ Cloud.err=cloudErrText(e); cloudSetState("error"); }
+  }).catch(()=>{ if(Cloud.user===u && !Cloud.leaving) cloudLost(); })
+    .finally(()=>{ Cloud.checking=false; });
 }
 function cloudGot(kind, ext, who){
   Cloud.got[kind]=true;
@@ -4029,7 +4112,7 @@ function cloudMakerHome(){
       +(Number(r.d.ver)>1?' · <b>עודכן (גרסה <span class="num">'+esc(r.d.ver)+'</span>)</b>':'')+'</div></div>'
       +'<div class="chev" style="font-size:1.3rem;color:var(--ink2)">‹</div></div></div>';
   }).join("") : '<div class="card muted">עוד לא נשלחו הזמנות ייצור. כשמנהל ישלח פרויקט, הוא יופיע כאן.</div>';
-  return '<div class="topbar"><div><h1>אלום אלבז</h1><div class="sub">הזמנות ייצור</div></div>'+cloudPillHTML()+trackBadgeHTML()+'</div>'
+  return '<div class="topbar home-top"><div><h1>אלום אלבז</h1><div class="sub">הזמנות ייצור</div></div>'+cloudPillHTML()+trackBadgeHTML()+'</div>'
     +list
     +'<button class="btn primary fab fab-left" onclick="nav(\'/settings\')">⚙️ הגדרות</button>';
 }
@@ -4182,7 +4265,7 @@ function cloudChangeRole(em, role){
 function cloudRemoveMember(em){
   const cur=(Cloud.team||[]).find(x=>x.email===em);
   if(!cur || !cloudCanManage(em, cur.role)) return;
-  uiConfirm("להסיר את "+(cur.name||cloudWho(em))+" מהצוות? הוא לא יוכל יותר לראות או לערוך כלום.",{title:"הסרה מהצוות",ok:"הסר",danger:true}).then(ok=>{
+  uiConfirm("להסיר את "+(cur.name||cloudWho(em))+" מהצוות? הוא לא יוכל יותר להשתמש באפליקציה, ונתוני הצוות יימחקו מהטלפון שלו.",{title:"הסרה מהצוות",ok:"הסר",danger:true}).then(ok=>{
     if(!ok) return;
     const M=Cloud.m;
     M.deleteDoc(M.doc(cloudCol("members"), em))
@@ -4193,7 +4276,7 @@ function cloudRemoveMember(em){
 function cloudReleaseDevice(em){
   const cur=(Cloud.team||[]).find(x=>x.email===em);
   if(!cur || !cur.dev || !cloudPhoneOk(em) || !cloudCanManage(em, cur.role)) return;
-  uiConfirm("לשחרר את המכשיר של "+(cur.name||cloudPhoneShow(em))+"? הטלפון הנוכחי יתנתק, והטלפון הבא שייכנס עם המספר "+cloudPhoneShow(em)+" יינעל אליו.",{title:"שחרור מכשיר",ok:"שחרר"}).then(ok=>{
+  uiConfirm("לשחרר את המכשיר של "+(cur.name||cloudPhoneShow(em))+"? הטלפון הנוכחי יינעל ונתוני הצוות יימחקו ממנו. הטלפון הבא שייכנס עם המספר "+cloudPhoneShow(em)+" יינעל אליו.",{title:"שחרור מכשיר",ok:"שחרר"}).then(ok=>{
     if(!ok) return;
     const M=Cloud.m;
     M.setDoc(M.doc(cloudCol("members"), em), {by:Cloud.user.email, at:M.serverTimestamp(), dev:null, devAt:null, devInfo:null}, {merge:true})
@@ -4632,7 +4715,9 @@ document.addEventListener("visibilitychange", ()=>{
 
 /* ---- תצוגה ---- */
 function cloudSetState(s){
+  const was=gateOpen();
   Cloud.state=s; cloudPill();
+  if(!was || !gateOpen()){ render(); return; }   /* נעילה / פתיחה / עדכון מסך הכניסה — מציירים מחדש מכל מסך */
   const r=location.hash.replace(/^#\/?/,"").split("/")[0];
   if(r==="" || r==="settings" || r==="team" || r==="trash" || r==="activity" || r==="prod") cloudRemoteChanged("");
 }
@@ -4749,20 +4834,50 @@ function cloudErrText(e){
   return (t||"משהו השתבש.")+(c?" ("+c+")":"");
 }
 
+/* מסך הכניסה — כל מה שרואה מי שלא מחובר לצוות (או שהוסר ממנו) */
+function viewGate(){
+  const s=Cloud.state, u=Cloud.user;
+  const showInstall = !isStandalone() && (installEvt || location.hostname.indexOf("github.io") >= 0);
+  const bG='<button class="btn primary wide" onclick="cloudSignIn()">התחבר עם Google</button>';
+  const bP='<button class="btn wide" onclick="cloudPhoneSignIn()">📱 כניסה עם מספר טלפון</button>';
+  const bR='<button class="btn wide" onclick="location.reload()">נסה שוב</button>';
+  const wiped = (s==="denied" && wipeGet()) ? '<div class="gate-note">🧹 נתוני הצוות נמחקו מהטלפון הזה.</div>' : '';
+  let body;
+  if(s==="signedout") body='<b>🔒 כדי להשתמש באפליקציה צריך להתחבר</b>'
+    +'<div class="muted">האפליקציה פתוחה רק לצוות. נכנסים עם חשבון הגוגל, או עם מספר הטלפון שהמנהל הוסיף לצוות.</div>'
+    +'<div class="gate-btns">'+bG+bP+'</div>';
+  else if(s==="denied" && u && u.phone) body='<b>⛔ הטלפון הזה כבר לא מחובר למספר '+cloudPhoneHTML(u.email)+'</b>'
+    +'<div class="muted">המנהל שחרר את המכשיר או הסיר את המספר מהצוות.</div>'+wiped
+    +'<div class="gate-btns"><button class="btn primary wide" onclick="cloudPhoneSignIn()">📱 כניסה עם מספר טלפון</button>'
+    +'<button class="btn wide" onclick="cloudSwitchUser()">התחבר עם Google</button></div>';
+  else if(s==="denied") body='<b>⛔ החשבון '+esc(u?u.email:"")+' לא ברשימת הצוות</b>'
+    +'<div class="muted">בקש ממנהל להוסיף את המייל הזה לצוות, ואז לחץ "נסה שוב".</div>'+wiped
+    +'<div class="gate-btns">'+bR+'<button class="btn wide" onclick="cloudSwitchUser()">התחבר עם חשבון אחר</button>'+bP+'</div>';
+  else if(s==="error") body='<b>⚠️ תקלה בחיבור לצוות</b><div class="muted">'+esc(Cloud.err)+'</div><div class="gate-btns">'+bR+'</div>';
+  else {
+    /* עוד מתברר (טוען) או שאין קליטה: בלי קליטה מסבירים שההתחברות צריכה אינטרנט */
+    const off = s==="offline" || !navigator.onLine;
+    body='<b>'+(s==="offline" ? '📴 אין קליטה' : '⏳ מתחבר…')+'</b>'
+      +(off ? '<div class="muted">כדי להתחבר צריך אינטרנט. אחרי ההתחברות האפליקציה עובדת גם בלי קליטה.</div><div class="gate-btns">'+bR+'</div>' : '');
+  }
+  return '<div class="gate">'
+    +'<img class="gate-logo" src="'+DEFAULT_LOGO+'" alt="אלום אלבז">'
+    +'<h1>אלום אלבז</h1><div class="sub">פנקס מדידות והצעות מחיר</div>'
+    +'<div class="card gate-card" data-gate="'+esc(s)+'">'+body+'</div>'
+    +(showInstall
+      ? '<div class="card banner"><div class="rowline">'
+        +'<div class="grow"><b>📲 התקנת האפליקציה בטלפון</b><div class="muted">אייקון במסך הבית, מסך מלא, עובד גם בלי אינטרנט</div></div>'
+        +'<button class="btn" onclick="App.install()">התקן</button>'
+        +'</div></div>'
+      : '')
+    +langCard()
+    +'<div class="gate-ver"><span class="muted">גרסה מותקנת: <span class="num">'+APP_VERSION+'</span></span>'
+    +'<button class="btn small" onclick="App.checkUpdate(this)">🔄 בדוק עדכונים</button></div>'
+    +'</div>';
+}
 function cloudHomeCard(){
   if(!cloudConfigured()) return "";
-  const s=Cloud.state, u=Cloud.user;
-  if(s==="signedout") return '<div class="card banner"><div class="rowline wrap">'
-    +'<div class="grow"><b>☁️ שיתוף עם הצוות</b><div style="opacity:.9;font-size:.85rem;margin-top:2px">התחבר עם חשבון הגוגל שלך, וכל הצוות יראה את אותם פרויקטים ואת כל הפעילות.</div></div>'
-    +'<div class="cloud-in"><button class="btn" onclick="cloudSignIn()">התחבר עם Google</button>'
-    +'<button class="btn" onclick="cloudPhoneSignIn()">📱 כניסה עם מספר טלפון</button></div></div></div>';
-  if(s==="denied" && u && u.phone) return '<div class="card"><b>⛔ הטלפון הזה כבר לא מחובר למספר '+cloudPhoneHTML(u.email)+'</b>'
-    +'<div class="muted" style="margin-top:4px">המנהל שחרר את המכשיר או הסיר את המספר מהצוות. מה שבטלפון נשמר רק בו.</div>'
-    +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small primary" onclick="cloudPhoneSignIn()">📱 כניסה עם מספר טלפון</button>'
-    +'<button class="btn small" onclick="cloudSwitchUser()">התחבר עם Google</button></div></div>';
-  if(s==="denied") return '<div class="card"><b>⛔ החשבון '+esc(u?u.email:"")+' לא ברשימת הצוות</b>'
-    +'<div class="muted" style="margin-top:4px">בקש ממנהל להוסיף את המייל הזה (הגדרות ← הצוות). עד אז מה שבטלפון נשמר רק בו.</div>'
-    +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small" onclick="cloudSwitchUser()">התחבר עם חשבון אחר</button></div></div>';
+  const s=Cloud.state;
   if(s==="error") return '<div class="card"><b>⚠️ תקלה בחיבור לצוות</b><div class="muted" style="margin-top:4px">'+esc(Cloud.err)+'</div>'
     +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small" onclick="location.reload()">נסה שוב</button></div></div>';
   if(s==="offline") return '<div class="card"><b>📴 אין קליטה</b><div class="muted" style="margin-top:4px">האפליקציה עובדת בטלפון כרגיל. החיבור לצוות יושלם לבד כשתחזור קליטה.</div></div>';
@@ -4783,17 +4898,6 @@ function cloudSettingsCard(){
       +(canBoss()?'<button class="btn small" onclick="nav(\'/trash\')">🗑 סל מחזור ('+trash+')</button>'
                  +'<button class="btn small" onclick="nav(\'/team\')">👥 הצוות</button>':'')
       +'<button class="btn small" onclick="cloudSignOut()">התנתק</button></div>';
-  } else if(s==="signedout"){
-    body='<div class="muted" style="margin-top:6px">כרגע הפרויקטים נשמרים רק בטלפון הזה. אחרי התחברות הם משותפים לכל הצוות, ומתעדכנים אצל כולם תוך שניות.</div>'
-      +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small primary" onclick="cloudSignIn()">התחבר עם Google</button>'
-      +'<button class="btn small" onclick="cloudPhoneSignIn()">📱 כניסה עם מספר טלפון</button></div>';
-  } else if(s==="denied" && u && u.phone){
-    body='<div class="muted" style="margin-top:6px">הטלפון הזה כבר לא מחובר למספר '+cloudPhoneHTML(u.email)+'.</div>'
-      +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small primary" onclick="cloudPhoneSignIn()">📱 כניסה עם מספר טלפון</button>'
-      +'<button class="btn small" onclick="cloudSwitchUser()">התחבר עם Google</button></div>';
-  } else if(s==="denied"){
-    body='<div class="muted" style="margin-top:6px">החשבון '+esc(u?u.email:"")+' לא ברשימת הצוות.</div>'
-      +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small" onclick="cloudSwitchUser()">התחבר עם חשבון אחר</button></div>';
   } else body='<div class="muted" style="margin-top:6px">'+esc(cloudPillText())+(Cloud.err&&s==="error"?' · '+esc(Cloud.err):'')+'</div>';
   return '<div class="card"><label>☁️ שיתוף עם הצוות</label>'+body+'</div>';
 }
