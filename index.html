@@ -378,6 +378,9 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .tm-dot{width:12px;height:12px;border-radius:50%;flex:none}
 .tm-acts{display:flex;flex-wrap:wrap;gap:6px}
 .consent-ov{z-index:1000}
+.loc-block{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(12,17,26,.5);backdrop-filter:blur(3px);
+  padding:max(24px,env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(24px,env(safe-area-inset-left,0px))}
+.tm-warn{font-size:.85rem;font-weight:700;color:var(--danger);margin-top:2px}
 .modal.consent{max-width:440px}
 .modal.consent .msg{white-space:normal;font-size:.9rem;line-height:1.6}
 .modal.consent .msg p{margin:0 0 8px}
@@ -429,7 +432,7 @@ html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev{trans
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 82; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 83; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -3505,7 +3508,7 @@ async function cloudDevRelease(){
 }
 
 function cloudSignedOut(){
-  trackStop(); tmapStop(); cloudStop(); cloudActivityStop(); cloudTeamStop();
+  consentClose(); trackStop(); tmapStop(); cloudStop(); cloudActivityStop(); cloudTeamStop();
   Cloud.user=null; Cloud.ready=false; Cloud.role="";
   cloudSetState("signedout");
 }
@@ -3672,7 +3675,7 @@ function cloudSnapMe(s){
   Cloud.role=role;
   cloudGot("me", false, "");
 }
-function cloudLost(){ trackStop(); tmapStop(); cloudStop(); cloudTeamStop(); cloudActivityStop(); Cloud.ready=false; Cloud.role=""; cloudSetFlag({member:false, role:""}); cloudSetState("denied"); }
+function cloudLost(){ consentClose(); trackStop(); tmapStop(); cloudStop(); cloudTeamStop(); cloudActivityStop(); Cloud.ready=false; Cloud.role=""; cloudSetFlag({member:false, role:""}); cloudSetState("denied"); }
 function cloudListenErr(e){
   if(e && e.code==="permission-denied") cloudLost();
   else { Cloud.err=cloudErrText(e); cloudSetState("error"); }
@@ -4244,6 +4247,7 @@ function consentCheck(){
   if(!consentNeeded() || Track.asking || document.querySelector(".consent-ov")) return;
   consentShow();
 }
+function consentClose(){ [].forEach.call(document.querySelectorAll(".consent-ov"), o=>o.remove()); Track.asking=false; }
 /* בהתנתקות — שוכחים את האישור בטלפון הזה, כדי שבכניסה הבאה יוצג שוב */
 function consentForget(){ try{ const o=JSON.parse(localStorage.getItem(CONSENT_KEY))||{}; if(Cloud.user) delete o[TEAM_ID+"|"+Cloud.user.email]; localStorage.setItem(CONSENT_KEY, JSON.stringify(o)); }catch(e){} }
 function consentShow(){
@@ -4304,6 +4308,7 @@ function consentSync(){
   }).catch(()=>{ Track.synced=""; });
 }
 function trackTick(){
+  if(!trackIsWorker() || !trackCfg().on || Track.err!=="denied") locBlockHide();   /* המנהל כיבה / התנתק / מנסה שוב */
   if(consentNeeded()) consentCheck(); else consentSync();
   const run=trackShouldRun();
   if(run && Track.watch==null) trackStart();
@@ -4313,17 +4318,84 @@ function trackTick(){
 function trackStart(){
   Track.err="";
   Track.watch=navigator.geolocation.watchPosition(trackPos, e=>{
-    if(e && e.code===1){ Track.err="denied"; trackStop(true); } else Track.err="nofix";
+    if(e && e.code===1){
+      Track.err="denied"; trackStop(true);
+      if(trackIsWorker() && trackCfg().on && consentOk()){ locBlockShow(); locDeniedLog(); }
+    } else Track.err="nofix";   /* GPS כבוי / אין קליטה — לא חוסמים */
     trackStatus();
   }, {enableHighAccuracy:true, maximumAge:30000, timeout:60000});
 }
 function trackStop(keepErr){
   if(Track.watch!=null){ try{ navigator.geolocation.clearWatch(Track.watch); }catch(e){} }
   Track.watch=null; Track.last=null; Track.lastPt=null; Track.cur=null;
-  if(!keepErr) Track.err="";
+  if(!keepErr){ Track.err=""; locBlockHide(); }
   trackStatus();
 }
 function trackRetry(){ Track.err=""; trackTick(); }
+/* ---- הטלפון חוסם את המיקום אחרי שהעובד אישר באפליקציה (החלטת מתניה: חוסמים עד שמאפשרים, והמנהל רואה) ----
+   רק סירוב מפורש של הרשאה. GPS כבוי או בלי קליטה לא חוסמים — כדי לא לתקוע עובד באמצע מדידה. */
+const LOCDENIED_KEY="alum_locdenied_v1";
+/* מצב ההרשאה בטלפון: "prompt" = הטלפון עוד יכול לשאול · "denied" = נחסם במפורש (אתר לא יכול להקפיץ שוב את השאלה) · "" = לא ידוע */
+let locPerm=null, locPoll=null;
+function locPermState(){
+  if(!(navigator.permissions && navigator.permissions.query)) return Promise.resolve("");
+  return navigator.permissions.query({name:"geolocation"}).then(st=>{
+    if(locPerm!==st){ locPerm=st; try{ st.onchange=()=>locPermChanged(st.state); }catch(e){} }
+    return st.state;
+  }).catch(()=>"");
+}
+/* ההרשאה השתנתה בזמן שהמסך מוצג: אם אופשרה — ממשיכים לבד, בלי שהעובד ילחץ על כלום */
+function locPermChanged(st){
+  const ov=document.querySelector(".loc-block"); if(!ov) return;
+  if(st==="granted"){ if(ov.dataset.st!=="granted"){ locBlockHide(); trackRetry(); } }   /* "granted" מההתחלה = הדפדפן מרשה והמיקום עדיין נכשל — לא מנסים בלולאה */
+  else if(ov.dataset.st!==st) locBlockRender(st);
+}
+function locBlockRender(st){
+  const ov=document.querySelector(".loc-block"); if(!ov) return;
+  const ask = st==="prompt";
+  ov.dataset.st=st||"";
+  ov.innerHTML='<div class="modal consent" role="dialog" aria-modal="true">'
+    +'<h3>📍 צריך לאפשר מיקום בטלפון</h3>'
+    +'<div class="msg">'
+    +(ask
+      ? '<p>אישרת את שיתוף המיקום באפליקציה, אבל עוד לא אישרת אותו בטלפון.</p>'
+        +'<p>לחץ על "אפשר מיקום" — הטלפון ישאל אותך, ובוחרים "אפשר".</p>'
+      : '<p>אישרת את שיתוף המיקום באפליקציה, אבל הטלפון חוסם אותו.</p>'
+        +'<p>כדי להמשיך, מאפשרים לאפליקציה גישה למיקום. ברגע שתאפשר, האפליקציה תמשיך לבד.</p>'
+        +'<b>איך מאפשרים</b><ul>'
+        +'<li>באנדרואיד: לחיצה על סמל המנעול ליד הכתובת, ואז הרשאות ← מיקום ← אפשר.</li>'
+        +'<li>באייפון: הגדרות ← פרטיות ואבטחה ← שירותי מיקום ← אתרי Safari ← בזמן השימוש.</li></ul>')
+    +'</div>'
+    +'<div class="btns"><button class="btn primary" data-m="retry">'+(ask?'אפשר מיקום':'נסה שוב')+'</button><button class="btn" data-m="exit">צא מהאפליקציה</button></div></div>';
+  /* הלחיצה מבקשת שוב את המיקום מהטלפון — אם הטלפון מרשה לשאול, חלון האישור שלו קופץ */
+  ov.querySelector('[data-m="retry"]').onclick=()=>{ locBlockHide(); trackRetry(); };
+  ov.querySelector('[data-m="exit"]').onclick=()=>{ try{ window.close(); }catch(e){} };
+}
+function locBlockShow(){
+  if(!document.querySelector(".loc-block")){
+    const ov=document.createElement("div"); ov.className="loc-block"; document.body.appendChild(ov);
+    locBlockRender("denied");
+  }
+  locPermState().then(st=>{
+    const ov=document.querySelector(".loc-block"); if(!ov) return;
+    if(st==="granted") ov.dataset.st="granted"; else locPermChanged(st||"denied");
+  });
+  if(!locPoll) locPoll=setInterval(()=>{   /* גיבוי לדפדפנים שלא מודיעים על שינוי הרשאה */
+    if(!document.querySelector(".loc-block")){ clearInterval(locPoll); locPoll=null; return; }
+    locPermState().then(st=>{ if(st) locPermChanged(st); });
+  }, 3000);
+}
+function locBlockHide(){ const o=document.querySelector(".loc-block"); if(o) o.remove(); if(locPoll){ clearInterval(locPoll); locPoll=null; } }
+/* רישום למנהל — לכל היותר פעם ביום מכל טלפון (יצרן לא כותב ליומן, לכן רק עובד) */
+function locDeniedLog(){
+  if(!Cloud.ready || Cloud.role!=="employee") return;
+  let o={}; try{ o=JSON.parse(localStorage.getItem(LOCDENIED_KEY))||{}; }catch(e){}
+  const k=TEAM_ID+"|"+Cloud.user.email, day=trackDay();
+  if(o[k]===day) return;
+  o[k]=day; try{ localStorage.setItem(LOCDENIED_KEY, JSON.stringify(o)); }catch(e){}
+  const M=Cloud.m, u=Cloud.user, ts=M.serverTimestamp();
+  M.setDoc(M.doc(cloudCol("activity")), {at:ts, t0:ts, op:"locdenied", by:u.email, byName:u.name, text:"חסם את המיקום בטלפון", where:"", pid:""}).catch(()=>{});
+}
 /* שליחה מיידית של המיקום הכי עדכני (בלי לחכות לדקה) — רגע לפני שהעובד יוצא לניווט ב-Waze */
 function trackFlush(){
   const c=Track.cur;
@@ -4478,6 +4550,14 @@ function tmapNav(p){
   if(p.loc && p.loc.at>t0+90000) return null;
   return {where:String(r.where||"").slice(0,200), t:t0};
 }
+/* העובד חסם את המיקום בטלפון (נרשם ביומן), ומאז לא התקבל ממנו מיקום */
+function tmapDenied(p){
+  const r=(Cloud.activity||[]).find(x=>x.op==="locdenied" && x.by===p.key);
+  if(!r) return 0;
+  const t=cloudMs(r.at);
+  if(!t || Date.now()-t>TRACK_DAYS*864e5 || (p.loc && p.loc.at>t)) return 0;
+  return t;
+}
 const tmapAge = l => !l ? "none" : Date.now()-l.at<5*60000 ? "fresh" : Date.now()-l.at<30*60000 ? "recent" : "old";
 function tmapDraw(){
   if(!TMap.map || !TMap.layer || !window.L) return;
@@ -4506,7 +4586,7 @@ function tmapList(){
   const ppl=tmapPeople();
   if(!ppl.length){ box.innerHTML='<div class="card muted">עוד אין עובדים או יצרן בצוות.</div>'; return; }
   box.innerHTML=ppl.map(p=>{
-    const l=p.loc, q=l?(l.lat+","+l.lng):"", on=TMap.routeKey===p.key, nv=tmapNav(p);
+    const l=p.loc, q=l?(l.lat+","+l.lng):"", on=TMap.routeKey===p.key, nv=tmapNav(p), dn=tmapDenied(p);
     const st = !l ? 'אין מיקום עדיין' : '📍 '+cloudRel(l.at)+(l.acc?' · דיוק ~'+l.acc+' מ׳':'');
     const c=TMap.cons.get(p.key), dd=ms=>{ const d=new Date(ms); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); };
     const cs = !c ? 'טרם אישר שיתוף מיקום' : c.v!==Track.cv ? 'טרם אישר את הנוסח החדש' : (c.ok ? '✓ אישר שיתוף מיקום · ' : '✗ לא אישר שיתוף מיקום · ')+dd(c.at);
@@ -4514,6 +4594,7 @@ function tmapList(){
       +'<span class="tm-dot '+tmapAge(l)+'"></span>'
       +'<div class="grow"><div><b>'+esc(p.name)+'</b>'+(p.role?' <span class="muted">· '+esc(ROLES[p.role]||"")+'</span>':'')+'</div>'
       +'<div class="muted">'+esc(st)+'</div>'
+      +(dn ? '<div class="tm-warn">⚠ <span>חסם את המיקום בטלפון</span> · <span>'+esc(cloudRel(dn))+'</span></div>' : '')
       +(nv ? '<div class="tm-nav">🚗 <span>בדרך אל</span> <b data-tr>'+esc(nv.where)+'</b> · <span>יצא: '+esc(cloudRel(nv.t))+'</span></div>' : '')
       +'<div class="muted">'+esc(cs)+'</div>'
       +(on && TMap.routeInfo ? '<div class="muted">'+esc(TMap.routeInfo)+'</div>' : '')
@@ -4553,7 +4634,13 @@ function tmapPurge(){
     .then(s=>s.forEach(d=>{ const at=cloudMs(d.data().at); if(at && at<old) M.deleteDoc(d.ref).catch(()=>{}); })).catch(()=>{});
 }
 setInterval(()=>{ try{ trackTick(); }catch(e){} }, 60000);
-document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible"){ try{ trackTick(); }catch(e){} } });
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState!=="visible") return;
+  try{
+    if(document.querySelector(".loc-block")) locPermState().then(st=>{ if(st) locPermChanged(st); else { locBlockHide(); trackRetry(); } });
+    trackTick();
+  }catch(e){}
+});
 
 /* ---- תצוגה ---- */
 function cloudSetState(s){
@@ -4739,7 +4826,7 @@ function actLine(r){
 }
 function renderActivityList(){
   const box=document.getElementById("actbox"); if(!box) return;
-  const rows=Cloud.activity||[];
+  const rows=(Cloud.activity||[]).filter(r=>r.op!=="locdenied" || cloudIsBoss());
   if(!rows.length){ box.innerHTML='<div class="card muted">עוד אין פעילות. כל פעולה של חבר צוות תופיע כאן.</div>'; return; }
   const now=new Date(), yd=new Date(now.getTime()-864e5);
   let html="", lastDay="";
