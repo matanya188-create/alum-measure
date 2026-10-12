@@ -3652,6 +3652,7 @@ function cloudSnapMe(s){
   if(Cloud.role && role!==Cloud.role){
     /* התפקיד שונה ע"י מנהל — מתחילים מחדש עם ההרשאות החדשות */
     Cloud.role=role; cloudSetFlag({role:role}); cloudToast("התפקיד שלך עודכן: "+ROLES[role]);
+    Cloud.toastHold=Date.now()+3500;   /* שההודעה הזאת לא תידרס מיד ב"עודכן ע״י…" של הטעינה מחדש */
     if(role==="maker"){ cloudStart(); return; }
     if(!cloudFlag().migrated) cloudSetFlag({migrated:true});
     cloudStart(); return;
@@ -4636,7 +4637,7 @@ function cloudSetState(s){
   if(r==="" || r==="settings" || r==="team" || r==="trash" || r==="activity" || r==="prod") cloudRemoteChanged("");
 }
 function cloudRemoteChanged(who){
-  if(who) cloudToast("עודכן ע״י "+who);
+  if(who && !(Cloud.toastHold>Date.now())) cloudToast("עודכן ע״י "+who);
   const r=location.hash.replace(/^#\/?/,"").split("/")[0];
   if(r==="sim") return;
   const a=document.activeElement;
