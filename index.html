@@ -444,7 +444,7 @@ html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev{trans
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 86; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 87; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -1035,6 +1035,8 @@ const uiConfirm=(msg,o)=>uiDialog(Object.assign({msg:msg,cancel:"ביטול"},o|
 let installEvt = null;
 const isStandalone = () =>
   window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+/* אייפון / אייפד: אין חלונית התקנה אוטומטית — מתקינים ידנית דרך כפתור השיתוף של Safari */
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent||"") || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; render(); });
 window.addEventListener("appinstalled", () => { installEvt = null; render(); });
 
@@ -3153,6 +3155,8 @@ const App = {
     if(installEvt){
       installEvt.prompt();
       installEvt.userChoice.then(()=>{ installEvt=null; render(); }).catch(()=>{ installEvt=null; render(); });
+    } else if(isIOS()){
+      uiAlert("באייפון מתקינים בשלושה צעדים:\n\n1) פותחים את הקישור בדפדפן Safari.\n2) לוחצים על כפתור השיתוף — ריבוע עם חץ למעלה.\n3) בוחרים \"הוסף למסך הבית\", ואז \"הוסף\".\n\nאחרי ההתקנה פותחים את האפליקציה מהאייקון במסך הבית, ומתחברים מתוכה.","התקנת האפליקציה באייפון");
     } else {
       uiAlert("אם לא קפצה חלונית התקנה, יש שתי אפשרויות:\n\n1) האפליקציה כבר מותקנת — חפש את הלוגו של אלום אלבז במגירת האפליקציות של הטלפון.\n\n2) התקנה ידנית בכרום: תפריט ⋮ למעלה ← \"הוספה למסך הבית\" ← \"התקנה\".","התקנת האפליקציה");
     }
@@ -3542,7 +3546,7 @@ async function cloudPhoneClaim(raw){
 }
 function cloudPhoneSignIn(){
   if(!Cloud.m){ uiAlert("רכיב הסנכרון עוד לא נטען. בדוק שיש קליטה ונסה שוב.","התחברות"); return; }
-  const ios=/iPhone|iPad/.test(navigator.userAgent||"") && navigator.standalone!==true;
+  const ios=isIOS() && navigator.standalone!==true;
   uiAsk({title:"כניסה עם מספר טלפון", type:"tel", placeholder:"050-1234567", ok:"היכנס",
     msg:"הקלד את מספר הטלפון שהמנהל הוסיף לצוות. המספר יינעל לטלפון הזה, ואי אפשר יהיה להיכנס איתו ממכשיר אחר.",
     note:ios?"באייפון: קודם מתקינים את האפליקציה למסך הבית, ונכנסים מתוכה.":""}).then(v=>{
