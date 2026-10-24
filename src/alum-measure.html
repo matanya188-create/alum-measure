@@ -96,18 +96,20 @@ label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin-bo
 .banner .muted{color:rgba(255,255,255,.9)}
 .banner .btn{background:#fff;border:none;color:#0b7f89;font-weight:800;box-shadow:none}
 .pchip{flex:none;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.35rem}
-.pc0{background:#ffefc2}.pc1{background:#d3f6e3}.pc2{background:#ffdfe9}.pc3{background:#d9edff}
+.pc0{background:#ffefc2}.pc1{background:#d3f6e3}.pc2{background:#ffdfe9}.pc3{background:#d9edff}.pc4{background:#e8e2ff}
 @media (prefers-color-scheme: dark){
-  .pc0{background:#4a3d12}.pc1{background:#12402b}.pc2{background:#47202e}.pc3{background:#173a56}
+  .pc0{background:#4a3d12}.pc1{background:#12402b}.pc2{background:#47202e}.pc3{background:#173a56}.pc4{background:#2f2856}
 }
 :root[data-theme="dark"] .pc0{background:#4a3d12}
 :root[data-theme="dark"] .pc1{background:#12402b}
 :root[data-theme="dark"] .pc2{background:#47202e}
 :root[data-theme="dark"] .pc3{background:#173a56}
+:root[data-theme="dark"] .pc4{background:#2f2856}
 :root[data-theme="light"] .pc0{background:#ffefc2}
 :root[data-theme="light"] .pc1{background:#d3f6e3}
 :root[data-theme="light"] .pc2{background:#ffdfe9}
 :root[data-theme="light"] .pc3{background:#d9edff}
+:root[data-theme="light"] .pc4{background:#e8e2ff}
 
 .seg{display:flex;background:var(--line2);border:none;border-radius:999px;padding:4px;gap:4px}
 .seg button{flex:1;min-height:40px;padding:8px 6px;font-weight:700;color:var(--ink2);border-radius:999px}
@@ -404,7 +406,44 @@ html[dir="ltr"] .qtable th, html[dir="ltr"] .qtable td{text-align:left}
 html[dir="ltr"] .fab{transform:translateX(-50%)}
 html[dir="ltr"] .fab-left{left:auto;right:max(18px,env(safe-area-inset-right,0px));transform:none}
 /* חיצי "חזרה" ו"כניסה" מתהפכים בשפה שנקראת משמאל לימין */
-html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev{transform:scaleX(-1)}
+html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev, html[dir="ltr"] .cal-nav{transform:scaleX(-1)}
+/* יומן Google */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.cal-head b{font-size:1rem}
+.cal-nav{width:40px;height:36px;border-radius:12px;font-size:1.2rem;color:var(--ink2)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center;row-gap:2px}
+.cal-wd{font-size:.72rem;color:var(--ink2);font-weight:700;padding:2px 0 4px}
+.cal-d{font-size:.85rem;height:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.cal-d.out{color:var(--ink2);opacity:.45}
+.cal-d.today{background:var(--grad);color:#fff;font-weight:800}
+.cal-dot{width:5px;height:5px;border-radius:50%;background:var(--acc);margin-top:1px;display:block}
+.cal-d.today .cal-dot{background:#fff}
+.cal-sync{font-size:.74rem;color:var(--ink2);margin-top:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.cal-sync bdi{overflow-wrap:anywhere}
+.cal-ref{font:inherit;font-size:.74rem;color:var(--ink2);padding:4px 0}
+.cal-note{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.9rem}
+.cal-note.col{flex-direction:column;align-items:stretch}
+.cal-note.err{background:var(--warn-bg);color:var(--warn)}
+.cal-list{padding-top:4px}
+.cal-past{font:inherit;font-size:.82rem;color:var(--acc);font-weight:700;padding:10px 2px 0}
+.cal-day{margin:14px 2px 4px;font-weight:800;font-size:.95rem;display:flex;justify-content:space-between;gap:8px;border-radius:10px;transition:background .3s}
+.cal-day .muted{font-weight:600;font-size:.8rem;white-space:nowrap}
+.cal-day.past{opacity:.6}
+.cal-day.flash{background:var(--pen-soft)}
+.cal-ev{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line2)}
+.cal-bx{width:24px;height:24px;border-radius:7px;border:2px solid var(--line);flex:none;margin-top:-1px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.85rem;color:#fff}
+.cal-ev.done .cal-bx{background:var(--grad);border-color:transparent}
+.cal-ev.done .cal-et{text-decoration:line-through;color:var(--ink2)}
+.cal-ev.busy{opacity:.55}
+.cal-tm{font-weight:800;font-size:.85rem;min-width:48px;color:var(--acc);font-variant-numeric:tabular-nums}
+.cal-et{font-weight:700;font-size:.93rem;overflow-wrap:anywhere}
+.cal-el{color:var(--ink2);font-size:.78rem;margin-top:2px;overflow-wrap:anywhere}
+.cal-all{font-size:.7rem;font-weight:800;color:#7c3aed;background:#f1eaff;border-radius:6px;padding:2px 6px;white-space:nowrap}
+.cal-form label{margin:10px 0 4px}
+.cal-form .cal-chk{display:flex;align-items:center;gap:8px;margin-top:12px}
+.cal-form .cal-chk input{width:auto}
+.cal-form .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cal-form .btns{margin-top:18px}
 .trbtn{font-size:.72rem;font-weight:700;color:var(--acc);text-decoration:none;white-space:nowrap}
 /* ===== מסך תשלום (paywall) ===== */
 .paywall{position:fixed;inset:0;z-index:900;background:linear-gradient(160deg,#20315e,#2c4e9e);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
@@ -1188,6 +1227,7 @@ function renderRoute(){
   const app = document.getElementById("app");
   if(parts[0]!=="activity") cloudActivityStop();
   if(parts[0]!=="team") cloudTeamStop();
+  if(parts[0]!=="cal") calStop();
   if(!gateOpen()){   /* בלי התחברות לצוות — רק מסך הכניסה, מכל כתובת */
     if(parts.length){ try{ history.replaceState(null,"",location.pathname+location.search+"#/"); }catch(e){} }
     app.innerHTML = viewGate(); window.scrollTo(0,0); return;
@@ -1209,6 +1249,7 @@ function renderRoute(){
   else if(parts[0]==="trash"){ app.innerHTML = viewTrash(); }
   else if(parts[0]==="team"){ app.innerHTML = viewTeam(); afterTeamRender(); }
   else if(parts[0]==="map"){ app.innerHTML = viewTeamMap(); afterTeamMapRender(); }
+  else if(parts[0]==="cal"){ app.innerHTML = viewCal(); afterCalRender(); }
   else if(parts[0]==="prod" && parts[1]){ app.innerHTML = viewProdOrder(parts[1]); }
   else if(parts[0]==="settings"){ app.innerHTML = viewSettings(); }
   else {
@@ -1241,6 +1282,7 @@ function viewHome(){
   +menuItem("📐","pc3","פרויקטים","מדידות ייצור לשליחה ליצרן · "+countKind("production")+" פרויקטים","/projects")
   +menuItem("💰","pc1","מידות להצעת מחיר","מדידה מהירה לתמחור · "+countKind("quote")+" הצעות","/quotes")
   +(canPrice()?menuItem("📄","pc0","הצעת מחיר ללקוח","תמחור והפקת הצעה ללקוח","/pricing"):"")
+  +(canBoss()&&calCan()?menuItem("📅","pc4","היומן שלי",calHomeSub(),"/cal"):"")
   +menuItem("🧊","pc2","הדמיה ללקוח","בונים חלון ורואים אותו בתלת־ממד","/sim")
   +(Cloud.ready&&Cloud.role!=="maker"?menuItem("🕒","pc0","פעילות הצוות","מי עשה מה ומתי — כל השינויים של הצוות","/activity"):"")
   +(canBoss()?menuItem("📍","pc3","מפת הצוות","איפה העובדים והיצרן עכשיו","/map"):"")
@@ -3301,7 +3343,8 @@ function gateOpen(){
    לא נוגע בענן — רץ רק כשהסנכרון עצור, ולא עובר דרך save(), כדי ששום מחיקה לא תעלה לצוות. */
 function localDrop(){
   if(Cloud.ready) return;
-  [LS_KEY, DRAFT_KEY, SIM_KEY].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+  [LS_KEY, DRAFT_KEY, SIM_KEY, CAL_KEY].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+  calTokForget(); Cal.month=""; Cal.events=[]; Cal.at=0;
   DB=load(); draft=null; draftPid=null; draftIid=null; sim=loadSimState(); simSel=null;
 }
 /* החבר הוסר מהצוות או שהמכשיר שלו שוחרר, והשרת אישר את זה: נועלים, מוחקים את העותק שבטלפון,
@@ -3566,6 +3609,7 @@ async function cloudDevRelease(){
 
 function cloudSignedOut(){
   consentClose(); trackStop(); tmapStop(); cloudStop(); cloudActivityStop(); cloudTeamStop();
+  calTokForget(); calStop();
   Cloud.user=null; Cloud.ready=false; Cloud.role=""; Cloud.leaving=false;
   gateOut();
   cloudSetState("signedout");
@@ -4712,10 +4756,302 @@ setInterval(()=>{ try{ trackTick(); }catch(e){} }, 60000);
 document.addEventListener("visibilitychange", ()=>{
   if(document.visibilityState!=="visible") return;
   try{
+    if(document.getElementById("calList") && calTok() && Date.now()-Cal.at>60000) calLoad();
     if(document.querySelector(".loc-block")) locPermState().then(st=>{ if(st) locPermChanged(st); else { locBlockHide(); trackRetry(); } });
     trackTick();
   }catch(e){}
 });
+
+/* ================= יומן Google — רק למנהל ולמפתח (בקשת המנהל, 25/10) =================
+   כל אחד רואה את היומן הראשי של חשבון ה-Google שלו: החודש בקטן, והמשימות לפי ימים כמו רשימת מכולת.
+   "בוצע" נשמר ביומן עצמו — "✅ " בתחילת שם המשימה — כך שהסימון נראה ומסונכרן גם באפליקציה וגם ב-Google.
+   ביטול סימון — רק אחרי חלון אישור. משימה חדשה מהאפליקציה נכתבת ישר ליומן.
+   הגישה: אישור של Google להרשאת calendar.events בחלון ההתחברות. האישור תקף כשעה ואז לחיצה אחת מחדשת אותו;
+   הוא נשמר רק לחלון הזה (sessionStorage) — לא בשרת ולא בענן של הצוות.
+   עותק אחרון של המשימות נשמר בטלפון לפתיחה מהירה ובלי קליטה, ונמחק עם שאר הנתונים כשהמנהל מוסר מהצוות. */
+const CAL_API="https://www.googleapis.com/calendar/v3/calendars/primary/events";
+const CAL_SCOPE="https://www.googleapis.com/auth/calendar.events";
+const CAL_KEY="alum_cal_v1", CAL_TOK="alum_caltok_v1", CAL_DONE="✅ ";
+const Cal={month:"", events:[], at:0, loading:false, err:"", timer:null, past:false, busy:new Set()};
+const calCan = () => cloudIsBoss() && !!Cloud.user && !Cloud.user.phone;
+const calPad = n => String(n).padStart(2,"0");
+const calKey = d => d.getFullYear()+"-"+calPad(d.getMonth()+1)+"-"+calPad(d.getDate());
+const calMonthOf = d => d.getFullYear()+"-"+calPad(d.getMonth()+1);
+const calYM = mk => { const a=String(mk).split("-"); return [Number(a[0]), Number(a[1])-1]; };
+const calDay = s => { const a=String(s).split("-"); return new Date(Number(a[0]), Number(a[1])-1, Number(a[2])); };
+const calHM = t => { const d=new Date(t); return calPad(d.getHours())+":"+calPad(d.getMinutes()); };
+const calLoc = () => LANG==="fr" ? "fr-FR" : LANG==="ar" ? "ar-u-nu-latn" : "he-IL";
+const CAL_WD_HE=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+const CAL_MON_HE=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+/* שמות ימים וחודשים: בעברית מהרשימה, בצרפתית ובערבית מהדפדפן (data-noi18n — לא עוברים תרגום) */
+function calWd(d, narrow){
+  if(LANG==="he") return narrow ? "אבגדהוש"[d.getDay()] : CAL_WD_HE[d.getDay()];
+  try{ return new Intl.DateTimeFormat(calLoc(), {weekday:narrow?"narrow":"long"}).format(d); }catch(e){ return ""; }
+}
+function calMonTitle(y,m){
+  if(LANG==="he") return CAL_MON_HE[m]+" "+y;
+  try{ return new Intl.DateTimeFormat(calLoc(), {month:"long", year:"numeric"}).format(new Date(y,m,1)); }catch(e){ return (m+1)+"/"+y; }
+}
+/* הטווח שנטען: כל השבועות שמוצגים בחודש הקטן (ראשון עד שבת) */
+function calRange(mk){
+  const [y,m]=calYM(mk), a=new Date(y,m,1), b=new Date(y,m+1,0);
+  return [new Date(y,m,1-a.getDay()), new Date(y,m+1,0+(7-b.getDay()))];
+}
+
+/* ---- האישור של Google ---- */
+function calTok(){
+  try{ const t=JSON.parse(sessionStorage.getItem(CAL_TOK)); if(t && Cloud.user && t.who===Cloud.user.email && t.exp>Date.now()+30000) return String(t.tok||""); }catch(e){}
+  return "";
+}
+function calTokForget(){ try{ sessionStorage.removeItem(CAL_TOK); }catch(e){} }
+async function calConnect(){
+  const M=Cloud.m, u=Cloud.auth && Cloud.auth.currentUser;
+  if(!M || !u || u.isAnonymous || !calCan()) return;
+  if(!navigator.onLine){ uiAlert("כדי להתחבר ליומן צריך אינטרנט.","יומן Google"); return; }
+  const prov=new M.GoogleAuthProvider();
+  prov.addScope(CAL_SCOPE);
+  prov.setCustomParameters({login_hint:u.email||""});
+  try{
+    const res=await M.reauthenticateWithPopup(u, prov);
+    const cr=M.GoogleAuthProvider.credentialFromResult(res);
+    if(!cr || !cr.accessToken) throw {code:"cal/no-token"};
+    sessionStorage.setItem(CAL_TOK, JSON.stringify({tok:cr.accessToken, who:Cloud.user.email, exp:Date.now()+55*60000}));
+    Cal.err=""; calLoad();
+  }catch(e){
+    const c=(e&&e.code)||"";
+    if(c==="auth/popup-closed-by-user" || c==="auth/cancelled-popup-request") return;
+    if(c==="auth/user-mismatch") uiAlert("בחרת חשבון Google אחר. צריך לבחור את החשבון שאיתו אתה מחובר לאפליקציה: "+u.email,"יומן Google");
+    else uiAlert(cloudErrText(e),"יומן Google");
+  }
+}
+/* בקשה ל-Google Calendar. 401 = האישור פג; 403 = לא ניתנה גישה ליומן או שהשירות כבוי בפרויקט */
+async function calReq(method, url, body){
+  const tok=calTok(); if(!tok) throw {code:"cal/auth"};
+  let r;
+  try{ r=await fetch(url, {method:method, headers:Object.assign({Authorization:"Bearer "+tok}, body?{"Content-Type":"application/json"}:{}), body:body?JSON.stringify(body):undefined}); }
+  catch(e){ throw {code:"cal/net"}; }
+  if(r.status===401){ calTokForget(); throw {code:"cal/auth"}; }
+  if(!r.ok){ let m=""; try{ const j=await r.json(); m=String((j.error&&j.error.message)||""); }catch(e){} throw {code:"cal/"+r.status, msg:m}; }
+  return r.status===204 ? null : r.json();
+}
+function calErrText(e){
+  const c=(e&&e.code)||"", m=String((e&&e.msg)||"");
+  if(c==="cal/net") return "אין חיבור לאינטרנט.";
+  if(c==="cal/auth") return "צריך לחבר מחדש את יומן Google.";
+  if(c==="cal/403" && /has not been used|disabled|not been enabled/i.test(m)) return "יומן Google עוד לא הופעל בפרויקט. המפתח צריך להפעיל את Google Calendar API.";
+  if(c==="cal/403") return "Google לא נתן גישה ליומן. בחלון של Google צריך לאשר את הגישה ליומן, ואז לנסות שוב.";
+  if(c==="cal/404" || c==="cal/410") return "המשימה כבר לא קיימת ביומן.";
+  return "השמירה ביומן Google נכשלה. נסה שוב.";
+}
+
+/* ---- נתונים ---- */
+function calNorm(e){
+  const all=!!(e.start && e.start.date);
+  const s = all ? calDay(e.start.date) : new Date(e.start.dateTime);
+  const en = all ? calDay((e.end&&e.end.date)||e.start.date) : new Date((e.end&&e.end.dateTime)||e.start.dateTime);
+  const t=String(e.summary||"").slice(0,300), done=/^✅/.test(t);
+  return {id:String(e.id||""), title:(done ? t.replace(/^✅\s*/,"") : t), done:done, loc:String(e.location||"").slice(0,200), all:all,
+    s:s.getTime(), e:Math.max(en.getTime(), s.getTime()), edit:!!(e.organizer && e.organizer.self) || e.guestsCanModify===true};
+}
+function calCacheAll(){ try{ const o=JSON.parse(localStorage.getItem(CAL_KEY)); return (o && Cloud.user && o.who===Cloud.user.email) ? o : null; }catch(e){ return null; } }
+function calCacheGet(mk){ const o=calCacheAll(); return (o && o.months && o.months[mk]) || null; }
+function calSave(){
+  if(!Cloud.user || !Cal.month) return;
+  const o=calCacheAll() || {who:Cloud.user.email, months:{}};
+  o.months[Cal.month]={at:Cal.at, ev:Cal.events};
+  const keep=new Set([calMonthOf(new Date()), Cal.month]);   /* רק החודש הנוכחי והחודש שמוצג */
+  Object.keys(o.months).forEach(k=>{ if(!keep.has(k)) delete o.months[k]; });
+  try{ localStorage.setItem(CAL_KEY, JSON.stringify(o)); }catch(e){}
+}
+function calSetMonth(mk){
+  Cal.month=mk; Cal.past=false; Cal.err="";
+  const c=calCacheGet(mk); Cal.events=c ? (c.ev||[]) : []; Cal.at=c ? (c.at||0) : 0;
+}
+async function calLoad(){
+  if(!calCan() || Cal.loading || !Cal.month) return;
+  if(!calTok()){ calRender(); return; }
+  const mk=Cal.month, rg=calRange(mk);
+  Cal.loading=true; calRender();
+  try{
+    let items=[], pt="";
+    for(let i=0;i<6;i++){
+      const q=new URLSearchParams({timeMin:rg[0].toISOString(), timeMax:rg[1].toISOString(), singleEvents:"true", orderBy:"startTime", maxResults:"250",
+        fields:"items(id,summary,location,start,end,organizer(self),guestsCanModify,status),nextPageToken"});
+      if(pt) q.set("pageToken", pt);
+      const r=await calReq("GET", CAL_API+"?"+q.toString());
+      items=items.concat((r&&r.items)||[]); pt=r&&r.nextPageToken;
+      if(!pt) break;
+    }
+    if(Cal.month!==mk) return;
+    Cal.events=items.filter(e=>e && e.status!=="cancelled" && e.start && e.id).map(calNorm);
+    Cal.at=Date.now(); Cal.err=""; calSave();
+  }catch(e){ if(Cal.month===mk) Cal.err=calErrText(e); }
+  finally{ Cal.loading=false; calRender(); }
+}
+/* המשימות של יום — משימת "כל היום" שנמשכת כמה ימים מופיעה בכל אחד מהם */
+function calOfDay(d, evs){
+  const a=d.getTime(), b=new Date(d.getFullYear(), d.getMonth(), d.getDate()+1).getTime();
+  return (evs||Cal.events).filter(x => x.all ? (x.s<b && Math.max(x.e, x.s+1)>a) : (x.s>=a && x.s<b))
+    .sort((x,y)=>(y.all-x.all) || (x.s-y.s) || x.title.localeCompare(y.title));
+}
+const calFind = id => Cal.events.find(x=>x.id===id);
+
+/* ---- מסך הבית: סיכום היום (מהעותק שבטלפון) ---- */
+function calHomeSub(){
+  const today=new Date(), c=calCacheGet(calMonthOf(today));
+  if(!c) return 'המשימות שלך מיומן Google';
+  const list=calOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate()), c.ev||[]);
+  const open=list.filter(x=>!x.done), next=open.find(x=>!x.all && x.s>=Date.now()-15*60000);
+  if(!list.length) return 'היום: אין משימות';
+  if(!open.length) return 'היום: הכול בוצע ✓';
+  return (open.length===1 ? 'היום: משימה אחת' : 'היום: '+open.length+' משימות')
+    + (next ? ' · <span>הבאה '+calHM(next.s)+'</span> <span data-tr>'+esc(next.title)+'</span>' : '');
+}
+
+/* ---- המסך ---- */
+function viewCal(){
+  if(!Cal.month) calSetMonth(calMonthOf(new Date()));
+  return '<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
+    +'<div class="grow"><h1>היומן שלי</h1><div class="sub">מסונכרן עם יומן Google</div></div></div>'
+    +'<div class="card cal-card"><div class="cal-head"><button type="button" class="cal-nav" onclick="calMove(-1)" aria-label="החודש הקודם">›</button>'
+    +'<b id="calTitle" data-noi18n></b><button type="button" class="cal-nav" onclick="calMove(1)" aria-label="החודש הבא">‹</button></div>'
+    +'<div class="cal-grid" id="calGrid"></div>'
+    +'<div class="cal-sync"><bdi dir="ltr">'+esc(Cloud.user?Cloud.user.email:"")+'</bdi><button type="button" class="cal-ref" id="calSync" onclick="calRefresh()"></button></div></div>'
+    +'<div id="calConn"></div>'
+    +'<div class="card cal-list" id="calList"></div>'
+    +'<button class="btn primary fab" onclick="calAdd()">+ משימה חדשה</button>';
+}
+function afterCalRender(){
+  calRender();
+  if(calTok() && (!Cal.at || Date.now()-Cal.at>60000)) calLoad();
+  if(!Cal.timer) Cal.timer=setInterval(()=>{ if(document.visibilityState==="visible" && document.getElementById("calList") && calTok()) calLoad(); }, 120000);
+}
+function calStop(){ if(Cal.timer){ clearInterval(Cal.timer); Cal.timer=null; } }
+function calMove(n){ const [y,m]=calYM(Cal.month); calSetMonth(calMonthOf(new Date(y,m+n,1))); calRender(); window.scrollTo(0,0); calLoad(); }
+function calRefresh(){ if(!calTok()){ calConnect(); return; } calLoad(); }
+function calRender(){
+  const grid=document.getElementById("calGrid"), list=document.getElementById("calList"); if(!grid || !list) return;
+  const [y,m]=calYM(Cal.month), rg=calRange(Cal.month), now=new Date(), tk=calKey(now);
+  document.getElementById("calTitle").textContent=calMonTitle(y,m);
+  /* החודש בקטן */
+  let g='';
+  for(let i=0;i<7;i++) g+='<div class="cal-wd" data-noi18n>'+esc(calWd(new Date(2026,9,4+i), true))+'</div>';
+  for(let d=new Date(rg[0]); d<rg[1]; d=new Date(d.getFullYear(), d.getMonth(), d.getDate()+1)){
+    const k=calKey(d), inM=d.getMonth()===m, has=inM && calOfDay(d).some(x=>!x.done);
+    g+= inM ? '<button type="button" class="cal-d'+(k===tk?' today':'')+'" data-d="'+k+'" onclick="calJump(this.dataset.d)">'+d.getDate()+(has?'<i class="cal-dot"></i>':'')+'</button>'
+            : '<div class="cal-d out">'+d.getDate()+'</div>';
+  }
+  grid.innerHTML=g;
+  const sync=document.getElementById("calSync");
+  sync.innerHTML = Cal.loading ? '<span>מתעדכן…</span>'
+    : !calTok() ? '<span>🔄 חבר מחדש</span>'
+    : (!navigator.onLine ? '<span>📴 בלי קליטה</span> · ' : '')+(Cal.at ? '<span>עודכן</span> <span>'+esc(cloudRel(Cal.at))+'</span> · 🔄' : '🔄');
+  /* חיבור / שגיאה */
+  const conn=document.getElementById("calConn");
+  conn.innerHTML = !calTok()
+    ? (Cal.at
+      ? '<div class="card cal-note"><div class="grow">האישור של Google ליומן תקף לשעה. לחיצה אחת מחדשת אותו.</div><button class="btn small primary" onclick="calConnect()">🔄 חבר מחדש</button></div>'
+      : '<div class="card cal-note col"><b>📅 חיבור ליומן Google</b><div class="muted">כדי לראות כאן את המשימות שלך, מחברים את יומן ה-Google שלך. Google ישאל אם לתת לאפליקציה גישה ליומן.</div>'
+        +'<button class="btn primary wide" onclick="calConnect()">📅 חבר את יומן Google</button></div>')
+    : (Cal.err ? '<div class="card cal-note err"><div class="grow">'+esc(Cal.err)+'</div><button class="btn small" onclick="calLoad()">נסה שוב</button></div>' : '');
+  /* הרשימה — לפי ימים. בחודש הנוכחי מתחילים מהיום; ימים קודמים בלחיצה */
+  if(!Cal.at && !Cal.events.length){ list.hidden=true; list.innerHTML=""; return; }
+  list.hidden=false;
+  const curMonth = y===now.getFullYear() && m===now.getMonth();
+  const first = (curMonth && !Cal.past) ? now.getDate() : 1, last=new Date(y,m+1,0).getDate();
+  let h='';
+  if(curMonth && !Cal.past && first>1) h+='<button type="button" class="cal-past" onclick="calShowPast()">הצג ימים קודמים ('+(first-1)+')</button>';
+  for(let i=first;i<=last;i++){
+    const d=new Date(y,m,i), k=calKey(d), evs=calOfDay(d), rel=k===tk ? "היום" : k===calKey(new Date(now.getFullYear(),now.getMonth(),now.getDate()+1)) ? "מחר" : "";
+    const cnt=evs.length ? (evs.length===1 ? 'משימה אחת' : evs.length+' משימות') : 'אין משימות';
+    h+='<div class="cal-day'+(k<tk?' past':'')+(k===tk?' is-today':'')+'" id="cd-'+k+'"><b>'+(rel?'<span>'+rel+'</span> · ':'')+'<span data-noi18n>'+esc(calWd(d))+' '+i+'/'+(m+1)+'</span></b><span class="muted">'+cnt+'</span></div>';
+    evs.forEach(x=>{
+      const busy=Cal.busy.has(x.id);
+      h+='<div class="cal-ev'+(x.done?' done':'')+(busy?' busy':'')+'">'
+        +'<button type="button" class="cal-bx" data-id="'+esc(x.id)+'" onclick="calToggle(this.dataset.id)" aria-label="'+(x.done?'בטל סימון':'סמן כבוצע')+'"'+(busy?' disabled':'')+'>'+(x.done?'✓':'')+'</button>'
+        +'<div class="cal-tm">'+(x.all?'<span class="cal-all">כל היום</span>':esc(calHM(x.s)))+'</div>'
+        +'<div class="grow"><div class="cal-et" data-tr>'+esc(x.title||"(ללא שם)")+'</div>'
+        +(x.loc?'<div class="cal-el">📍 <span data-tr>'+esc(x.loc)+'</span></div>':'')+'</div></div>';
+    });
+  }
+  list.innerHTML=h;
+}
+function calShowPast(){ Cal.past=true; calRender(); }
+function calJump(k){
+  const [y,m]=calYM(Cal.month), now=new Date(), d=calDay(k);
+  if(y===now.getFullYear() && m===now.getMonth() && d<new Date(now.getFullYear(),now.getMonth(),now.getDate()) && !Cal.past){ Cal.past=true; calRender(); }
+  const el=document.getElementById("cd-"+k); if(!el) return;
+  const top=el.getBoundingClientRect().top+window.scrollY-90;
+  window.scrollTo({top:Math.max(0,top), behavior:"smooth"});
+  el.classList.add("flash"); setTimeout(()=>el.classList.remove("flash"), 1200);
+}
+
+/* ---- סימון "בוצע" — נשמר ביומן Google ("✅ " בתחילת השם). ביטול — רק אחרי אישור ---- */
+async function calToggle(id){
+  const x=calFind(id); if(!x || Cal.busy.has(id)) return;
+  if(!x.edit){ uiAlert("את המשימה הזו יצר מישהו אחר, ולכן אפשר לסמן אותה רק ביומן Google עצמו.","יומן Google"); return; }
+  if(!calTok()){ uiAlert("צריך לחבר מחדש את יומן Google. לחץ על \"חבר מחדש\" ונסה שוב.","יומן Google"); calRender(); return; }
+  if(x.done){
+    const ok=await uiConfirm("לבטל את הסימון \"בוצע\"? המשימה תחזור להיות פתוחה, גם ביומן Google.",{title:"ביטול סימון",ok:"בטל סימון",cancel:"השאר בוצע"});
+    if(!ok) return;
+  }
+  const want=!x.done, url=CAL_API+"/"+encodeURIComponent(id);
+  x.done=want; Cal.busy.add(id); calRender();
+  try{
+    /* קוראים את השם העדכני מהיומן (אולי שונה ב-Google בינתיים) ורק מוסיפים/מורידים את הסימון */
+    const cur=await calReq("GET", url+"?fields=summary");
+    const base=String((cur&&cur.summary)||"").replace(/^✅\s*/,"");
+    const r=await calReq("PATCH", url+"?fields=id,summary,location,start,end,organizer(self),guestsCanModify,status", {summary:(want?CAL_DONE:"")+base});
+    const n=r ? calNorm(r) : null; if(n){ Object.assign(x, n); }
+    Cal.busy.delete(id); calSave(); calRender();
+  }catch(e){
+    x.done=!want; Cal.busy.delete(id); calRender();
+    uiAlert(calErrText(e),"יומן Google");
+  }
+}
+
+/* ---- משימה חדשה — נכתבת ישר ליומן Google ---- */
+function calAdd(){
+  if(!calTok()){ uiAlert("כדי להוסיף משימה צריך קודם לחבר את יומן Google.","יומן Google"); return; }
+  const now=new Date(), [y,m]=calYM(Cal.month);
+  const day = (y===now.getFullYear() && m===now.getMonth()) ? calKey(now) : calKey(new Date(y,m,1));
+  const h0=new Date(now.getTime()+60*60000); h0.setMinutes(0,0,0);
+  if(h0.getHours()<7 || h0.getHours()>=20 || day!==calKey(now)) h0.setHours(9);   /* בלילה, או ביום אחר — ברירת מחדל 09:00 */
+  const ov=document.createElement("div"); ov.className="modal-overlay";
+  ov.innerHTML='<div class="modal cal-form" role="dialog" aria-modal="true"><h3>משימה חדשה ביומן</h3>'
+    +'<label>מה צריך לעשות</label><input id="cfT" maxlength="200" autocomplete="off" placeholder="למשל: מדידה אצל משפחת לוי">'
+    +'<label>תאריך</label><input id="cfD" type="date" value="'+day+'">'
+    +'<label class="cal-chk"><input id="cfA" type="checkbox"> <span>כל היום</span></label>'
+    +'<div class="two" id="cfTimes"><div><label>משעה</label><input id="cfS" type="time" value="'+calPad(h0.getHours())+':00"></div>'
+    +'<div><label>עד שעה</label><input id="cfE" type="time" value="'+calPad((h0.getHours()+1)%24)+':00"></div></div>'
+    +'<label>כתובת (לא חובה)</label><input id="cfL" maxlength="200" autocomplete="off">'
+    +'<div class="btns"><button class="btn primary" data-m="ok">הוסף ליומן</button><button class="btn" data-m="cancel">ביטול</button></div></div>';
+  document.body.appendChild(ov);
+  const $=s=>ov.querySelector(s);
+  $("#cfA").onchange=()=>{ $("#cfTimes").hidden=$("#cfA").checked; };
+  $("#cfS").onchange=()=>{ const a=$("#cfS").value.split(":"); if(a.length===2) $("#cfE").value=calPad((Number(a[0])+1)%24)+":"+a[1]; };
+  $('[data-m="cancel"]').onclick=()=>ov.remove();
+  ov.addEventListener("click",e=>{ if(e.target===ov) ov.remove(); });
+  $('[data-m="ok"]').onclick=async()=>{
+    const title=$("#cfT").value.trim().slice(0,200), d=$("#cfD").value, all=$("#cfA").checked, s=$("#cfS").value, en=$("#cfE").value, loc=$("#cfL").value.trim().slice(0,200);
+    if(!title){ uiAlert("כתוב מה צריך לעשות.","משימה חדשה"); return; }
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ uiAlert("בחר תאריך.","משימה חדשה"); return; }
+    if(!all && !(/^\d{2}:\d{2}$/.test(s) && /^\d{2}:\d{2}$/.test(en) && en>s)){ uiAlert("שעת הסיום צריכה להיות אחרי שעת ההתחלה.","משימה חדשה"); return; }
+    let tz="Asia/Jerusalem"; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||tz; }catch(e){}
+    const nd=calDay(d), next=calKey(new Date(nd.getFullYear(), nd.getMonth(), nd.getDate()+1));
+    const body={summary:title, start: all?{date:d}:{dateTime:d+"T"+s+":00", timeZone:tz}, end: all?{date:next}:{dateTime:d+"T"+en+":00", timeZone:tz}};
+    if(loc) body.location=loc;
+    const btn=$('[data-m="ok"]'); btn.disabled=true;
+    try{
+      const r=await calReq("POST", CAL_API+"?fields=id,summary,location,start,end,organizer(self),guestsCanModify,status", body);
+      ov.remove();
+      if(calMonthOf(nd)!==Cal.month) calSetMonth(calMonthOf(nd));
+      if(r && r.id && !calFind(r.id)) Cal.events.push(calNorm(r));
+      calSave(); calRender(); cloudToast("נוסף ליומן ✓"); calJump(d);
+    }catch(e){ btn.disabled=false; uiAlert(calErrText(e),"יומן Google"); }
+  };
+  $("#cfT").focus();
+}
 
 /* ---- תצוגה ---- */
 function cloudSetState(s){
@@ -4740,7 +5076,8 @@ function cloudRender(){
   if((r==="projects"||r==="quotes"||r==="pricing") && document.getElementById("listbox")){ renderList(); return; }
   if(r==="activity" && document.getElementById("actbox")){ renderActivityList(); return; }
   if(r==="team" && document.getElementById("teambox")){ renderTeamList(); return; }
-  if(r==="map" && document.getElementById("tmap")){ tmapList(); return; }   /* לא בונים את המפה מחדש בכל עדכון */
+  if(r==="map" && document.getElementById("tmap")){ tmapList(); return; }
+  if(r==="cal" && document.getElementById("calList")){ calRender(); return; }   /* לא בונים את המפה מחדש בכל עדכון */
   const y=window.scrollY, open=[].map.call(document.querySelectorAll("#app details"), d=>d.open);
   render();
   const ds=document.querySelectorAll("#app details");
@@ -4767,6 +5104,7 @@ function cloudGate(parts){
   if(!canPrice() && (r==="pricing" || (r==="p" && (parts[2]==="pricing" || parts[2]==="quote-export")))){ nav("/"); return true; }
   if((r==="trash" || r==="team") && Cloud.ready && !canBoss()){ nav("/settings"); return true; }
   if(r==="map" && Cloud.ready && !canBoss()){ nav("/"); return true; }
+  if(r==="cal" && !calCan()){ nav("/"); return true; }   /* היומן — רק מנהל ומפתח */
   if(r==="p" && parts[2]==="export" && !canExport()){ nav("/p/"+parts[1]); return true; }
   return false;
 }
