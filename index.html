@@ -497,7 +497,7 @@ html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev, html
 "use strict";
 /* ================= DATA ================= */
 const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 90; /* מוחלף אוטומטית בבנייה (build.py) */
+const APP_VERSION = 91; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -1068,8 +1068,9 @@ function uiDialog(opts){
       +(opts.title?'<h3>'+esc(opts.title)+'</h3>':'')
       +'<div class="msg">'+esc(opts.msg)+'</div>'
       +'<div class="btns">'
-      +'<button class="btn '+(opts.danger?'danger':'primary')+'" data-m="ok">'+esc(opts.ok||"אישור")+'</button>'
-      +(opts.cancel?'<button class="btn" data-m="cancel">'+esc(opts.cancel)+'</button>':'')
+      +(opts.safe && opts.cancel ? '<button class="btn primary" data-m="cancel">'+esc(opts.cancel)+'</button>' : '')
+      +'<button class="btn '+(opts.safe?'':opts.danger?'danger':'primary')+'" data-m="ok">'+esc(opts.ok||"אישור")+'</button>'
+      +(opts.cancel && !opts.safe?'<button class="btn" data-m="cancel">'+esc(opts.cancel)+'</button>':'')
       +'</div></div>';
     document.body.appendChild(ov);
     const onKey=e=>{ if(e.key==="Escape") close(false); };
@@ -1078,7 +1079,7 @@ function uiDialog(opts){
     const c=ov.querySelector('[data-m="cancel"]'); if(c) c.onclick=()=>close(false);
     ov.addEventListener("click",e=>{ if(e.target===ov) close(false); });
     document.addEventListener("keydown",onKey);
-    ov.querySelector('[data-m="ok"]').focus();
+    ov.querySelector(opts.safe && opts.cancel ? '[data-m="cancel"]' : '[data-m="ok"]').focus();
   });
 }
 const uiAlert=(msg,title)=>uiDialog({msg:msg,title:title,ok:"הבנתי"});
@@ -5192,10 +5193,10 @@ async function calToggle(id){
   const x=Cal.docs.get(id); if(!x || Cal.busy.has(id) || x.priv) return;
   const me=Cloud.user.email, worker=!calBoss();
   if(worker && !(calWorker() && x.asg.includes(me))) return;
-  if(x.done){
-    const ok=await uiConfirm("לבטל את הסימון \"בוצע\"? המשימה תחזור להיות פתוחה, גם ביומן Google.",{title:"ביטול סימון",ok:"בטל סימון",cancel:"השאר בוצע"});
-    if(!ok) return;
-  }
+  const ok = x.done
+    ? await uiConfirm("לבטל את הסימון \"בוצע\"? המשימה תחזור להיות פתוחה, גם ביומן Google.",{title:"ביטול סימון",ok:"בטל סימון",cancel:"השאר בוצע",safe:true})
+    : await uiConfirm(x.title||"",{title:"האם המשימה בוצעה?",ok:"כן",cancel:"לא"});
+  if(!ok) return;
   const M=Cloud.m, want=!x.done, ts=M.serverTimestamp();
   Cal.busy.add(id); calRender();
   try{
