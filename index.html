@@ -474,6 +474,18 @@ html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev, html
 .cal-asg{display:flex;flex-direction:column;gap:2px;max-height:180px;overflow:auto}
 .cal-form .hint{font-size:.74rem;color:var(--ink2);margin-top:4px}
 .cal-form select{width:100%}
+/* סביבת בדיקה */
+#sbBar{position:fixed;top:0;left:0;right:0;z-index:90;display:flex;align-items:center;gap:8px;padding:calc(6px + env(safe-area-inset-top,0px)) max(10px,env(safe-area-inset-right,0px)) 6px max(10px,env(safe-area-inset-left,0px));background:#7c3aed;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+#sbBar .sb-t{font-size:.85rem;white-space:nowrap}
+#sbBar .sb-seg{display:flex;flex-wrap:wrap;gap:4px;flex:1;min-width:0;justify-content:center}
+#sbBar .sb-seg button{font:inherit;font-size:.8rem;font-weight:800;color:#fff;background:rgba(255,255,255,.16);border-radius:99px;padding:6px 10px;white-space:nowrap}
+#sbBar .sb-seg button.on{background:#fff;color:#6d28d9}
+#sbBar .sb-x{font:inherit;color:#fff;font-size:1.2rem;font-weight:900;width:34px;height:32px;border-radius:10px;background:rgba(255,255,255,.16);flex:none}
+@media (max-width:430px){ #sbBar .sb-t span{display:none} #sbBar .sb-seg button{padding:6px 8px;font-size:.76rem} }
+html.sb #app{padding-top:var(--sbh,calc(env(safe-area-inset-top,0px) + 46px))}
+html.sb .topbar{top:var(--sbh,calc(env(safe-area-inset-top,0px) + 46px))}
+.sb-acts{display:flex;flex-direction:column;gap:8px}
+.sb-card{border:2px dashed #a78bfa}
 /* משימת מדידה */
 .ms-tog{background:#ecfdf5;border:1.5px solid #34d399;border-radius:12px;padding:9px 10px;font-weight:800;margin-top:4px}
 .cal-msbtn{font:inherit;display:inline-block;margin:6px 0 0 6px;font-size:.78rem;font-weight:800;color:#fff;background:var(--grad);border-radius:99px;padding:6px 12px;text-decoration:none}
@@ -519,9 +531,13 @@ html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev, html
 
 <script>
 "use strict";
+/* סביבת בדיקה של המפתח (ראו "סביבת בדיקה" למטה): צוות נפרד, ואחסון נפרד בטלפון */
+const SB_KEY = "alum_sandbox_v1";
+const SB = (()=>{ try{ const o=JSON.parse(localStorage.getItem(SB_KEY)); return (o && o.on===true) ? {on:true, as:(["dev","manager","employee","maker"].includes(o.as) ? o.as : "dev")} : null; }catch(e){ return null; } })();
+const SFX = SB ? "_sb" : "";
 /* ================= DATA ================= */
-const LS_KEY = "alum_projects_v1";
-const APP_VERSION = 93; /* מוחלף אוטומטית בבנייה (build.py) */
+const LS_KEY = "alum_projects_v1" + SFX;
+const APP_VERSION = 94; /* מוחלף אוטומטית בבנייה (build.py) */
 
 /* ===== דף תשלום (הדגמה / POC) =====
    מתג ראשי כבוי כברירת מחדל — כל עוד on=false שום לקוח לא ננעל.
@@ -1270,6 +1286,7 @@ window.addEventListener("hashchange", render);
 function nav(h){ location.hash = h; }
 /* רשת ביטחון: אם מסך נכשל (למשל נתון פגום), מציגים הודעה וכפתור חזרה במקום מסך ריק */
 function render(){
+  if(SB) sbBar();
   try{ renderRoute(); }
   catch(e){
     console.error(e);
@@ -1315,6 +1332,7 @@ function renderRoute(){
     app.innerHTML = viewHome();
   }
   window.scrollTo(0,0);
+  if(SB){ let c=null; try{ c=sessionStorage.getItem("alum_sb_cleaned"); sessionStorage.removeItem("alum_sb_cleaned"); }catch(e){} if(c) setTimeout(()=>cloudToast("סביבת הבדיקה נוקתה ✓"), 400); }
 }
 
 /* ================= VIEWS ================= */
@@ -1415,6 +1433,7 @@ function viewSettings(){
   +'<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
   +'<div class="grow"><h1>הגדרות</h1></div></div>'
   +cloudSettingsCard()
+  +sbCard()
   +trackWorkerCard()
   +trackSettingsCard()
   +langCard()
@@ -1522,7 +1541,7 @@ function navCard(p){
 let draft = null, draftPid = null, draftIid = null, typeOpen = false;
 
 /* טיוטה אוטומטית — רענון בטעות לא מוחק את מה שהוזן */
-const DRAFT_KEY = "alum_draft_v1";
+const DRAFT_KEY = "alum_draft_v1" + SFX;
 function persistDraft(){
   try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({pid:draftPid, iid:draftIid, draft:draft})); }catch(e){}
 }
@@ -2009,7 +2028,7 @@ function viewQuoteExport(p){
 }
 
 /* ================= הדמיה ללקוח (2D בנייה + 3D) ================= */
-const SIM_KEY="alum_sim_v1";
+const SIM_KEY="alum_sim_v1" + SFX;
 function newSim(){ return {kind:"window",wings:2,box:false,w:120,h:100,fixW:80,fixSide:"right",profile:"7000",color:"",glass:"clear",handleSide:"right",handleModel:"zamir",vLines:[],hLines:[],shapes:[]}; }
 const SIM_BOX_CM=28; /* גובה ארגז תריס בהדמיה */
 /* מספר כנפיים בפועל: חלון/ויטרינה שנפתחים = לפחות 2 (קו מפגש באמצע!); 0 = קבוע */
@@ -3341,7 +3360,7 @@ window.App=App; window.nav=nav; window.renderItemForm=renderItemForm;
    הסנכרון: כל שמירה משווה את DB למצב הידוע של הענן (Cloud.last) וכותבת רק את מה שהשתנה. */
 /* פרטי זיהוי ציבוריים של פרויקט Firebase (לא סוד — ההגנה היא כללי האבטחה בשרת) */
 const FB_CONFIG = {apiKey:"AIzaSyDX19_rWMZ-BDyO0DjvsGViJR75xE1nKMY", authDomain:"alum-elbaz.firebaseapp.com", projectId:"alum-elbaz", storageBucket:"alum-elbaz.firebasestorage.app", messagingSenderId:"631687751074", appId:"1:631687751074:web:e8bf773dbfdb62200dfefb"};
-const TEAM_ID = "albaz";
+const TEAM_ID = SB ? "albaz-test" : "albaz";
 const CLOUD_KEY = "alum_cloud_v1";
 const TRASH_DAYS = 30;
 /* בדיקות מקומיות מול אמולטור של Firebase: רק ב-localhost ורק עם ?emu=1 — לא קיים בכתובת האמיתית */
@@ -3392,7 +3411,7 @@ function cloudLocalChanged(){ if(Cloud.ready) cloudPush(); }
    · התנתק בעצמו — רק נעילה; מה שבטלפון נשאר, ונפתח שוב כשהוא נכנס.
    · מנהל הסיר אותו / שחרר לו את המכשיר — העותק נמחק מהטלפון (רק אחרי שהשרת עצמו אישר את ההסרה).
    זו נעילה בצד הטלפון; ההגנה על נתוני הצוות עצמם היא כללי השרת. */
-const GATE_KEY="alum_gate_v1", WIPE_KEY="alum_wipe_v1";
+const GATE_KEY="alum_gate_v1"+SFX, WIPE_KEY="alum_wipe_v1"+SFX;
 function gateGet(){ try{ return JSON.parse(localStorage.getItem(GATE_KEY))||{}; }catch(e){ return {}; } }
 function gateSet(o){ try{ if(o) localStorage.setItem(GATE_KEY, JSON.stringify(o)); else localStorage.removeItem(GATE_KEY); }catch(e){} }
 function gateOut(){ const g=gateGet(); if(g.in){ g.in=false; gateSet(g); } }
@@ -3567,6 +3586,9 @@ async function cloudSignedIn(u){
 }
 /* חבר צוות מאושר: תפקיד, העלאה ראשונה של מה שבטלפון, והאזנה לענן */
 function cloudEnter(role){
+  role=sbRole(role);
+  if(SB && SB_PEOPLE[SB.as]) Cloud.user.name=SB_PEOPLE[SB.as].name;
+  if(SB && !Cloud.sbSeeded){ Cloud.sbSeeded=true; setTimeout(sbSeed, 300); }
   Cloud.role=role;
   cloudSetFlag({member:true, role:role});
   /* חבר אחר היה מחובר בטלפון הזה: העותק שלו לא עובר לחשבון הזה (וגם לא מוצע להעלאה או לגיבוי) —
@@ -3674,6 +3696,7 @@ async function cloudDevRelease(){
 }
 
 function cloudSignedOut(){
+  if(SB){ sbGo(null); return; }   /* התנתקות בתוך סביבת הבדיקה = גם יציאה ממנה (שמי שיתחבר אחריו בטלפון יגיע לצוות האמיתי) */
   consentClose(); trackStop(); tmapStop(); cloudStop(); cloudActivityStop(); cloudTeamStop();
   calTokForget(); calStop(); Cal.docs=new Map(); Cal.g=[]; Cal.people=null; Cal.ready=false;
   Cloud.user=null; Cloud.ready=false; Cloud.role=""; Cloud.leaving=false;
@@ -3784,8 +3807,8 @@ function cloudSnap(kind, s){
     const d=ch.doc.data({serverTimestamps:"estimate"}), pv=map.get(id);
     if(kind==="p" && Cloud.ready && cloudIsBoss() && !ch.doc.metadata.hasPendingWrites){
       const nm=cloudObj(d.d)||{}, om=pv ? (cloudObj(pv.d)||{}) : {}, a=nm.ms||{}, b=om.ms||{};
-      if(a.done && !b.done && a.doneBy && a.doneBy!==Cloud.user.email) rvMsg=(a.doneByName||a.doneBy)+" סיים מדידה: "+pname(nm);
-      else if(!pv && a.self && a.by && a.by!==Cloud.user.email) rvMsg=(a.byName||a.by)+" פתח מדידה חדשה: "+pname(nm);
+      if(a.done && !b.done && a.doneBy && a.doneBy!==meId()) rvMsg=(a.doneByName||a.doneBy)+" סיים מדידה: "+pname(nm);
+      else if(!pv && a.self && a.by && a.by!==meId()) rvMsg=(a.byName||a.by)+" פתח מדידה חדשה: "+pname(nm);
     }
     if(kind==="p" && Cloud.ready){
       if(d.rvState && (!pv || pv.rvState!==d.rvState) && d.rvBy && d.rvBy!==Cloud.user.email){
@@ -3832,7 +3855,7 @@ function cloudSnapProd(s){
 }
 function cloudSnapMe(s){
   if(!Cloud.user || Cloud.leaving || s.metadata.hasPendingWrites) return;   /* תפקיד משתנה רק לפי מה שהשרת אישר, לא לפי ניסיון כתיבה מקומי */
-  const md=s.exists()?s.data():null, role=String((md&&md.role)||"");
+  const md=s.exists()?s.data():null, role=sbRole(String((md&&md.role)||""));
   const gone = !md || (!!Cloud.user.phone && md.dev!==Cloud.user.uid);   /* הוסר מהצוות / המכשיר שוחרר */
   if(gone || !ROLES[role]){
     /* רק תשובה מהשרת היא ראיה. מטמון חסר או ישן (בלי קליטה) — מחכים לשרת: לא נועלים ולא מוחקים */
@@ -3852,7 +3875,8 @@ function cloudSnapMe(s){
   Cloud.role=role;
   cloudGot("me", false, "");
 }
-function cloudLost(){ consentClose(); trackStop(); tmapStop(); cloudStop(); cloudTeamStop(); cloudActivityStop(); Cloud.ready=false; Cloud.role=""; cloudSetFlag({member:false, role:""}); gateOut(); cloudSetState("denied"); }
+function cloudLost(){ if(SB){ sbGo(null); return; }   /* מי שאינו חבר בצוות הבדיקה — חוזר לצוות האמיתי */
+  consentClose(); trackStop(); tmapStop(); cloudStop(); cloudTeamStop(); cloudActivityStop(); Cloud.ready=false; Cloud.role=""; cloudSetFlag({member:false, role:""}); gateOut(); cloudSetState("denied"); }
 function cloudListenErr(e){
   if(!(e && e.code==="permission-denied")){ Cloud.err=cloudErrText(e); cloudSetState("error"); return; }
   /* השרת דחה קריאה. זו עוד לא ראיה שהחבר הוסר (גם תקלת הרשאות נראית כך) — שואלים את השרת על החבר עצמו:
@@ -4419,7 +4443,7 @@ function trackCfg(){ const s=DB.settings||{}; return {on:s.trackOn!==false}; }
 const trackDay = d => { d=d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
 function trackDist(a,b){ const R=6371000, k=Math.PI/180, dLa=(b.lat-a.lat)*k, dLo=(b.lng-a.lng)*k;
   const h=Math.sin(dLa/2)**2+Math.cos(a.lat*k)*Math.cos(b.lat*k)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
-const trackIsWorker = () => Cloud.ready && (Cloud.role==="employee" || Cloud.role==="maker");
+const trackIsWorker = () => !SB && Cloud.ready && (Cloud.role==="employee" || Cloud.role==="maker");   /* בסביבת בדיקה — בלי מיקום */
 function trackShouldRun(){ return trackIsWorker() && trackCfg().on && !!navigator.geolocation && Track.err!=="denied" && consentOk(); }
 /* ---- הסכמה לשיתוף מיקום (הנוסח שמתניה אישר) ----
    עובד/יצרן חייב לאשר כדי להשתמש באפליקציה: "אני מאשר/ת" או "צא מהאפליקציה".
@@ -4846,11 +4870,11 @@ document.addEventListener("visibilitychange", ()=>{
    גישה ל-Google: הרשאת calendar.events בחלון ההתחברות, תקפה כשעה; נשמרת רק לחלון הזה (sessionStorage). */
 const CAL_API="https://www.googleapis.com/calendar/v3/calendars/primary/events";
 const CAL_SCOPE="https://www.googleapis.com/auth/calendar.events";
-const CAL_KEY="alum_cal_v2", CAL_TOK="alum_caltok_v1", CAL_DONE="✅ ";
+const CAL_KEY="alum_cal_v2"+SFX, CAL_TOK="alum_caltok_v1", CAL_DONE="✅ ";
 const CAL_COLORS=["#0ca7b4","#f97316","#8b5cf6","#e11d48","#16a34a","#2563eb"];
 const Cal={month:"", sel:"all", docs:new Map(), ready:false, srvErr:"", g:[], at:0, loading:false, err:"", timer:null, syncT:null, past:false, busy:new Set(), people:null};
 const calBoss  = () => cloudIsBoss() && !!Cloud.user && !Cloud.user.phone;              /* רואה את יומן העבודה */
-const calOwner = () => Cloud.role==="manager" && !!Cloud.user && !Cloud.user.phone;    /* יש לו יומן Google שמסתנכרן */
+const calOwner = () => !SB && Cloud.role==="manager" && !!Cloud.user && !Cloud.user.phone;    /* יש לו יומן Google שמסתנכרן (לא בסביבת בדיקה) */
 const calWorker= () => Cloud.role==="employee" && !!Cloud.user;                          /* מקבל משימות */
 const calPad = n => String(n).padStart(2,"0");
 const calKey = d => d.getFullYear()+"-"+calPad(d.getMonth()+1)+"-"+calPad(d.getDate());
@@ -4950,7 +4974,7 @@ function calListen(){   /* נקרא מ-cloudStart — מאזין לפי התפק
   Cal.docs=new Map(); Cal.ready=false; Cal.srvErr=""; Cal.people=null;
   let q=null;
   if(calBoss()) q=M.query(calCol(), M.where("s",">=", Date.now()-62*864e5));
-  else if(calWorker()) q=M.query(calCol(), M.where("asg","array-contains", me));
+  else if(calWorker()) q=M.query(calCol(), M.where("asg","array-contains", meId()));
   if(!q) return;
   if(calOwner()){ const c=calCacheGet(); if(c){ Cal.g=c.g||[]; Cal.at=c.at||0; } }
   /* שגיאה כאן לא נוגעת בשאר האפליקציה (למשל לפני שכללי השרת של היומן פורסמו) */
@@ -5001,7 +5025,7 @@ function calOwners(){
   const m=new Map();
   if(Cal.people) Cal.people.forEach((p,em)=>{ if(p.role==="manager") m.set(em, p.name); });
   Cal.docs.forEach(d=>{ if(d.own && !d.del){ if(!m.has(d.own) || !m.get(d.own)) m.set(d.own, d.ownName || m.get(d.own) || ""); } });
-  const me=Cloud.user && Cloud.user.email;
+  const me=meId();
   return [...m.entries()].map(([em,n])=>({em:em, name:n || String(em).split("@")[0]}))
     .sort((a,b)=>(b.em===me)-(a.em===me) || a.name.localeCompare(b.name));
 }
@@ -5135,7 +5159,7 @@ function calPick(em){ Cal.sel=em; calRender(); }
 function calRender(){
   const list=document.getElementById("calList"); if(!list) return;
   const tasks=!document.getElementById("calGrid");     /* מסך העובד: בלי חודש ובלי בחירת יומן */
-  const [y,m]=calYM(Cal.month), now=new Date(), tk=calKey(now), items=calItems(), me=Cloud.user?Cloud.user.email:"";
+  const [y,m]=calYM(Cal.month), now=new Date(), tk=calKey(now), items=calItems(), me=meId();
   if(!tasks){
     document.getElementById("calTitle").textContent=calMonTitle(y,m);
     const owners=calOwners();
@@ -5204,10 +5228,10 @@ function calRender(){
 }
 function calRow(x, tasks){
   const busy=Cal.busy.has(x.id), boss=calBoss();
-  const can=!x.busy && (boss || (calWorker() && x.asg.includes(Cloud.user.email)));
+  const can=!x.busy && (boss || (calWorker() && x.asg.includes(meId())));
   const tags=[];
   if(boss){
-    if(Cal.sel==="all" && calOwners().length>1) tags.push('<span class="cal-tg cal-to" style="color:'+calColor(x.own)+'">'+(x.own===Cloud.user.email?'<span>אני</span>':'<span data-noi18n>'+esc(calOwnerName(x.own))+'</span>')+'</span>');
+    if(Cal.sel==="all" && calOwners().length>1) tags.push('<span class="cal-tg cal-to" style="color:'+calColor(x.own)+'">'+(x.own===meId()?'<span>אני</span>':'<span data-noi18n>'+esc(calOwnerName(x.own))+'</span>')+'</span>');
     x.asg.forEach(a=>tags.push('<span class="cal-tg cal-tw">👷 <span data-noi18n>'+esc(calWorkerName(a))+'</span></span>'));
     if(x.done && x.doneBy && x.asg.includes(x.doneBy)) tags.push('<span class="cal-tg cal-tok">✓ <span data-noi18n>'+esc(x.doneByName||calWorkerName(x.doneBy))+'</span></span>');
     if(x.gdirty) tags.push('<span class="cal-tg cal-ts">'+(x.own!==Cloud.user.email ? '<span>⏳ יתעדכן ב-Google של</span> <span data-noi18n>'+esc(calOwnerName(x.own))+'</span>'
@@ -5248,7 +5272,7 @@ function calJump(k){
 /* ---- "בוצע": מנהל/מפתח בכל משימה, עובד במשימה ששויכה אליו. ביטול — רק אחרי אישור ---- */
 async function calToggle(id){
   const x=Cal.docs.get(id); if(!x || Cal.busy.has(id) || x.priv) return;
-  const me=Cloud.user.email, worker=!calBoss();
+  const me=meId(), worker=!calBoss();
   if(worker && !(calWorker() && x.asg.includes(me))) return;
   const ok = x.done
     ? await uiConfirm("לבטל את הסימון \"בוצע\"? המשימה תחזור להיות פתוחה, גם ביומן Google.",{title:"ביטול סימון",ok:"בטל סימון",cancel:"השאר בוצע",safe:true})
@@ -5261,7 +5285,7 @@ async function calSetDone(id, want){
   const M=Cloud.m, me=Cloud.user.email, ts=M.serverTimestamp();
   Cal.busy.add(id); calRender();
   try{
-    await cloudTimeout(M.updateDoc(M.doc(calCol(), id), {done:want, doneBy:want?me:"", doneByName:want?String(Cloud.user.name||"").slice(0,60):"", doneAt:ts, gdirty:true, ub:me, ua:ts}), 12000)
+    await cloudTimeout(M.updateDoc(M.doc(calCol(), id), {done:want, doneBy:want?meId():"", doneByName:want?String(Cloud.user.name||"").slice(0,60):"", doneAt:ts, gdirty:!SB, ub:me, ua:ts}), 12000)
       .catch(e=>{ if(e && e.code==="deadline-exceeded") return; throw e; });   /* בלי קליטה: נשמר בטלפון ויעלה כשתחזור קליטה */
   }finally{ Cal.busy.delete(id); calRender(); }
   if(calOwner() && x.own===me && calTok()) calSyncSoon();
@@ -5282,7 +5306,7 @@ function calOpen(id){
   const d=new Date(x.s);
   ov.innerHTML='<div class="modal cal-form" role="dialog" aria-modal="true"><h3 data-tr>'+esc(x.title||"(ללא שם)")+'</h3>'
     +'<div class="muted"><span data-noi18n>'+esc(calWd(d))+' '+d.getDate()+'/'+(d.getMonth()+1)+'</span> · '+when+'</div>'
-    +'<div class="muted"><span>ביומן של</span> '+(x.own===Cloud.user.email?'<span>אני</span>':'<span data-noi18n>'+esc(calOwnerName(x.own))+'</span>')+'</div>'
+    +'<div class="muted"><span>ביומן של</span> '+(x.own===meId()?'<span>אני</span>':'<span data-noi18n>'+esc(calOwnerName(x.own))+'</span>')+'</div>'
     +(x.loc?'<div class="muted">📍 <span data-tr>'+esc(x.loc)+'</span></div><a class="cal-waze" href="'+esc(wazeUrl(x.loc))+'" target="_blank" rel="noopener noreferrer">🚗 נווט ב-Waze</a>':'')
     +(x.pid && proj(x.pid) ? '<button type="button" class="btn small" style="margin-top:8px" data-pid="'+esc(x.pid)+'" onclick="document.querySelectorAll(\'.modal-overlay\').forEach(o=>o.remove());nav(\'/p/\'+this.dataset.pid)">📂 <span>פתח את פרויקט המדידה</span></button>' : '')
     +(x.priv?'<div class="muted" style="margin-top:10px">אירוע פרטי — אי אפשר לשייך אותו לעובד.</div>'
@@ -5309,7 +5333,7 @@ function calOpen(id){
 /* ---- משימה חדשה (מנהל ומפתח): ביומן של מנהל, עם שיוך לעובדים ---- */
 function calAdd(){
   if(!calBoss()) return;
-  const owners=calOwners(), me=Cloud.user.email;
+  const owners=calOwners(), me=meId();
   if(!owners.length){ uiAlert("עדיין אין מנהל בצוות. היומן שייך למנהלים.","יומן עבודה"); return; }
   const def = owners.some(o=>o.em===me) ? me : (Cal.sel!=="all" ? Cal.sel : owners[0].em);
   const now=new Date(), [y,m]=calYM(Cal.month);
@@ -5352,7 +5376,7 @@ function calAdd(){
     const nd=calDay(d), st=all ? nd : new Date(d+"T"+s+":00"), et=all ? new Date(nd.getFullYear(), nd.getMonth(), nd.getDate()+1) : new Date(d+"T"+en+":00");
     const M=Cloud.m, ts=M.serverTimestamp(), btn=$('[data-m="ok"]');
     const doc={own:own, ownName:own===me?String(Cloud.user.name||"").slice(0,60):calOwnerName(own).slice(0,60), gid:"", title:title, loc:loc, all:all, s:st.getTime(), e:et.getTime(), priv:false,
-      done:false, doneBy:"", doneByName:"", asg:asg, gdirty:true, del:false, cb:me, ca:ts, ub:me, ua:ts};
+      done:false, doneBy:"", doneByName:"", asg:asg, gdirty:!SB, del:false, cb:Cloud.user.email, ca:ts, ub:Cloud.user.email, ua:ts};
     const cid=uid();
     btn.disabled=true;
     try{
@@ -5384,7 +5408,7 @@ const MS={pid:"", iid:"", f:null, more:false};
 const MS_LIM={width:[300,6000,"רוחב","מ״מ"], height:[300,6000,"גובה","מ״מ"], wallDepth:[30,600,"עומק קיר","מ״מ"], railH:[0.5,10,"גובה מסילה","ס״מ"]};
 const msBlank = () => ({location:"", width:"", height:"", wallDepth:"", railH:"", notes:"", photo:null});
 const msOf = p => (p && p.ms && typeof p.ms==="object") ? p.ms : null;
-const msMine = p => { const m=msOf(p); return !!(m && Cloud.user && m.by===Cloud.user.email); };
+const msMine = p => { const m=msOf(p); return !!(m && Cloud.user && m.by===meId()); };
 const msNum = v => { const n=parseFloat(String(v||"").replace(",", ".")); return isFinite(n) ? n : NaN; };
 const msFmt = n => String(Math.round(n*10)/10);
 
@@ -5506,7 +5530,7 @@ function msDelete(){
 }
 async function msFinish(){
   const p=proj(MS.pid); if(!p) return;
-  const f=MS.f, n=p.items.length, me=Cloud.user?Cloud.user.email:"", nm=String((Cloud.user&&Cloud.user.name)||"").slice(0,60);
+  const f=MS.f, n=p.items.length, me=meId(), nm=String((Cloud.user&&Cloud.user.name)||"").slice(0,60);
   if(String(f.width||"").trim() || String(f.height||"").trim()){ uiAlert("יש פתח שעוד לא נשמר. שומרים אותו, או מוחקים את המידות שבטופס.","סיום מדידה"); return; }
   if(!n){ uiAlert("עוד לא נמדד אף פתח.","סיום מדידה"); return; }
   const ok=await uiConfirm(n===1?"לסיים את המדידה? נמדד פתח אחד.":"לסיים את המדידה? נמדדו "+n+" פתחים.",{title:"סיום מדידה",ok:"כן, סיימתי",cancel:"עוד לא"});
@@ -5544,7 +5568,7 @@ function msProject(address, client, phone, date, extra){
   const u=Cloud.user||{};
   const p={id:uid(), kind:"production", name:"", client:client||"", phone:phone||"", address:address, date:date||todayISO(),
     measurer:(extra&&extra.measurer)||(calWorker()?String(u.name||""):""), notes:"", items:[],
-    ms:Object.assign({by:u.email||"", byName:String(u.name||"").slice(0,60), at:Date.now(), done:false}, extra||{})};
+    ms:Object.assign({by:meId()||u.email||"", byName:String(u.name||"").slice(0,60), at:Date.now(), done:false}, extra||{})};
   delete p.ms.measurer;
   DB.projects.unshift(p); save();
   return p;
@@ -5572,6 +5596,88 @@ function msSketch(it, w){
   return '<svg viewBox="0 0 '+W+' '+H+'" width="'+w+'" height="'+Math.round(w*H/W)+'" role="img" aria-label="פתח">'
     +'<rect x="'+x+'" y="'+y+'" width="'+FW+'" height="'+FH+'" fill="none" stroke="#94a3b8" stroke-width="4" stroke-dasharray="10 7" rx="3"/>'
     +'<text x="'+(W/2)+'" y="'+(y+FH/2+8)+'" text-anchor="middle" font-size="26" fill="#94a3b8">?</text></svg>';
+}
+
+/* ================= סביבת בדיקה של המפתח (25/10, בקשת מתניה) =================
+   צוות נפרד בענן (albaz-test) — לא נוגע בצוות האמיתי, ואף עובד, יצרן או מנהל אמיתי לא רואה אותו.
+   בתוכו המפתח בוחר "בתור מי" הוא: מנהל / עובד / יצרן / מפתח — המסכים הם בדיוק המסכים של אותו תפקיד,
+   ואנשי בדיקה ("מנהל בדיקה", "עובד בדיקה", "יצרן בדיקה") מאפשרים לשייך משימות ולראות מה כל אחד מקבל.
+   בשרת הוא נשאר מפתח (ההרשאות האמיתיות של עובד נבדקות בנפרד, בבדיקות האבטחה).
+   בסביבה הזו אין יומן Google ואין שיתוף מיקום. הנתונים בטלפון נשמרים בנפרד (SFX). */
+const SB_PEOPLE={manager:{id:"test-manager@alum.test", name:"מנהל בדיקה"}, employee:{id:"test-worker@alum.test", name:"עובד בדיקה"}, maker:{id:"test-maker@alum.test", name:"יצרן בדיקה"}};
+/* "אני" בתוך הסביבה: איש הבדיקה של התפקיד שנבחר; בצוות האמיתי — המשתמש עצמו */
+const meId = () => (SB && SB_PEOPLE[SB.as]) ? SB_PEOPLE[SB.as].id : (Cloud.user ? Cloud.user.email : "");
+const sbRole = r => (SB && r==="dev") ? (SB.as||"dev") : r;
+function sbSave(){ try{ localStorage.setItem(SB_KEY, JSON.stringify(SB)); }catch(e){} }
+function sbGo(o){
+  try{ if(o) localStorage.setItem(SB_KEY, JSON.stringify(o)); else localStorage.removeItem(SB_KEY); }catch(e){}
+  try{ history.replaceState(null,"",location.pathname+location.search+"#/"); }catch(e){}
+  location.reload();
+}
+function sbEnter(){ if(Cloud.role!=="dev" || SB) return; sbGo({on:true, as:"dev"}); }
+function sbExit(){ sbGo(null); }
+function sbAs(r){ if(!SB || !["dev","manager","employee","maker"].includes(r) || SB.as===r) return; SB.as=r; sbSave(); sbGo(SB); }
+/* אנשי הבדיקה — נוצרים פעם אחת, כשהמפתח נכנס */
+async function sbSeed(){
+  const M=Cloud.m;
+  for(const r of ["manager","employee","maker"]){
+    const p=SB_PEOPLE[r], ref=M.doc(cloudCol("members"), p.id);
+    try{ const s=await M.getDoc(ref); if(!s.exists()) await M.setDoc(ref, {role:r, by:Cloud.user.email, at:M.serverTimestamp(), name:p.name}); }catch(e){}
+  }
+}
+/* הפס הקבוע למעלה: בתור מי אני, ותפריט (יציאה / ניקוי) */
+function sbBar(){
+  if(!SB) return;
+  document.documentElement.classList.add("sb");
+  let b=document.getElementById("sbBar");
+  if(!b){ b=document.createElement("div"); b.id="sbBar"; b.setAttribute("role","toolbar"); document.body.appendChild(b);
+    /* בשפות עם מילים ארוכות במסך צר הכפתורים יורדים לשורה שנייה — הכותרת זזה למטה בהתאם */
+    const fit=()=>document.documentElement.style.setProperty("--sbh", b.offsetHeight+"px");
+    try{ new ResizeObserver(fit).observe(b); }catch(e){ addEventListener("resize", fit); } }
+  const r=SB.as||"dev", B=(k,l)=>'<button type="button" class="'+(r===k?'on':'')+'" data-r="'+k+'" onclick="sbAs(this.dataset.r)">'+l+'</button>';
+  b.innerHTML='<b class="sb-t">🧪 <span>סביבת בדיקה</span></b>'
+    +'<div class="sb-seg">'+B("manager","מנהל")+B("employee","עובד")+B("maker","יצרן")+B("dev","מפתח")+'</div>'
+    +'<button type="button" class="sb-x" onclick="sbMenu()" aria-label="תפריט סביבת הבדיקה">⋯</button>';
+}
+function sbMenu(){
+  const ov=document.createElement("div"); ov.className="modal-overlay";
+  ov.innerHTML='<div class="modal" role="dialog" aria-modal="true"><h3>🧪 סביבת בדיקה</h3>'
+    +'<div class="msg">צוות נפרד לניסויים. שום דבר מכאן לא מגיע לצוות האמיתי. בסביבה הזו אין יומן Google ואין שיתוף מיקום.</div>'
+    +'<div class="sb-acts"><button class="btn primary" data-m="exit">יציאה מסביבת הבדיקה</button>'
+    +'<button class="btn danger" data-m="clean">🗑 נקה את סביבת הבדיקה</button>'
+    +'<button class="btn" data-m="close">סגור</button></div></div>';
+  document.body.appendChild(ov);
+  const close=()=>ov.remove();
+  ov.querySelector('[data-m="close"]').onclick=close;
+  ov.addEventListener("click",e=>{ if(e.target===ov) close(); });
+  ov.querySelector('[data-m="exit"]').onclick=()=>{ close(); sbExit(); };
+  ov.querySelector('[data-m="clean"]').onclick=()=>{ close(); sbClean(); };
+}
+/* ניקוי: מוחק את כל הניסויים בצוות הבדיקה (אנשי הבדיקה וההגדרות נשארים). רק בצוות הבדיקה — נאכף בשרת */
+async function sbClean(){
+  if(!SB || !Cloud.m) return;
+  const ok=await uiConfirm("למחוק את כל הניסויים בסביבת הבדיקה? פרויקטים, מדידות, משימות, הזמנות ייצור ויומן הפעילות של הבדיקה יימחקו. הצוות האמיתי לא מושפע.",{title:"ניקוי סביבת הבדיקה",ok:"נקה הכול",cancel:"ביטול",danger:true});
+  if(!ok) return;
+  const M=Cloud.m;
+  cloudStop(); Cloud.ready=false;   /* בלי מאזינים בזמן המחיקה — כדי שהטלפון לא "ישחזר" את מה שנמחק */
+  try{
+    const pr=await M.getDocs(cloudCol("production"));
+    for(const d of pr.docs){ const ph=await M.getDocs(M.collection(Cloud.db,"teams",TEAM_ID,"production",d.id,"photos")); for(const x of ph.docs) await M.deleteDoc(x.ref); }
+    for(const c of ["projects","items","prices","cal","production","activity","locs","trackpts","consents"]){
+      const s=await M.getDocs(cloudCol(c));
+      for(let i=0;i<s.docs.length;i+=400){ const b=M.writeBatch(Cloud.db); s.docs.slice(i,i+400).forEach(d=>b.delete(d.ref)); await b.commit(); }
+    }
+  }catch(e){ await uiAlert(cloudErrText(e),"ניקוי סביבת הבדיקה"); location.reload(); return; }
+  localDrop();
+  try{ sessionStorage.setItem("alum_sb_cleaned","1"); }catch(e){}
+  sbGo(SB);
+}
+/* בהגדרות של המפתח (בצוות האמיתי): הכניסה */
+function sbCard(){
+  if(SB || !Cloud.ready || Cloud.role!=="dev") return "";
+  return '<div class="card sb-card"><label>🧪 סביבת בדיקה</label>'
+    +'<div class="muted" style="margin-top:6px">צוות נפרד לניסויים: עוברים בלחיצה בין מנהל, עובד ויצרן, ורואים מה כל אחד מקבל. שום דבר מכאן לא מגיע לצוות האמיתי.</div>'
+    +'<div class="rowline wrap" style="margin-top:10px"><button class="btn small primary" onclick="sbEnter()">🧪 כניסה לסביבת בדיקה</button></div></div>';
 }
 
 /* ---- תצוגה ---- */
