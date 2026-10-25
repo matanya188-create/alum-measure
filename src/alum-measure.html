@@ -5401,7 +5401,7 @@ function msRender(){
   h+='<div class="card ms-form"><div class="rowline"><b class="grow">'+(MS.iid?'<span>עריכת פתח</span> '+no:'<span>פתח</span> '+no)+'</b>'
     +(MS.iid?'<button class="btn small" onclick="msCancelEdit()">ביטול עריכה</button>':'')+'</div>'
     +'<div class="ms-chips">'+LOC_SUGGEST.slice(0,8).map(l=>'<button type="button" class="ms-chip'+(f.location===l?' on':'')+'" data-v="'+esc(l)+'" onclick="msLoc(this.dataset.v)">'+esc(l)+'</button>').join("")+'</div>'
-    +'<input id="msLoc" maxlength="60" autocomplete="off" placeholder="מספר או תיאור (לא חובה)" value="'+esc(f.location)+'" oninput="MS.f.location=this.value">'
+    +'<label>מספר חלון או תיאור (חובה)</label><input id="msLoc" maxlength="60" autocomplete="off" placeholder="למשל: סלון, חלון 3" value="'+esc(f.location)+'" oninput="MS.f.location=this.value">'
     +'<div class="two" style="margin-top:8px"><div><label>רוחב (מ״מ)</label><input id="msW" class="num ms-big" inputmode="decimal" value="'+esc(f.width)+'" oninput="MS.f.width=this.value"></div>'
     +'<div><label>גובה (מ״מ)</label><input id="msH" class="num ms-big" inputmode="decimal" value="'+esc(f.height)+'" oninput="MS.f.height=this.value"></div></div>'
     +(MS.more || f.wallDepth || f.railH || f.notes
@@ -5456,7 +5456,16 @@ async function msCheck(){
 async function msSave(){
   if(!proj(MS.pid)) return;
   const f=MS.f;
+  /* בלי מספר או תיאור — בשטח לא יודעים איזה חלון זה (החלטת מתניה): חובה */
+  if(!String(f.location||"").trim()){ await uiAlert("כתוב מספר חלון או תיאור — למשל: סלון, חלון 3.","מדידה"); const l=document.getElementById("msLoc"); if(l) l.focus(); return; }
   if(!String(f.width).trim() || !String(f.height).trim()){ uiAlert("כתוב רוחב וגובה.","מדידה"); return; }
+  /* אותו שם לשני פתחים — מציעים שם פנוי (התיקון הוא הבחירה הצבועה) */
+  const q0=proj(MS.pid), nm0=String(f.location).trim();
+  if(q0 && q0.items.some(x=>x.id!==MS.iid && String(x.location||"").trim()===nm0)){
+    let k=2; while(q0.items.some(x=>String(x.location||"").trim()===nm0+" "+k)) k++;
+    const keep=await uiConfirm("כבר יש פתח בשם \""+nm0+"\". כדאי לתת שם שונה, כדי שבשטח יידעו איזה חלון זה.",{title:"שם כפול",ok:"השאר כך",cancel:"שנה ל-\""+nm0+" "+k+"\"",safe:true});
+    if(!keep){ f.location=nm0+" "+k; msRender(); return; }
+  }
   if(!(await msCheck())) return;
   /* אחרי חלון: הפרויקט נקרא מחדש — עדכון מהענן בזמן שהחלון היה פתוח בונה את הרשימה מחדש, והעותק הקודם כבר לא נשמר */
   const p=proj(MS.pid); if(!p) return;
