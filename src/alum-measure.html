@@ -458,6 +458,30 @@ html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev, html
 .cal-asg{display:flex;flex-direction:column;gap:2px;max-height:180px;overflow:auto}
 .cal-form .hint{font-size:.74rem;color:var(--ink2);margin-top:4px}
 .cal-form select{width:100%}
+/* משימת מדידה */
+.ms-tog{background:#ecfdf5;border:1.5px solid #34d399;border-radius:12px;padding:9px 10px;font-weight:800;margin-top:4px}
+.cal-msbtn{font:inherit;display:inline-block;margin:6px 0 0 6px;font-size:.78rem;font-weight:800;color:#fff;background:var(--grad);border-radius:99px;padding:6px 12px;text-decoration:none}
+.cal-tms{background:#ede9fe;color:#6d28d9}
+.ms-prog b{font-size:.98rem}
+.ms-bar{height:8px;border-radius:9px;background:var(--line2);margin-top:8px;overflow:hidden}.ms-bar i{display:block;height:100%;background:var(--grad)}
+.ms-done{margin-top:8px;font-weight:800;color:var(--ok)}
+.ms-list{padding-top:4px;padding-bottom:4px}
+.ms-op{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line2);cursor:pointer}
+.ms-op:last-child{border-bottom:none}.ms-op.on{background:var(--pen-soft);border-radius:10px}
+.ms-no{width:30px;height:30px;border-radius:10px;background:#e0f2fe;color:#0369a1;font-weight:900;display:flex;align-items:center;justify-content:center;flex:none;font-size:.85rem}
+.ms-dim{font-size:.95rem;overflow-wrap:anywhere}.ms-dim b{font-size:1.02rem}
+.ms-th{width:42px;height:42px;border-radius:9px;object-fit:cover;flex:none}
+.ms-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.ms-chip{font:inherit;font-size:.78rem;font-weight:700;padding:6px 11px;border-radius:99px;background:var(--line2);color:var(--ink2);border:1.5px solid transparent}
+.ms-chip.on{background:var(--pen-soft);color:var(--acc);border-color:var(--acc)}
+.ms-big{font-size:1.25rem;font-weight:800;text-align:center}
+.ms-more{font:inherit;font-size:.82rem;font-weight:800;color:var(--acc);padding:10px 0 2px}
+.ms-cam{display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px dashed var(--ink2);border-radius:12px;padding:11px;font-weight:700;color:var(--ink2);margin-top:10px;cursor:pointer}
+.ms-ph{display:flex;align-items:center;gap:10px;margin-top:10px}.ms-ph img{width:72px;height:72px;border-radius:10px;object-fit:cover}
+.ms-del{font:inherit;font-size:.82rem;color:var(--danger);font-weight:700;padding:12px 0 0}
+.ms-card b{font-size:1rem}
+.ms-raw{margin-top:6px;font-size:.8rem;font-weight:800;color:var(--warn)}
+.ms-pick{font-size:.82rem;font-weight:800;color:var(--warn);margin-top:2px}
 .trbtn{font-size:.72rem;font-weight:700;color:var(--acc);text-decoration:none;white-space:nowrap}
 /* ===== מסך תשלום (paywall) ===== */
 .paywall{position:fixed;inset:0;z-index:900;background:linear-gradient(160deg,#20315e,#2c4e9e);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
@@ -705,6 +729,7 @@ function newItem(typeId){
 
 /* ================= SKETCH SVG ================= */
 function sketchSVG(it, w){
+  if(it && it.raw) return msSketch(it, w);
   w = w || 250;
   const T = TYPE(it.type);
   const pst = PSTYLE[(PROF(it.profile)||{}).style] || PSTYLE.standard;
@@ -1018,6 +1043,7 @@ function divText(it){
 /* אילו נתוני חובה חסרים בפריט */
 function missingList(it){
   const m=[];
+  if(it.raw) m.push("סוג חלון");
   if(!String(it.width||"").trim())  m.push("רוחב");
   if(!String(it.height||"").trim()) m.push("גובה");
   if(needsWall(it) && !String(it.wallDepth||"").trim()) m.push("עובי קיר (לארגז התריס)");
@@ -1266,6 +1292,7 @@ function renderRoute(){
   else if(parts[0]==="map"){ app.innerHTML = viewTeamMap(); afterTeamMapRender(); }
   else if(parts[0]==="cal"){ app.innerHTML = viewCal(); afterCalRender(); }
   else if(parts[0]==="tasks"){ app.innerHTML = viewTasks(); afterCalRender(); }
+  else if(parts[0]==="m" && parts[1]){ const mp=proj(parts[1]); if(!mp){ nav(calWorker()?"/tasks":"/"); return; } app.innerHTML = viewMeasure(mp); afterMeasureRender(); }
   else if(parts[0]==="prod" && parts[1]){ app.innerHTML = viewProdOrder(parts[1]); }
   else if(parts[0]==="settings"){ app.innerHTML = viewSettings(); }
   else {
@@ -1322,7 +1349,7 @@ function projCardHTML(p,i){
     +'<div class="pchip pc'+(i%4)+'">'+(listKind==="quote"?"💰":"🏠")+'</div>'
     +'<div class="grow">'
     +'<div class="title-md">'+esc(pname(p))+'</div>'
-    +'<div class="muted">'+esc(p.client||"")+(p.client&&p.date?" · ":"")+esc(fmtDate(p.date))+' · <span class="num">'+p.items.length+'</span> פריטים'+cloudCardBy(p)+'</div>'
+    +'<div class="muted">'+esc(p.client||"")+(p.client&&p.date?" · ":"")+esc(fmtDate(p.date))+' · <span class="num">'+p.items.length+'</span> פריטים'+msTag(p)+cloudCardBy(p)+'</div>'
     +'</div>'+(extra||'<div class="chev" style="font-size:1.3rem;color:var(--ink2)">‹</div>')+'</div></div>';
 }
 function viewList(kind){
@@ -1412,8 +1439,9 @@ function viewProject(p){
     return '<div class="card"><div class="itemrow">'
       +'<div class="thumb">'+sketchSVG(it,86)+'</div>'
       +'<div class="grow tap" onclick="nav(\'/p/'+p.id+'/item/'+it.id+'\')">'
-      +'<div class="title-md"><span class="num">'+(i+1)+'.</span> '+(it.location?'<span data-tr>'+esc(it.location)+'</span>':T.name)+'</div>'
-      +'<div class="muted">'+T.name+'</div>'
+      +'<div class="title-md"><span class="num">'+(i+1)+'.</span> '+(it.location?'<span data-tr>'+esc(it.location)+'</span>':(it.raw?'<span>פתח</span>':T.name))+'</div>'
+      +(it.raw?'<div class="ms-pick">🔧 <span>לבחור סוג חלון ופרופיל</span> ›</div>':'<div class="muted">'+T.name+'</div>')
+      +(it.raw&&it.notes?'<div class="muted" data-tr>'+esc(it.notes)+'</div>':'')
       +'<div style="font-weight:700;margin-top:2px">'+dimsHTML(it)+' '
       +(it.measureType==="opening"?'<span class="badge open">מידת פתח</span>':'<span class="badge prod">לייצור</span>')
       +(Number(it.qty)>1?' <span class="num">×'+esc(it.qty)+'</span>':'')
@@ -1438,6 +1466,7 @@ function viewProject(p){
   +'<div class="topbar"><button class="backbtn" onclick="nav(\''+back+'\')">→</button>'
   +'<div class="grow"><h1>'+esc(pname(p))+'</h1><div class="sub">'+(isQuote?"מדידת הצעה · ":"")+'<span class="num">'+p.items.length+'</span> פריטים'+(Cloud.ready?' · <span class="cloud-pill-txt">'+esc(cloudPillText())+'</span>':'')+'</div>'+cloudByline(cloudLatest(p))+'</div>'
   +((isQuote ? !canPrice() : !canExport())?'':actionBtn)+'</div>'
+  +msCard(p)
   +cloudReviewCard(p)
   +(isQuote?'':cloudProdStatus(p))
   +navCard(p)
@@ -1495,7 +1524,7 @@ function viewItem(p, iid){
   else {
     const src = p.items.find(x=>x.id===iid);
     if(!src){ return viewProject(p); }
-    draft = JSON.parse(JSON.stringify(src)); draftIid = iid; typeOpen = false;
+    draft = JSON.parse(JSON.stringify(src)); draftIid = iid; typeOpen = !!draft.raw;   /* פתח מהמדידה: קודם בוחרים סוג */
     if(s && s.pid===p.id && s.iid===iid && s.draft){ draft=s.draft; restored=true; }
   }
   const restoredBar = restored
@@ -3087,6 +3116,7 @@ const App = {
     draft.openKind = draft.openKind||"dreikipp";
     draft.fixSide = draft.fixSide||"left";
     draft.hal = halDefaults(t);
+    delete draft.raw;
     typeOpen=false; persistDraft(); renderItemForm(); renderPreview();
   },
   colorFilter(q){
@@ -3136,6 +3166,9 @@ const App = {
     const p=proj(draftPid);
     if(!p){ if(cloudActiveHere()) uiAlert("הפרויקט הזה הועבר בינתיים לסל המחזור ע״י חבר צוות. אפשר לשחזר אותו (הגדרות ← סל מחזור) ואז לשמור שוב — הטיוטה שלך שמורה.","לא נשמר"); return; }
     const doSave=()=>{
+      /* נקרא מחדש: אם בזמן חלון "נתונים חסרים" הגיע עדכון מהענן, הרשימה נבנתה מחדש והעותק הקודם כבר לא נשמר */
+      const p=proj(draftPid);
+      if(!p){ uiAlert("הפרויקט הזה הועבר בינתיים לסל המחזור. הטיוטה שלך שמורה.","שמירה"); return; }
       if(draftIid){
         const idx=p.items.findIndex(x=>x.id===draftIid);
         if(idx>=0) p.items[idx]=draft; else p.items.push(draft);
@@ -3733,6 +3766,11 @@ function cloudSnap(kind, s){
     const id=ch.doc.id, key=kind+":"+id;
     if(ch.type==="removed"){ map.delete(id); if(Cloud.ready) Cloud.last.delete(key); ext=true; return; }
     const d=ch.doc.data({serverTimestamps:"estimate"}), pv=map.get(id);
+    if(kind==="p" && Cloud.ready && cloudIsBoss() && !ch.doc.metadata.hasPendingWrites){
+      const nm=cloudObj(d.d)||{}, om=pv ? (cloudObj(pv.d)||{}) : {}, a=nm.ms||{}, b=om.ms||{};
+      if(a.done && !b.done && a.doneBy && a.doneBy!==Cloud.user.email) rvMsg=(a.doneByName||a.doneBy)+" סיים מדידה: "+pname(nm);
+      else if(!pv && a.self && a.by && a.by!==Cloud.user.email) rvMsg=(a.byName||a.by)+" פתח מדידה חדשה: "+pname(nm);
+    }
     if(kind==="p" && Cloud.ready){
       if(d.rvState && (!pv || pv.rvState!==d.rvState) && d.rvBy && d.rvBy!==Cloud.user.email){
         const nm=d.rvByName||d.rvBy, t={pending:" שלח לאישור: ", approved:" אישר: ", returned:" החזיר לתיקון: "}[d.rvState];
@@ -4888,7 +4926,8 @@ function calDocOk(id, d){
   const s=num(d.s), e=num(d.e); if(isNaN(s)) return null;
   return {id:id, own:str(d.own,100), ownName:str(d.ownName,60), gid:str(d.gid,1000), title:str(d.title,300), loc:str(d.loc,200), all:d.all===true,
     s:s, e:isNaN(e)?s:Math.max(e,s), priv:d.priv===true, done:d.done===true, doneBy:str(d.doneBy,100), doneByName:str(d.doneByName,60),
-    asg:Array.isArray(d.asg) ? d.asg.filter(x=>typeof x==="string").slice(0,20) : [], gdirty:d.gdirty===true, del:d.del===true, ua:cloudMs(d.ua)};
+    asg:Array.isArray(d.asg) ? d.asg.filter(x=>typeof x==="string").slice(0,20) : [], gdirty:d.gdirty===true, del:d.del===true, ua:cloudMs(d.ua),
+    pid:cloudIdOk(d.pid) ? d.pid : "", exp:(typeof d.exp==="number" && d.exp>0 && d.exp<=500) ? Math.round(d.exp) : 0};
 }
 function calListen(){   /* נקרא מ-cloudStart — מאזין לפי התפקיד */
   const M=Cloud.m, me=Cloud.user && Cloud.user.email;
@@ -5064,7 +5103,9 @@ function viewTasks(){
   return '<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
     +'<div class="grow"><h1>המשימות שלי</h1><div class="sub">משימות שהמנהל שייך אליך</div></div></div>'
     +'<div id="calConn"></div>'
-    +'<div class="card cal-list" id="calList"></div>';
+    +'<div id="msMine"></div>'
+    +'<div class="card cal-list" id="calList"></div>'
+    +'<button class="btn primary fab" onclick="msNew()">+ מדידה חדשה</button>';
 }
 function afterCalRender(){
   Cal.month=calMonthOf(new Date()); Cal.past=false;
@@ -5114,6 +5155,12 @@ function calRender(){
         : '<div class="card cal-note col"><b>📅 חיבור ליומן Google</b><div class="muted">כדי שהמשימות שלך יופיעו כאן ויסתנכרנו, מחברים את יומן ה-Google שלך. Google ישאל אם לתת לאפליקציה גישה ליומן.</div>'
           +'<button class="btn primary wide" onclick="calConnect()">📅 חבר את יומן Google</button></div>')
     : (Cal.err && !tasks ? '<div class="card cal-note err"><div class="grow">'+esc(Cal.err)+'</div><button class="btn small" onclick="calSync()">נסה שוב</button></div>' : '');
+  /* מסך העובד: מדידות שהוא פתח בעצמו ועוד לא סיים */
+  const mine=document.getElementById("msMine");
+  if(mine){
+    const own=DB.projects.filter(p=>msMine(p) && msOf(p).self && !msOf(p).done);
+    mine.innerHTML = own.length ? '<div class="card"><b>📐 <span>מדידות שפתחת</span></b>'+own.map(p=>'<div class="ms-op" data-pid="'+esc(p.id)+'" onclick="nav(\'/m/\'+this.dataset.pid)"><div class="grow"><div class="ms-dim" data-tr>'+esc(pname(p))+'</div><div class="muted">'+(p.items.length===1?'<span>פתח אחד</span>':p.items.length+' <span>פתחים</span>')+'</div></div><span class="cal-msbtn">📏 <span>המשך מדידה</span></span></div>').join("")+'</div>' : '';
+  }
   /* הרשימה לפי ימים: בחודש הנוכחי מהיום (ימים קודמים בלחיצה); בעובד — כל המשימות הבאות */
   const curMonth = y===now.getFullYear() && m===now.getMonth();
   let h='', days=[];
@@ -5150,20 +5197,30 @@ function calRow(x, tasks){
     if(x.gdirty) tags.push('<span class="cal-tg cal-ts">'+(x.own!==Cloud.user.email ? '<span>⏳ יתעדכן ב-Google של</span> <span data-noi18n>'+esc(calOwnerName(x.own))+'</span>'
       : calTok() ? '<span>⏳ מתעדכן ב-Google</span>' : '<span>⏳ יתעדכן ב-Google כשתתחבר</span>')+'</span>');
     if(x.busy) tags.push('<span class="cal-tg cal-tp">מוצג רק כ"תפוס"</span>');
+    if(x.pid){ const mp=proj(x.pid), mm=msOf(mp); if(mp) tags.push('<span class="cal-tg cal-tms">📐 '+(mm&&mm.done?'<span>נמדד</span> ✓ · ':'')+(mp.items.length===1?'<span>פתח אחד</span>':mp.items.length+' <span>פתחים</span>')+'</span>'); }
   }
   const bar = boss && !tasks ? '<i class="cal-bar" style="background:'+calColor(x.own)+'"></i>' : '';
-  const from = tasks && x.ownName ? '<span>מאת</span> <span data-noi18n>'+esc(x.ownName)+'</span>' : '';
+  const mp = x.pid ? proj(x.pid) : null;
+  const from = tasks && x.ownName ? (mp && mp.client ? '<span data-tr>'+esc(mp.client)+'</span> · ' : '')+(x.exp ? '<span>בערך</span> '+x.exp+' <span>פתחים</span> · ' : '')+'<span>מאת</span> <span data-noi18n>'+esc(x.ownName)+'</span>' : '';
   return '<div class="cal-ev'+(x.done?' done':'')+(busy?' busy':'')+'">'+bar
     +'<button type="button" class="cal-bx" data-id="'+esc(x.id)+'" onclick="calToggle(this.dataset.id)" aria-label="'+(x.done?'בטל סימון':'סמן כבוצע')+'"'+(busy||!can?' disabled':'')+'>'+(x.done?'✓':'')+'</button>'
     +'<div class="cal-tm">'+(x.all?'<span class="cal-all">כל היום</span>':esc(calHM(x.s)))+'</div>'
     +'<div class="grow cal-body" data-id="'+esc(x.id)+'"'+(boss&&!x.busy?' onclick="calOpen(this.dataset.id)"':'')+'>'
     +(x.busy?'<div class="cal-et">🔒 <span>תפוס</span></div>':'<div class="cal-et" data-tr>'+esc(x.title||"(ללא שם)")+'</div>')
     +(x.loc||from?'<div class="cal-el">'+(x.loc?'📍 <span data-tr>'+esc(x.loc)+'</span>':'')+(x.loc&&from?' · ':'')+from+'</div>':'')
+    +(tasks && x.pid && proj(x.pid) ? calMeasureBtn(x) : '')
     +(tasks && x.loc?'<a class="cal-waze" href="'+esc(wazeUrl(x.loc))+'" target="_blank" rel="noopener noreferrer">🚗 נווט ב-Waze</a>':'')
     +(tags.length?'<div class="cal-tags">'+tags.join("")+'</div>':'')
     +'</div></div>';
 }
 function calShowPast(){ Cal.past=true; calRender(); }
+/* כפתור המדידה במשימה של העובד */
+function calMeasureBtn(x){
+  const p=proj(x.pid), m=msOf(p), n=p.items.length;
+  const lbl = m && m.done ? '📐 <span>נמדד</span> ✓ · '+(n===1?'<span>פתח אחד</span>':n+' <span>פתחים</span>')
+    : n ? '📏 <span>המשך מדידה</span> · '+(n===1?'<span>פתח אחד</span>':n+' <span>פתחים</span>') : '📏 <span>התחל מדידה</span>';
+  return '<button type="button" class="cal-msbtn" data-pid="'+esc(x.pid)+'" onclick="event.stopPropagation();nav(\'/m/\'+this.dataset.pid)">'+lbl+'</button>';
+}
 function calJump(k){
   const [y,m]=calYM(Cal.month), now=new Date(), d=calDay(k);
   if(y===now.getFullYear() && m===now.getMonth() && d<new Date(now.getFullYear(),now.getMonth(),now.getDate()) && !Cal.past){ Cal.past=true; calRender(); }
@@ -5181,13 +5238,16 @@ async function calToggle(id){
     ? await uiConfirm("לבטל את הסימון \"בוצע\"? המשימה תחזור להיות פתוחה, גם ביומן Google.",{title:"ביטול סימון",ok:"בטל סימון",cancel:"השאר בוצע",safe:true})
     : await uiConfirm(x.title||"",{title:"האם המשימה בוצעה?",ok:"כן",cancel:"לא"});
   if(!ok) return;
-  const M=Cloud.m, want=!x.done, ts=M.serverTimestamp();
+  try{ await calSetDone(id, !x.done); }catch(e){ uiAlert(calErrText(e),"יומן עבודה"); }
+}
+async function calSetDone(id, want){
+  const x=Cal.docs.get(id); if(!x) return;
+  const M=Cloud.m, me=Cloud.user.email, ts=M.serverTimestamp();
   Cal.busy.add(id); calRender();
   try{
     await cloudTimeout(M.updateDoc(M.doc(calCol(), id), {done:want, doneBy:want?me:"", doneByName:want?String(Cloud.user.name||"").slice(0,60):"", doneAt:ts, gdirty:true, ub:me, ua:ts}), 12000)
       .catch(e=>{ if(e && e.code==="deadline-exceeded") return; throw e; });   /* בלי קליטה: נשמר בטלפון ויעלה כשתחזור קליטה */
-  }catch(e){ uiAlert(calErrText(e),"יומן עבודה"); }
-  finally{ Cal.busy.delete(id); calRender(); }
+  }finally{ Cal.busy.delete(id); calRender(); }
   if(calOwner() && x.own===me && calTok()) calSyncSoon();
 }
 
@@ -5208,6 +5268,7 @@ function calOpen(id){
     +'<div class="muted"><span data-noi18n>'+esc(calWd(d))+' '+d.getDate()+'/'+(d.getMonth()+1)+'</span> · '+when+'</div>'
     +'<div class="muted"><span>ביומן של</span> '+(x.own===Cloud.user.email?'<span>אני</span>':'<span data-noi18n>'+esc(calOwnerName(x.own))+'</span>')+'</div>'
     +(x.loc?'<div class="muted">📍 <span data-tr>'+esc(x.loc)+'</span></div><a class="cal-waze" href="'+esc(wazeUrl(x.loc))+'" target="_blank" rel="noopener noreferrer">🚗 נווט ב-Waze</a>':'')
+    +(x.pid && proj(x.pid) ? '<button type="button" class="btn small" style="margin-top:8px" data-pid="'+esc(x.pid)+'" onclick="document.querySelectorAll(\'.modal-overlay\').forEach(o=>o.remove());nav(\'/p/\'+this.dataset.pid)">📂 <span>פתח את פרויקט המדידה</span></button>' : '')
     +(x.priv?'<div class="muted" style="margin-top:10px">אירוע פרטי — אי אפשר לשייך אותו לעובד.</div>'
       :'<label>שייך לעובדים</label><div id="cfW">'+calAsgHTML(x.asg)+'</div><div class="hint">העובד יראה את המשימה אצלו ויוכל לסמן שבוצעה.</div>')
     +'<div class="btns">'+(x.priv?'':'<button class="btn primary" data-m="ok">שמור</button>')+'<button class="btn" data-m="cancel">סגור</button></div></div>';
@@ -5241,25 +5302,33 @@ function calAdd(){
   if(h0.getHours()<7 || h0.getHours()>=20 || day!==calKey(now)) h0.setHours(9);   /* בלילה, או ביום אחר — ברירת מחדל 09:00 */
   const ov=document.createElement("div"); ov.className="modal-overlay";
   ov.innerHTML='<div class="modal cal-form" role="dialog" aria-modal="true"><h3>משימה חדשה</h3>'
-    +'<label>מה צריך לעשות</label><input id="cfT" maxlength="200" autocomplete="off" placeholder="למשל: מדידה אצל משפחת לוי">'
+    +'<label class="cal-chk ms-tog"><input id="cfM" type="checkbox"> <span>📐 משימת מדידה — פותחת פרויקט</span></label>'
+    +'<div id="cfMb" hidden><label>כתובת</label><input id="cfMa" maxlength="120" autocomplete="off" placeholder="למשל: הרצל 12, רחובות">'
+    +'<div class="two"><div><label>שם הלקוח</label><input id="cfMc" maxlength="60" autocomplete="off"></div>'
+    +'<div><label>טלפון</label><input id="cfMp" type="tel" inputmode="tel" dir="ltr" maxlength="20" autocomplete="off"></div></div>'
+    +'<label>כמה פתחים בערך (לא חובה)</label><input id="cfMx" class="num" inputmode="numeric" maxlength="3" autocomplete="off"></div>'
+    +'<div id="cfTw"><label>מה צריך לעשות</label><input id="cfT" maxlength="200" autocomplete="off" placeholder="למשל: מדידה אצל משפחת לוי"></div>'
     +'<label>ביומן של</label><select id="cfO">'+owners.map(o=>'<option value="'+esc(o.em)+'"'+(o.em===def?' selected':'')+(o.em===me?'':' data-noi18n')+'>'+(o.em===me?'אני':esc(o.name))+'</option>').join("")+'</select>'
     +'<label>תאריך</label><input id="cfD" type="date" value="'+day+'">'
     +'<label class="cal-chk"><input id="cfA" type="checkbox"> <span>כל היום</span></label>'
     +'<div class="two" id="cfTimes"><div><label>משעה</label><input id="cfS" type="time" value="'+calPad(h0.getHours())+':00"></div>'
     +'<div><label>עד שעה</label><input id="cfE" type="time" value="'+calPad((h0.getHours()+1)%24)+':00"></div></div>'
-    +'<label>כתובת (לא חובה)</label><input id="cfL" maxlength="200" autocomplete="off">'
+    +'<div id="cfLw"><label>כתובת (לא חובה)</label><input id="cfL" maxlength="200" autocomplete="off"></div>'
     +'<label>שייך לעובדים</label><div id="cfW">'+calAsgHTML([])+'</div><div class="hint">העובד יראה את המשימה אצלו ויוכל לסמן שבוצעה.</div>'
     +'<div class="btns"><button class="btn primary" data-m="ok">הוסף</button><button class="btn" data-m="cancel">ביטול</button></div></div>';
   document.body.appendChild(ov);
   const $=s=>ov.querySelector(s);
   if(!Cal.people) calPeopleLoad().then(()=>{ const w=$("#cfW"); if(w && !w.querySelector("input")) w.innerHTML=calAsgHTML([]); });
   $("#cfA").onchange=()=>{ $("#cfTimes").hidden=$("#cfA").checked; };
+  $("#cfM").onchange=()=>{ const on=$("#cfM").checked; $("#cfMb").hidden=!on; $("#cfTw").hidden=on; $("#cfLw").hidden=on; (on?$("#cfMa"):$("#cfT")).focus(); };
   $("#cfS").onchange=()=>{ const a=$("#cfS").value.split(":"); if(a.length===2) $("#cfE").value=calPad((Number(a[0])+1)%24)+":"+a[1]; };
   $('[data-m="cancel"]').onclick=()=>ov.remove();
   ov.addEventListener("click",e=>{ if(e.target===ov) ov.remove(); });
   $('[data-m="ok"]').onclick=async()=>{
-    const title=$("#cfT").value.trim().slice(0,200), d=$("#cfD").value, all=$("#cfA").checked, s=$("#cfS").value, en=$("#cfE").value, loc=$("#cfL").value.trim().slice(0,200), own=$("#cfO").value;
+    const meas=$("#cfM").checked, addr=$("#cfMa").value.trim().slice(0,120), cli=$("#cfMc").value.trim().slice(0,60), exp=Math.max(0,Math.min(500,parseInt($("#cfMx").value,10)||0));
+    const title=meas ? ("📐 מדידה — "+addr+(cli?" · "+cli:"")).slice(0,200) : $("#cfT").value.trim().slice(0,200), d=$("#cfD").value, all=$("#cfA").checked, s=$("#cfS").value, en=$("#cfE").value, loc=meas ? addr : $("#cfL").value.trim().slice(0,200), own=$("#cfO").value;
     const asg=[...ov.querySelectorAll('#cfW input:checked')].map(i=>i.value).filter(v=>Cal.people && Cal.people.has(v)).sort();
+    if(meas && !addr){ uiAlert("כתוב כתובת.","משימה חדשה"); return; }
     if(!title){ uiAlert("כתוב מה צריך לעשות.","משימה חדשה"); return; }
     if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ uiAlert("בחר תאריך.","משימה חדשה"); return; }
     if(!all && !(/^\d{2}:\d{2}$/.test(s) && /^\d{2}:\d{2}$/.test(en) && en>s)){ uiAlert("שעת הסיום צריכה להיות אחרי שעת ההתחלה.","משימה חדשה"); return; }
@@ -5268,11 +5337,14 @@ function calAdd(){
     const M=Cloud.m, ts=M.serverTimestamp(), btn=$('[data-m="ok"]');
     const doc={own:own, ownName:own===me?String(Cloud.user.name||"").slice(0,60):calOwnerName(own).slice(0,60), gid:"", title:title, loc:loc, all:all, s:st.getTime(), e:et.getTime(), priv:false,
       done:false, doneBy:"", doneByName:"", asg:asg, gdirty:true, del:false, cb:me, ca:ts, ub:me, ua:ts};
+    const cid=uid();
     btn.disabled=true;
     try{
       /* בעל היומן עם חיבור ל-Google — נכתב מיד גם ל-Google; אחרת יעלה כשבעל היומן יפתח את האפליקציה */
       if(own===me && calOwner() && calTok()){ const r=await calReq("POST", CAL_API+"?fields=id", calGoogleBody(doc)); if(r && r.id){ doc.gid=String(r.id); doc.gdirty=false; } }
-      await cloudTimeout(M.setDoc(M.doc(calCol(), uid()), doc), 12000).catch(e=>{ if(e && e.code==="deadline-exceeded") return; throw e; });
+      /* משימת מדידה: פרויקט ריק עם הכתובת, מקושר למשימה; שם המודד = העובדים ששויכו */
+      if(meas){ const mp=msProject(addr, cli, $("#cfMp").value.trim().slice(0,20), d, {task:cid, exp:exp, measurer:asg.map(calWorkerName).join(", ").slice(0,80)}); doc.pid=mp.id; if(exp) doc.exp=exp; }
+      await cloudTimeout(M.setDoc(M.doc(calCol(), cid), doc), 12000).catch(e=>{ if(e && e.code==="deadline-exceeded") return; throw e; });
       ov.remove();
       if(calMonthOf(nd)!==Cal.month){ Cal.month=calMonthOf(nd); Cal.past=false; }
       if(Cal.sel!=="all" && Cal.sel!==own) Cal.sel="all";
@@ -5282,6 +5354,199 @@ function calAdd(){
     }catch(e){ btn.disabled=false; uiAlert(calErrText(e),"יומן עבודה"); }
   };
   $("#cfT").focus();
+}
+
+/* ================= משימת מדידה (25/10, בקשת מתניה) =================
+   המנהל פותח ב"יומן עבודה" משימת מדידה ⇒ נוצר פרויקט עם הכתובת, והמשימה (cal.pid) משויכת לעובדים.
+   העובד: "המשימות שלי" ⇒ "התחל מדידה" ⇒ מסך פשוט — תיאור, רוחב, גובה (ובלחיצה: עומק קיר, גובה מסילה, הערה), צילום.
+   כל פתח נשמר כפריט "מידת פתח" בלי סוג (raw) — המנהל רואה אותו מיד, ובוחר סוג ופרופיל אחר כך.
+   "סיימתי מדידה" ⇒ p.ms.done + המשימה ביומן מסומנת "בוצע". עובד יכול לפתוח מדידה גם בעצמו, בלי משימה.
+   p.ms = {by, byName, at, exp, task, self, done, doneBy, doneByName, doneAt}
+   מידה חשודה (למשל 120 במקום 1200) ⇒ שאלה, והתיקון הוא הבחירה הצבועה. */
+const MS={pid:"", iid:"", f:null, more:false};
+/* גבולות סבירים: רוחב/גובה/עומק קיר במ"מ; גובה מסילה בס"מ (כמו בטופס הפריט) */
+const MS_LIM={width:[300,6000,"רוחב","מ״מ"], height:[300,6000,"גובה","מ״מ"], wallDepth:[30,600,"עומק קיר","מ״מ"], railH:[0.5,10,"גובה מסילה","ס״מ"]};
+const msBlank = () => ({location:"", width:"", height:"", wallDepth:"", railH:"", notes:"", photo:null});
+const msOf = p => (p && p.ms && typeof p.ms==="object") ? p.ms : null;
+const msMine = p => { const m=msOf(p); return !!(m && Cloud.user && m.by===Cloud.user.email); };
+const msNum = v => { const n=parseFloat(String(v||"").replace(",", ".")); return isFinite(n) ? n : NaN; };
+const msFmt = n => String(Math.round(n*10)/10);
+
+function viewMeasure(p){
+  if(MS.pid!==p.id){ MS.pid=p.id; MS.iid=""; MS.f=msBlank(); MS.more=false; }
+  if(!MS.f) MS.f=msBlank();
+  const back = calWorker() ? "/tasks" : "/p/"+p.id;
+  return '<div class="topbar"><button class="backbtn" onclick="nav(\''+back+'\')">→</button>'
+    +'<div class="grow"><h1><span>מדידה</span> — <span data-tr>'+esc(pname(p))+'</span></h1><div class="sub">'+(p.client?'<span data-tr>'+esc(p.client)+'</span> · ':'')+'<span>רק מידות פתח</span></div></div></div>'
+    +'<div id="msBox"></div>'
+    +'<button class="btn primary fab" onclick="msFinish()">✓ סיימתי מדידה</button>';
+}
+function afterMeasureRender(){ msRender(); }
+function msRender(){
+  const box=document.getElementById("msBox"), p=proj(MS.pid); if(!box || !p) return;
+  const m=msOf(p)||{}, n=p.items.length, exp=Number(m.exp)||0, f=MS.f;
+  let h='<div class="card ms-prog"><div class="rowline"><b class="grow">'+(n===0?'עוד לא נמדד אף פתח':n===1?'נמדד פתח אחד':n+' פתחים נמדדו')+'</b>'
+    +(exp?'<span class="muted">'+(n>=exp?'הגעת למספר הצפוי ('+exp+')':'נשארו בערך '+(exp-n)+' מתוך '+exp)+'</span>':'')+'</div>'
+    +(exp?'<div class="ms-bar"><i style="width:'+Math.min(100,Math.round(n/exp*100))+'%"></i></div>':'')
+    +(m.done?'<div class="ms-done">✓ <span>המדידה הסתיימה</span>'+(m.doneByName?' · <span data-noi18n>'+esc(m.doneByName)+'</span>':'')+'</div>':'')+'</div>';
+  if(n){
+    h+='<div class="card ms-list">'+p.items.map((it,i)=>'<div class="ms-op'+(it.id===MS.iid?' on':'')+'" data-id="'+esc(it.id)+'" onclick="msEdit(this.dataset.id)">'
+      +'<div class="ms-no">'+(i+1)+'</div><div class="grow"><div class="ms-dim"><span>רוחב</span> <b class="num">'+esc(it.width||"?")+'</b> · <span>גובה</span> <b class="num">'+esc(it.height||"?")+'</b></div>'
+      +'<div class="muted">'+(it.location?'<span data-tr>'+esc(it.location)+'</span>':'<span>פתח</span> '+(i+1))
+      +(it.wallDepth?' · <span>עומק קיר</span> '+esc(it.wallDepth):'')+(it.railH?' · <span>מסילה</span> '+esc(it.railH):'')
+      +(it.notes?' · <span data-tr>'+esc(it.notes)+'</span>':'')+'</div></div>'
+      +(it.photo?'<img class="ms-th" src="'+esc(it.photo)+'" alt="">':'')+'</div>').join("")+'</div>';
+  }
+  const no = MS.iid ? p.items.findIndex(x=>x.id===MS.iid)+1 : n+1;
+  h+='<div class="card ms-form"><div class="rowline"><b class="grow">'+(MS.iid?'<span>עריכת פתח</span> '+no:'<span>פתח</span> '+no)+'</b>'
+    +(MS.iid?'<button class="btn small" onclick="msCancelEdit()">ביטול עריכה</button>':'')+'</div>'
+    +'<div class="ms-chips">'+LOC_SUGGEST.slice(0,8).map(l=>'<button type="button" class="ms-chip'+(f.location===l?' on':'')+'" data-v="'+esc(l)+'" onclick="msLoc(this.dataset.v)">'+esc(l)+'</button>').join("")+'</div>'
+    +'<input id="msLoc" maxlength="60" autocomplete="off" placeholder="מספר או תיאור (לא חובה)" value="'+esc(f.location)+'" oninput="MS.f.location=this.value">'
+    +'<div class="two" style="margin-top:8px"><div><label>רוחב (מ״מ)</label><input id="msW" class="num ms-big" inputmode="decimal" value="'+esc(f.width)+'" oninput="MS.f.width=this.value"></div>'
+    +'<div><label>גובה (מ״מ)</label><input id="msH" class="num ms-big" inputmode="decimal" value="'+esc(f.height)+'" oninput="MS.f.height=this.value"></div></div>'
+    +(MS.more || f.wallDepth || f.railH || f.notes
+      ? '<div class="two" style="margin-top:8px"><div><label>עומק קיר (מ״מ)</label><input id="msD" class="num" inputmode="decimal" value="'+esc(f.wallDepth)+'" oninput="MS.f.wallDepth=this.value"></div>'
+        +'<div><label>גובה מסילה (ס״מ)</label><input id="msR" class="num" inputmode="decimal" value="'+esc(f.railH)+'" oninput="MS.f.railH=this.value" placeholder="1.8 / 2.8"></div></div>'
+        +'<label style="margin-top:8px">הערה</label><input id="msN" maxlength="200" autocomplete="off" value="'+esc(f.notes)+'" oninput="MS.f.notes=this.value" placeholder="למשל: יש תריס ישן, קיר גבס">'
+      : '<button type="button" class="ms-more" onclick="MS.more=true;msRender()">+ עומק קיר · גובה מסילה · הערה</button>')
+    +(f.photo
+      ? '<div class="ms-ph"><img src="'+esc(f.photo)+'" alt=""><button class="btn small" onclick="MS.f.photo=null;msRender()">הסר צילום</button></div>'
+      : '<label class="ms-cam">📷 <span>צלם את הפתח (לא חובה)</span><input type="file" accept="image/*" capture="environment" style="display:none" onchange="msPhoto(this)"></label>')
+    +'<div class="btns" style="margin-top:12px"><button class="btn primary wide" onclick="msSave()">'+(MS.iid?'שמור שינוי':'שמור פתח')+'</button></div>'
+    +(MS.iid?'<button type="button" class="ms-del" onclick="msDelete()">🗑 מחק את הפתח</button>':'')
+    +'</div>';
+  box.innerHTML=h;
+}
+function msLoc(v){ MS.f.location = MS.f.location===v ? "" : v; msRender(); }
+function msEdit(id){
+  const p=proj(MS.pid), it=p && p.items.find(x=>x.id===id); if(!it) return;
+  MS.iid=id; MS.f={location:it.location||"", width:it.width||"", height:it.height||"", wallDepth:it.wallDepth||"", railH:it.railH||"", notes:it.notes||"", photo:it.photo||null};
+  MS.more=!!(it.wallDepth||it.railH||it.notes); msRender();
+  const fm=document.querySelector(".ms-form"); if(fm) window.scrollTo({top:Math.max(0, fm.getBoundingClientRect().top+window.scrollY-80), behavior:"smooth"});
+}
+function msCancelEdit(){ MS.iid=""; MS.f=msBlank(); MS.more=false; msRender(); }
+function msPhoto(input){
+  const file=input.files && input.files[0]; if(!file) return;
+  const rd=new FileReader(), img=new Image();
+  rd.onload=e=>{ img.onload=()=>{
+    const sc=Math.min(1, 700/Math.max(img.width,img.height)), cv=document.createElement("canvas");
+    cv.width=Math.round(img.width*sc); cv.height=Math.round(img.height*sc);
+    cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+    MS.f.photo=cv.toDataURL("image/jpeg",0.62); msRender();
+  }; img.src=e.target.result; };
+  rd.readAsDataURL(file);
+}
+/* בדיקת טעויות: מידה מחוץ לטווח הסביר ⇒ "בטוח?" — התיקון הוא הבחירה הצבועה, ואחריו לא נשמר עד שבודקים */
+async function msCheck(){
+  const f=MS.f;
+  for(const k of ["width","height","wallDepth","railH"]){
+    const v=String(f[k]||"").trim(); if(!v) continue;
+    const n=msNum(v), L=MS_LIM[k];
+    if(isNaN(n) || n<=0){ uiAlert("המידה \""+v+"\" לא תקינה. כותבים רק מספר.","מדידה"); return false; }
+    if(n>=L[0] && n<=L[1]) continue;
+    const sug = n<L[0] ? n*10 : n/10;
+    const msg = n<L[0]
+      ? (L[3]==="מ״מ" ? msFmt(n)+" מ״מ זה "+msFmt(n/10)+" ס״מ. אולי התכוונת ל-"+msFmt(sug)+"?" : msFmt(n)+" ס״מ זה "+msFmt(n*10)+" מ״מ. אולי התכוונת ל-"+msFmt(sug)+"?")
+      : (L[3]==="מ״מ" ? msFmt(n)+" מ״מ זה "+msFmt(n/1000)+" מטר. אולי התכוונת ל-"+msFmt(sug)+"?" : msFmt(n)+" ס״מ זה יותר מדי לגובה מסילה. אולי התכוונת ל-"+msFmt(sug)+"?");
+    const keep=await uiConfirm(msg,{title:"⚠️ בטוח? "+L[2]+" "+msFmt(n)+" "+L[3],ok:"כן, "+msFmt(n),cancel:"תקן ל-"+msFmt(sug),safe:true});
+    if(!keep){ f[k]=msFmt(sug); msRender(); return false; }   /* תוקן — בודקים בעיניים ושומרים שוב */
+  }
+  return true;
+}
+async function msSave(){
+  if(!proj(MS.pid)) return;
+  const f=MS.f;
+  if(!String(f.width).trim() || !String(f.height).trim()){ uiAlert("כתוב רוחב וגובה.","מדידה"); return; }
+  if(!(await msCheck())) return;
+  /* אחרי חלון: הפרויקט נקרא מחדש — עדכון מהענן בזמן שהחלון היה פתוח בונה את הרשימה מחדש, והעותק הקודם כבר לא נשמר */
+  const p=proj(MS.pid); if(!p) return;
+  const vals={location:String(f.location||"").trim().slice(0,60), width:String(f.width).trim(), height:String(f.height).trim(), wallDepth:String(f.wallDepth||"").trim(),
+    railH:String(f.railH||"").trim(), notes:String(f.notes||"").trim().slice(0,200), photo:f.photo||null};
+  if(MS.iid){
+    const it=p.items.find(x=>x.id===MS.iid); if(!it){ msCancelEdit(); return; }
+    Object.assign(it, vals);
+  } else p.items.push(Object.assign(newItem(1), {measureType:"opening", unit:"mm", raw:true}, vals));
+  save();
+  const was=!!MS.iid;
+  MS.iid=""; MS.f=msBlank(); MS.more=false; msRender();
+  cloudToast(was ? "נשמר ✓" : "הפתח נשמר ✓");
+  const w=document.getElementById("msW"); if(w && !was){ const fm=document.querySelector(".ms-form"); if(fm) window.scrollTo({top:Math.max(0, fm.getBoundingClientRect().top+window.scrollY-80)}); }
+}
+function msDelete(){
+  const p=proj(MS.pid); if(!p || !MS.iid) return;
+  uiConfirm("למחוק את הפתח הזה?",{title:"מחיקת פתח",ok:"מחק",cancel:"השאר",safe:true}).then(ok=>{
+    const q=proj(MS.pid); if(!ok || !q) return;
+    q.items=q.items.filter(x=>x.id!==MS.iid); save(); msCancelEdit();
+  });
+}
+async function msFinish(){
+  const p=proj(MS.pid); if(!p) return;
+  const f=MS.f, n=p.items.length, me=Cloud.user?Cloud.user.email:"", nm=String((Cloud.user&&Cloud.user.name)||"").slice(0,60);
+  if(String(f.width||"").trim() || String(f.height||"").trim()){ uiAlert("יש פתח שעוד לא נשמר. שומרים אותו, או מוחקים את המידות שבטופס.","סיום מדידה"); return; }
+  if(!n){ uiAlert("עוד לא נמדד אף פתח.","סיום מדידה"); return; }
+  const ok=await uiConfirm(n===1?"לסיים את המדידה? נמדד פתח אחד.":"לסיים את המדידה? נמדדו "+n+" פתחים.",{title:"סיום מדידה",ok:"כן, סיימתי",cancel:"עוד לא"});
+  const q=proj(MS.pid);   /* נקרא מחדש אחרי החלון (ראו msSave) */
+  if(!ok || !q) return;
+  q.ms=Object.assign({}, msOf(q)||{}, {done:true, doneBy:me, doneByName:nm, doneAt:Date.now()});
+  save();
+  const t=q.ms.task && Cal.docs.get(q.ms.task);
+  if(t && !t.done && (calBoss() || (calWorker() && t.asg.includes(me)))) calSetDone(t.id, true).catch(()=>{});
+  cloudToast("המדידה נשלחה למנהל ✓");
+  nav(calWorker() ? "/tasks" : "/p/"+q.id);
+}
+/* מדידה חדשה בלי משימה (עובד במקום, או מנהל) */
+function msNew(){
+  const ov=document.createElement("div"); ov.className="modal-overlay";
+  ov.innerHTML='<div class="modal cal-form" role="dialog" aria-modal="true"><h3>מדידה חדשה</h3>'
+    +'<label>כתובת</label><input id="mnA" maxlength="120" autocomplete="off" placeholder="למשל: הרצל 12, רחובות">'
+    +'<div class="two"><div><label>שם הלקוח</label><input id="mnC" maxlength="60" autocomplete="off"></div>'
+    +'<div><label>טלפון</label><input id="mnP" type="tel" inputmode="tel" dir="ltr" maxlength="20" autocomplete="off"></div></div>'
+    +'<div class="btns"><button class="btn primary" data-m="ok">התחל מדידה</button><button class="btn" data-m="cancel">ביטול</button></div></div>';
+  document.body.appendChild(ov);
+  const $=s=>ov.querySelector(s);
+  $('[data-m="cancel"]').onclick=()=>ov.remove();
+  ov.addEventListener("click",e=>{ if(e.target===ov) ov.remove(); });
+  $('[data-m="ok"]').onclick=()=>{
+    const a=$("#mnA").value.trim().slice(0,120);
+    if(!a){ uiAlert("כתוב כתובת.","מדידה חדשה"); return; }
+    const p=msProject(a, $("#mnC").value.trim().slice(0,60), $("#mnP").value.trim().slice(0,20), todayISO(), {self:true});
+    ov.remove(); nav("/m/"+p.id);
+  };
+  $("#mnA").focus();
+}
+/* פרויקט מדידה חדש: ריק, עם הכתובת; שם המודד = מי שפתח (או העובד, כשהמנהל משייך) */
+function msProject(address, client, phone, date, extra){
+  const u=Cloud.user||{};
+  const p={id:uid(), kind:"production", name:"", client:client||"", phone:phone||"", address:address, date:date||todayISO(),
+    measurer:(extra&&extra.measurer)||(calWorker()?String(u.name||""):""), notes:"", items:[],
+    ms:Object.assign({by:u.email||"", byName:String(u.name||"").slice(0,60), at:Date.now(), done:false}, extra||{})};
+  delete p.ms.measurer;
+  DB.projects.unshift(p); save();
+  return p;
+}
+/* בכרטיס הפרויקט: מצב המדידה */
+function msCard(p){
+  const m=msOf(p); if(!m) return "";
+  const n=p.items.length, raw=p.items.filter(it=>it.raw).length, exp=Number(m.exp)||0;
+  return '<div class="card ms-card"><div class="rowline wrap"><div class="grow">'
+    +(m.done ? '<b>📐 <span>נמדד</span> ✓ · '+(n===1?'<span>פתח אחד</span>':n+' <span>פתחים</span>')+'</b>'
+             : '<b>📐 <span>במדידה</span> · '+(n===1?'<span>פתח אחד</span>':n+' <span>פתחים</span>')+(exp?' <span>מתוך</span> ~'+exp:'')+'</b>')
+    +'<div class="muted">'+(m.done
+        ? '<span>סיים</span> <span data-noi18n>'+esc(m.doneByName||"")+'</span> · '+esc(cloudRel(m.doneAt))
+        : (m.byName?'<span>נפתח ע״י</span> <span data-noi18n>'+esc(m.byName)+'</span> · '+esc(cloudRel(m.at)):''))+'</div>'
+    +(raw && cloudIsBoss() ? '<div class="ms-raw">'+(raw===1?'<span>פתח אחד מחכה לבחירת סוג</span>':raw+' <span>פתחים מחכים לבחירת סוג</span>')+'</div>' : '')
+    +'</div><button class="btn small" onclick="nav(\'/m/'+esc(p.id)+'\')">📏 <span>מסך מדידה</span></button></div></div>';
+}
+const msTag = p => { const m=msOf(p); return m ? (m.done ? ' · 📐 <span>נמדד</span> ✓' : ' · 📐 <span>במדידה</span>') : ''; };
+/* שרטוט של פתח בלי סוג: מסגרת ריקה */
+function msSketch(it, w){
+  w=w||250; const W=274, H=250;
+  let rw=parseFloat(it.width), rh=parseFloat(it.height), FW=192, FH=182;
+  if(rw>0 && rh>0){ const a=Math.max(0.4,Math.min(2.5,rw/rh)); if(a>=192/182){ FW=192; FH=Math.round(192/a); } else { FH=182; FW=Math.round(182*a); } }
+  const x=Math.round((W-FW)/2), y=Math.round(28+(182-FH)/2);
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="'+w+'" height="'+Math.round(w*H/W)+'" role="img" aria-label="פתח">'
+    +'<rect x="'+x+'" y="'+y+'" width="'+FW+'" height="'+FH+'" fill="none" stroke="#94a3b8" stroke-width="4" stroke-dasharray="10 7" rx="3"/>'
+    +'<text x="'+(W/2)+'" y="'+(y+FH/2+8)+'" text-anchor="middle" font-size="26" fill="#94a3b8">?</text></svg>';
 }
 
 /* ---- תצוגה ---- */
@@ -5308,7 +5573,8 @@ function cloudRender(){
   if(r==="activity" && document.getElementById("actbox")){ renderActivityList(); return; }
   if(r==="team" && document.getElementById("teambox")){ renderTeamList(); return; }
   if(r==="map" && document.getElementById("tmap")){ tmapList(); return; }
-  if((r==="cal" || r==="tasks") && document.getElementById("calList")){ calRender(); return; }   /* לא בונים את המפה מחדש בכל עדכון */
+  if((r==="cal" || r==="tasks") && document.getElementById("calList")){ calRender(); return; }
+  if(r==="m" && document.getElementById("msBox")){ if(!proj(MS.pid)){ render(); return; } msRender(); return; }   /* לא בונים את המפה מחדש בכל עדכון */
   const y=window.scrollY, open=[].map.call(document.querySelectorAll("#app details"), d=>d.open);
   render();
   const ds=document.querySelectorAll("#app details");
