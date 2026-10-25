@@ -444,6 +444,20 @@ html[dir="ltr"] .backbtn, html[dir="ltr"] .mc-arrow, html[dir="ltr"] .chev, html
 .cal-form .cal-chk input{width:auto}
 .cal-form .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cal-form .btns{margin-top:18px}
+.cal-chips{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px}
+.cal-chip{font:inherit;display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:99px;background:var(--surface);box-shadow:var(--shadow);font-weight:700;font-size:.82rem;color:var(--ink)}
+.cal-chip.on{background:var(--grad);color:#fff}
+.cal-cd{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.cal-dots{display:flex;gap:2px;margin-top:1px}.cal-dots i{width:5px;height:5px;border-radius:50%;display:block}
+.cal-bar{width:4px;align-self:stretch;border-radius:4px;flex:none}
+.cal-body{cursor:pointer;min-width:0}
+.cal-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.cal-tg{font-size:.7rem;font-weight:800;border-radius:6px;padding:2px 7px;background:var(--line2)}
+.cal-tw{background:#e0f2fe;color:#0369a1}.cal-tok{background:#dcfce7;color:#15803d}.cal-ts{background:var(--warn-bg);color:var(--warn)}.cal-tp{color:var(--ink2)}
+.cal-waze{display:inline-block;margin-top:6px;font-size:.76rem;font-weight:800;color:#fff;background:#1fb6ff;border-radius:99px;padding:5px 11px;text-decoration:none}
+.cal-asg{display:flex;flex-direction:column;gap:2px;max-height:180px;overflow:auto}
+.cal-form .hint{font-size:.74rem;color:var(--ink2);margin-top:4px}
+.cal-form select{width:100%}
 .trbtn{font-size:.72rem;font-weight:700;color:var(--acc);text-decoration:none;white-space:nowrap}
 /* ===== מסך תשלום (paywall) ===== */
 .paywall{position:fixed;inset:0;z-index:900;background:linear-gradient(160deg,#20315e,#2c4e9e);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
@@ -1227,7 +1241,7 @@ function renderRoute(){
   const app = document.getElementById("app");
   if(parts[0]!=="activity") cloudActivityStop();
   if(parts[0]!=="team") cloudTeamStop();
-  if(parts[0]!=="cal") calStop();
+  if(parts[0]!=="cal" && parts[0]!=="tasks") calStop();
   if(!gateOpen()){   /* בלי התחברות לצוות — רק מסך הכניסה, מכל כתובת */
     if(parts.length){ try{ history.replaceState(null,"",location.pathname+location.search+"#/"); }catch(e){} }
     app.innerHTML = viewGate(); window.scrollTo(0,0); return;
@@ -1250,6 +1264,7 @@ function renderRoute(){
   else if(parts[0]==="team"){ app.innerHTML = viewTeam(); afterTeamRender(); }
   else if(parts[0]==="map"){ app.innerHTML = viewTeamMap(); afterTeamMapRender(); }
   else if(parts[0]==="cal"){ app.innerHTML = viewCal(); afterCalRender(); }
+  else if(parts[0]==="tasks"){ app.innerHTML = viewTasks(); afterCalRender(); }
   else if(parts[0]==="prod" && parts[1]){ app.innerHTML = viewProdOrder(parts[1]); }
   else if(parts[0]==="settings"){ app.innerHTML = viewSettings(); }
   else {
@@ -1279,10 +1294,11 @@ function viewHome(){
       +'<button class="btn" onclick="App.install()">התקן</button>'
       +'</div></div>'
     : '')
+  +(Cloud.ready&&calWorker()?menuItem("✅","pc3","המשימות שלי",calHomeSub(),"/tasks"):"")
   +menuItem("📐","pc3","פרויקטים","מדידות ייצור לשליחה ליצרן · "+countKind("production")+" פרויקטים","/projects")
   +menuItem("💰","pc1","מידות להצעת מחיר","מדידה מהירה לתמחור · "+countKind("quote")+" הצעות","/quotes")
   +(canPrice()?menuItem("📄","pc0","הצעת מחיר ללקוח","תמחור והפקת הצעה ללקוח","/pricing"):"")
-  +(canBoss()&&calCan()?menuItem("📅","pc4","היומן שלי",calHomeSub(),"/cal"):"")
+  +(canBoss()&&calBoss()?menuItem("📅","pc4","יומן הצוות",calHomeSub(),"/cal"):"")
   +menuItem("🧊","pc2","הדמיה ללקוח","בונים חלון ורואים אותו בתלת־ממד","/sim")
   +(Cloud.ready&&Cloud.role!=="maker"?menuItem("🕒","pc0","פעילות הצוות","מי עשה מה ומתי — כל השינויים של הצוות","/activity"):"")
   +(canBoss()?menuItem("📍","pc3","מפת הצוות","איפה העובדים והיצרן עכשיו","/map"):"")
@@ -3343,8 +3359,8 @@ function gateOpen(){
    לא נוגע בענן — רץ רק כשהסנכרון עצור, ולא עובר דרך save(), כדי ששום מחיקה לא תעלה לצוות. */
 function localDrop(){
   if(Cloud.ready) return;
-  [LS_KEY, DRAFT_KEY, SIM_KEY, CAL_KEY].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
-  calTokForget(); Cal.month=""; Cal.events=[]; Cal.at=0;
+  [LS_KEY, DRAFT_KEY, SIM_KEY, CAL_KEY, "alum_cal_v1"].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+  calTokForget(); Cal.month=""; Cal.docs=new Map(); Cal.g=[]; Cal.at=0; Cal.people=null;
   DB=load(); draft=null; draftPid=null; draftIid=null; sim=loadSimState(); simSel=null;
 }
 /* החבר הוסר מהצוות או שהמכשיר שלו שוחרר, והשרת אישר את זה: נועלים, מוחקים את העותק שבטלפון,
@@ -3609,7 +3625,7 @@ async function cloudDevRelease(){
 
 function cloudSignedOut(){
   consentClose(); trackStop(); tmapStop(); cloudStop(); cloudActivityStop(); cloudTeamStop();
-  calTokForget(); calStop();
+  calTokForget(); calStop(); Cal.docs=new Map(); Cal.g=[]; Cal.people=null; Cal.ready=false;
   Cloud.user=null; Cloud.ready=false; Cloud.role=""; Cloud.leaving=false;
   gateOut();
   cloudSetState("signedout");
@@ -3699,6 +3715,7 @@ function cloudStart(){
   L(cloudRef("s:main"), s=>cloudSnapDoc("s",s));
   L(cloudCol("production"), s=>cloudSnapProd(s));
   L(M.doc(Cloud.db,"teams",TEAM_ID,"members",Cloud.user.email), s=>cloudSnapMe(s));
+  calListen();
 }
 function cloudStop(){ Cloud.unsubs.forEach(f=>{ try{ f(); }catch(e){} }); Cloud.unsubs=[]; cloudProdPhotosStop(); }
 
@@ -4756,24 +4773,30 @@ setInterval(()=>{ try{ trackTick(); }catch(e){} }, 60000);
 document.addEventListener("visibilitychange", ()=>{
   if(document.visibilityState!=="visible") return;
   try{
-    if(document.getElementById("calList") && calTok() && Date.now()-Cal.at>60000) calLoad();
+    if(document.getElementById("calList") && calOwner() && calTok() && Date.now()-Cal.at>60000) calSync();
     if(document.querySelector(".loc-block")) locPermState().then(st=>{ if(st) locPermChanged(st); else { locBlockHide(); trackRetry(); } });
     trackTick();
   }catch(e){}
 });
 
-/* ================= יומן Google — רק למנהל ולמפתח (בקשת המנהל, 25/10) =================
-   כל אחד רואה את היומן הראשי של חשבון ה-Google שלו: החודש בקטן, והמשימות לפי ימים כמו רשימת מכולת.
-   "בוצע" נשמר ביומן עצמו — "✅ " בתחילת שם המשימה — כך שהסימון נראה ומסונכרן גם באפליקציה וגם ב-Google.
-   ביטול סימון — רק אחרי חלון אישור. משימה חדשה מהאפליקציה נכתבת ישר ליומן.
-   הגישה: אישור של Google להרשאת calendar.events בחלון ההתחברות. האישור תקף כשעה ואז לחיצה אחת מחדשת אותו;
-   הוא נשמר רק לחלון הזה (sessionStorage) — לא בשרת ולא בענן של הצוות.
-   עותק אחרון של המשימות נשמר בטלפון לפתיחה מהירה ובלי קליטה, ונמחק עם שאר הנתונים כשהמנהל מוסר מהצוות. */
+/* ================= יומן הצוות — יומן של האפליקציה, מסונכרן עם יומן Google של כל מנהל (25/10) =================
+   החלטות מתניה: כל מנהל — היומן הראשי שלו ב-Google; מנהלים ומפתח רואים את היומנים של כל המנהלים;
+   המפתח עצמו לא מופיע ביומן (אין לו יומן בצוות), אבל רואה הכול ויכול לשנות; מנהל (ומפתח) משייכים משימות לעובדים;
+   עובד רואה רק את מה ששויך אליו ומסמן "בוצע" — לא מוסיף משימות. ביטול "בוצע" — רק אחרי חלון אישור.
+   הנתונים: teams/{צוות}/cal/{id} — {own, ownName, gid, title, loc, all, s, e, priv, done, doneBy, doneByName, doneAt, asg[], gdirty, del, cb, ca, ub, ua}
+   הסנכרון עם Google רץ רק בטלפון של בעל היומן, כשהאפליקציה פתוחה אצלו (אין שרת — החלטת מתניה, בלי עלות):
+     · מ-Google לאפליקציה: שם, זמן, כתובת, ו"בוצע" ("✅ " בתחילת השם);
+     · מהאפליקציה ל-Google: "בוצע" שסומן באפליקציה ומשימות שנוספו באפליקציה (gdirty = מחכה לבעל היומן).
+   אירוע שסומן ב-Google כ"פרטי": בענן נשמר רק "תפוס" — בלי שם ובלי כתובת (נאכף בשרת); הפרטים רק בטלפון של הבעלים.
+   גישה ל-Google: הרשאת calendar.events בחלון ההתחברות, תקפה כשעה; נשמרת רק לחלון הזה (sessionStorage). */
 const CAL_API="https://www.googleapis.com/calendar/v3/calendars/primary/events";
 const CAL_SCOPE="https://www.googleapis.com/auth/calendar.events";
-const CAL_KEY="alum_cal_v1", CAL_TOK="alum_caltok_v1", CAL_DONE="✅ ";
-const Cal={month:"", events:[], at:0, loading:false, err:"", timer:null, past:false, busy:new Set()};
-const calCan = () => cloudIsBoss() && !!Cloud.user && !Cloud.user.phone;
+const CAL_KEY="alum_cal_v2", CAL_TOK="alum_caltok_v1", CAL_DONE="✅ ";
+const CAL_COLORS=["#0ca7b4","#f97316","#8b5cf6","#e11d48","#16a34a","#2563eb"];
+const Cal={month:"", sel:"all", docs:new Map(), ready:false, srvErr:"", g:[], at:0, loading:false, err:"", timer:null, syncT:null, past:false, busy:new Set(), people:null};
+const calBoss  = () => cloudIsBoss() && !!Cloud.user && !Cloud.user.phone;              /* רואה את יומן הצוות */
+const calOwner = () => Cloud.role==="manager" && !!Cloud.user && !Cloud.user.phone;    /* יש לו יומן Google שמסתנכרן */
+const calWorker= () => Cloud.role==="employee" && !!Cloud.user;                          /* מקבל משימות */
 const calPad = n => String(n).padStart(2,"0");
 const calKey = d => d.getFullYear()+"-"+calPad(d.getMonth()+1)+"-"+calPad(d.getDate());
 const calMonthOf = d => d.getFullYear()+"-"+calPad(d.getMonth()+1);
@@ -4792,13 +4815,14 @@ function calMonTitle(y,m){
   if(LANG==="he") return CAL_MON_HE[m]+" "+y;
   try{ return new Intl.DateTimeFormat(calLoc(), {month:"long", year:"numeric"}).format(new Date(y,m,1)); }catch(e){ return (m+1)+"/"+y; }
 }
-/* הטווח שנטען: כל השבועות שמוצגים בחודש הקטן (ראשון עד שבת) */
+/* הטווח שמוצג בחודש הקטן: שבועות שלמים, ראשון עד שבת */
 function calRange(mk){
   const [y,m]=calYM(mk), a=new Date(y,m,1), b=new Date(y,m+1,0);
-  return [new Date(y,m,1-a.getDay()), new Date(y,m+1,0+(7-b.getDay()))];
+  return [new Date(y,m,1-a.getDay()), new Date(y,m+1,7-b.getDay())];
 }
+const calCol = () => cloudCol("cal");
 
-/* ---- האישור של Google ---- */
+/* ---- האישור של Google (רק מנהל — בעל יומן) ---- */
 function calTok(){
   try{ const t=JSON.parse(sessionStorage.getItem(CAL_TOK)); if(t && Cloud.user && t.who===Cloud.user.email && t.exp>Date.now()+30000) return String(t.tok||""); }catch(e){}
   return "";
@@ -4806,7 +4830,7 @@ function calTok(){
 function calTokForget(){ try{ sessionStorage.removeItem(CAL_TOK); }catch(e){} }
 async function calConnect(){
   const M=Cloud.m, u=Cloud.auth && Cloud.auth.currentUser;
-  if(!M || !u || u.isAnonymous || !calCan()) return;
+  if(!M || !u || u.isAnonymous || !calOwner()) return;
   if(!navigator.onLine){ uiAlert("כדי להתחבר ליומן צריך אינטרנט.","יומן Google"); return; }
   const prov=new M.GoogleAuthProvider();
   prov.addScope(CAL_SCOPE);
@@ -4816,7 +4840,7 @@ async function calConnect(){
     const cr=M.GoogleAuthProvider.credentialFromResult(res);
     if(!cr || !cr.accessToken) throw {code:"cal/no-token"};
     sessionStorage.setItem(CAL_TOK, JSON.stringify({tok:cr.accessToken, who:Cloud.user.email, exp:Date.now()+55*60000}));
-    Cal.err=""; calLoad();
+    Cal.err=""; calRender(); calSync();
   }catch(e){
     const c=(e&&e.code)||"";
     if(c==="auth/popup-closed-by-user" || c==="auth/cancelled-popup-request") return;
@@ -4841,66 +4865,178 @@ function calErrText(e){
   if(c==="cal/403" && /has not been used|disabled|not been enabled/i.test(m)) return "יומן Google עוד לא הופעל בפרויקט. המפתח צריך להפעיל את Google Calendar API.";
   if(c==="cal/403") return "Google לא נתן גישה ליומן. בחלון של Google צריך לאשר את הגישה ליומן, ואז לנסות שוב.";
   if(c==="cal/404" || c==="cal/410") return "המשימה כבר לא קיימת ביומן.";
-  return "השמירה ביומן Google נכשלה. נסה שוב.";
+  if(c==="permission-denied") return "אין הרשאה לפעולה הזו.";
+  return "השמירה נכשלה. נסה שוב.";
 }
 
 /* ---- נתונים ---- */
-function calNorm(e){
+/* אירוע מ-Google — רק בטלפון של הבעלים */
+function calNormG(e){
   const all=!!(e.start && e.start.date);
   const s = all ? calDay(e.start.date) : new Date(e.start.dateTime);
   const en = all ? calDay((e.end&&e.end.date)||e.start.date) : new Date((e.end&&e.end.dateTime)||e.start.dateTime);
   const t=String(e.summary||"").slice(0,300), done=/^✅/.test(t);
-  return {id:String(e.id||""), title:(done ? t.replace(/^✅\s*/,"") : t), done:done, loc:String(e.location||"").slice(0,200), all:all,
-    s:s.getTime(), e:Math.max(en.getTime(), s.getTime()), edit:!!(e.organizer && e.organizer.self) || e.guestsCanModify===true};
+  return {gid:String(e.id||"").slice(0,1000), title:(done ? t.replace(/^✅\s*/,"") : t).slice(0,300), done:done, loc:String(e.location||"").slice(0,200), all:all,
+    s:s.getTime(), e:Math.max(en.getTime(), s.getTime()), priv:e.visibility==="private" || e.visibility==="confidential",
+    edit:!!(e.organizer && e.organizer.self) || e.guestsCanModify===true};
 }
-function calCacheAll(){ try{ const o=JSON.parse(localStorage.getItem(CAL_KEY)); return (o && Cloud.user && o.who===Cloud.user.email) ? o : null; }catch(e){ return null; } }
-function calCacheGet(mk){ const o=calCacheAll(); return (o && o.months && o.months[mk]) || null; }
-function calSave(){
-  if(!Cloud.user || !Cal.month) return;
-  const o=calCacheAll() || {who:Cloud.user.email, months:{}};
-  o.months[Cal.month]={at:Cal.at, ev:Cal.events};
-  const keep=new Set([calMonthOf(new Date()), Cal.month]);   /* רק החודש הנוכחי והחודש שמוצג */
-  Object.keys(o.months).forEach(k=>{ if(!keep.has(k)) delete o.months[k]; });
-  try{ localStorage.setItem(CAL_KEY, JSON.stringify(o)); }catch(e){}
+/* מסמך מהענן — בודקים כל שדה; פגום = מדולג */
+function calDocOk(id, d){
+  if(!cloudIdOk(id) || !d || typeof d!=="object") return null;
+  const str=(v,n)=>typeof v==="string" ? v.slice(0,n) : "", num=v=>typeof v==="number" && isFinite(v) ? v : NaN;
+  const s=num(d.s), e=num(d.e); if(isNaN(s)) return null;
+  return {id:id, own:str(d.own,100), ownName:str(d.ownName,60), gid:str(d.gid,1000), title:str(d.title,300), loc:str(d.loc,200), all:d.all===true,
+    s:s, e:isNaN(e)?s:Math.max(e,s), priv:d.priv===true, done:d.done===true, doneBy:str(d.doneBy,100), doneByName:str(d.doneByName,60),
+    asg:Array.isArray(d.asg) ? d.asg.filter(x=>typeof x==="string").slice(0,20) : [], gdirty:d.gdirty===true, del:d.del===true, ua:cloudMs(d.ua)};
 }
-function calSetMonth(mk){
-  Cal.month=mk; Cal.past=false; Cal.err="";
-  const c=calCacheGet(mk); Cal.events=c ? (c.ev||[]) : []; Cal.at=c ? (c.at||0) : 0;
+function calListen(){   /* נקרא מ-cloudStart — מאזין לפי התפקיד */
+  const M=Cloud.m, me=Cloud.user && Cloud.user.email;
+  Cal.docs=new Map(); Cal.ready=false; Cal.srvErr=""; Cal.people=null;
+  let q=null;
+  if(calBoss()) q=M.query(calCol(), M.where("s",">=", Date.now()-62*864e5));
+  else if(calWorker()) q=M.query(calCol(), M.where("asg","array-contains", me));
+  if(!q) return;
+  if(calOwner()){ const c=calCacheGet(); if(c){ Cal.g=c.g||[]; Cal.at=c.at||0; } }
+  /* שגיאה כאן לא נוגעת בשאר האפליקציה (למשל לפני שכללי השרת של היומן פורסמו) */
+  Cloud.unsubs.push(M.onSnapshot(q, s=>calSnap(s), e=>{ Cal.srvErr=(e&&e.code)||"err"; calViews(); }));
 }
-async function calLoad(){
-  if(!calCan() || Cal.loading || !Cal.month) return;
-  if(!calTok()){ calRender(); return; }
-  const mk=Cal.month, rg=calRange(mk);
+function calSnap(s){
+  const first=!Cal.ready; let fresh=0;
+  s.docChanges().forEach(ch=>{
+    const id=ch.doc.id;
+    if(ch.type==="removed"){ Cal.docs.delete(id); return; }
+    const d=calDocOk(id, ch.doc.data({serverTimestamps:"estimate"}));
+    if(!d){ Cal.docs.delete(id); return; }
+    if(!first && calWorker() && ch.type==="added" && !d.del && !ch.doc.metadata.hasPendingWrites) fresh++;
+    Cal.docs.set(id, d);
+  });
+  Cal.ready=true; Cal.srvErr="";
+  if(fresh) cloudToast(fresh===1 ? "שויכה אליך משימה חדשה" : "שויכו אליך "+fresh+" משימות חדשות");
+  calViews();
+  if(calOwner() && calTok() && (first || [...Cal.docs.values()].some(d=>d.own===Cloud.user.email && d.gdirty))) calSyncSoon();
+}
+/* עדכון המסכים שמציגים את היומן — בלי לקפוץ ובלי לשבור הקלדה */
+function calViews(){
+  const r=location.hash.replace(/^#\/?/,"").split("/")[0];
+  if(r==="cal" || r==="tasks") calRender();
+  else if(r==="") cloudRemoteChanged("");
+}
+function calCacheGet(){ try{ const o=JSON.parse(localStorage.getItem(CAL_KEY)); return (o && Cloud.user && o.who===Cloud.user.email) ? o : null; }catch(e){ return null; } }
+function calCacheSave(){ if(!Cloud.user) return; try{ localStorage.setItem(CAL_KEY, JSON.stringify({who:Cloud.user.email, at:Cal.at, g:Cal.g})); }catch(e){} }
+/* מה מוצג: בלי מחוקים; לפי הבחירה למעלה; אירוע פרטי — פרטים רק לבעלים (מהטלפון שלו), לאחרים "תפוס" */
+function calItems(){
+  const me=Cloud.user ? Cloud.user.email : "", mine=new Map(Cal.g.map(x=>[x.gid,x]));
+  let arr=[...Cal.docs.values()].filter(d=>!d.del);
+  if(calBoss() && Cal.sel!=="all") arr=arr.filter(d=>d.own===Cal.sel);
+  return arr.map(d=>{
+    if(!d.priv) return d;
+    const g=d.own===me && mine.get(d.gid), x=Object.assign({}, d);
+    if(g){ x.title=g.title; x.loc=g.loc; } else { x.busy=true; x.title=""; x.loc=""; }
+    return x;
+  });
+}
+function calOfDay(d, evs){
+  const a=d.getTime(), b=new Date(d.getFullYear(), d.getMonth(), d.getDate()+1).getTime();
+  return evs.filter(x => x.all ? (x.s<b && Math.max(x.e, x.s+1)>a) : (x.s>=a && x.s<b))
+    .sort((x,y)=>(y.all-x.all) || (x.s-y.s) || x.title.localeCompare(y.title));
+}
+/* בעלי היומנים (מנהלים) וצבע לכל אחד — המפתח לא מופיע */
+function calOwners(){
+  const m=new Map();
+  if(Cal.people) Cal.people.forEach((p,em)=>{ if(p.role==="manager") m.set(em, p.name); });
+  Cal.docs.forEach(d=>{ if(d.own && !d.del){ if(!m.has(d.own) || !m.get(d.own)) m.set(d.own, d.ownName || m.get(d.own) || ""); } });
+  const me=Cloud.user && Cloud.user.email;
+  return [...m.entries()].map(([em,n])=>({em:em, name:n || String(em).split("@")[0]}))
+    .sort((a,b)=>(b.em===me)-(a.em===me) || a.name.localeCompare(b.name));
+}
+function calColor(em){ const i=calOwners().findIndex(o=>o.em===em); return CAL_COLORS[(i<0?0:i)%CAL_COLORS.length]; }
+const calOwnerName = em => { const o=calOwners().find(x=>x.em===em); return o ? o.name : String(em||"").split("@")[0]; };
+/* העובדים (למנהלים): שם מהמנהל, או החלק הראשון של המייל */
+function calWorkerName(id){ const p=Cal.people && Cal.people.get(id); return (p && p.name) || cloudWho(String(id).split("@")[0]); }
+async function calPeopleLoad(){
+  if(!calBoss() || Cal.people) return;
+  try{
+    const s=await Cloud.m.getDocs(cloudCol("members")), m=new Map();
+    s.forEach(d=>{ const x=d.data(); if(ROLES[x.role]) m.set(d.id, {role:String(x.role), name:String(x.name||"").slice(0,60)}); });
+    Cal.people=m; calRender();
+  }catch(e){}
+}
+
+/* ---- סנכרון עם Google — רק בטלפון של בעל היומן ---- */
+function calSyncSoon(){ clearTimeout(Cal.syncT); Cal.syncT=setTimeout(calSync, 1200); }
+const calDocPayload = (o, me) => Object.assign(o, {ub:me, ua:Cloud.m.serverTimestamp()});
+async function calSync(){
+  if(!calOwner() || !Cloud.ready || !calTok() || Cal.loading || !Cal.ready) return;
+  const M=Cloud.m, me=Cloud.user.email, name=String(Cloud.user.name||"").slice(0,60), ts=M.serverTimestamp();
+  const now=new Date(), a0=new Date(now.getFullYear(), now.getMonth(), now.getDate()-31), b0=new Date(now.getFullYear(), now.getMonth(), now.getDate()+120);
+  const rg=calRange(Cal.month||calMonthOf(now)), from=new Date(Math.min(a0, rg[0])), to=new Date(Math.max(b0, rg[1]));
   Cal.loading=true; calRender();
   try{
     let items=[], pt="";
-    for(let i=0;i<6;i++){
-      const q=new URLSearchParams({timeMin:rg[0].toISOString(), timeMax:rg[1].toISOString(), singleEvents:"true", orderBy:"startTime", maxResults:"250",
-        fields:"items(id,summary,location,start,end,organizer(self),guestsCanModify,status),nextPageToken"});
+    for(let i=0;i<10;i++){
+      const q=new URLSearchParams({timeMin:from.toISOString(), timeMax:to.toISOString(), singleEvents:"true", orderBy:"startTime", maxResults:"250",
+        fields:"items(id,summary,location,start,end,organizer(self),guestsCanModify,status,visibility),nextPageToken"});
       if(pt) q.set("pageToken", pt);
       const r=await calReq("GET", CAL_API+"?"+q.toString());
       items=items.concat((r&&r.items)||[]); pt=r&&r.nextPageToken;
       if(!pt) break;
     }
-    if(Cal.month!==mk) return;
-    Cal.events=items.filter(e=>e && e.status!=="cancelled" && e.start && e.id).map(calNorm);
-    Cal.at=Date.now(); Cal.err=""; calSave();
-  }catch(e){ if(Cal.month===mk) Cal.err=calErrText(e); }
+    Cal.g=items.filter(e=>e && e.status!=="cancelled" && e.start && e.id).map(calNormG);
+    Cal.at=Date.now(); Cal.err=""; calCacheSave();
+    /* השוואה למה שבענן, וכתיבה רק של מה שהשתנה */
+    const mine=[...Cal.docs.values()].filter(d=>d.own===me), byG=new Map(mine.filter(d=>d.gid).map(d=>[d.gid,d])), seen=new Set(), ops=[];
+    for(const g of Cal.g){
+      seen.add(g.gid);
+      const want={title:g.priv?"":g.title, loc:g.priv?"":g.loc, all:g.all, s:g.s, e:g.e, priv:g.priv};
+      const d=byG.get(g.gid);
+      if(!d){
+        ops.push([M.doc(calCol(), uid()), Object.assign({own:me, ownName:name, gid:g.gid, done:g.done, doneBy:"", doneByName:"", asg:[], gdirty:false, del:false, cb:me, ca:ts, ub:me, ua:ts}, want)]);
+        continue;
+      }
+      if(d.gdirty){
+        /* שינוי שנעשה באפליקציה ("בוצע") — עולה ל-Google; השם העדכני נשאר מ-Google */
+        if(!g.edit){ ops.push([M.doc(calCol(), d.id), calDocPayload(Object.assign({gdirty:false}, want, g.priv?{asg:[]}:{}), me)]); continue; }   /* הזמנה ממישהו אחר: "בוצע" נשאר באפליקציה בלבד */
+        const url=CAL_API+"/"+encodeURIComponent(g.gid);
+        try{ await calReq("PATCH", url+"?fields=id", {summary:(d.done?CAL_DONE:"")+g.title}); }catch(e){ if(e.code==="cal/auth" || e.code==="cal/net") throw e; continue; }
+        ops.push([M.doc(calCol(), d.id), calDocPayload(Object.assign({gdirty:false}, want, g.priv?{asg:[]}:{}), me)]);
+        continue;
+      }
+      const ch={};
+      for(const k in want) if(d[k]!==want[k]) ch[k]=want[k];
+      if(g.edit && d.done!==g.done){ ch.done=g.done; ch.doneBy=""; ch.doneByName=""; }   /* סומן/בוטל ב-Google */
+      if(g.priv && d.asg.length) ch.asg=[];
+      if(d.ownName!==name) ch.ownName=name;
+      if(Object.keys(ch).length) ops.push([M.doc(calCol(), d.id), calDocPayload(ch, me)]);
+    }
+    /* נמחק ב-Google (בטווח שנבדק) */
+    mine.forEach(d=>{ if(d.gid && !d.del && !seen.has(d.gid) && d.s>=from.getTime() && d.s<to.getTime()) ops.push([M.doc(calCol(), d.id), calDocPayload({del:true}, me)]); });
+    /* נוסף באפליקציה ע״י מישהו אחר (או בלי חיבור) — נכתב עכשיו ל-Google */
+    for(const d of mine.filter(x=>!x.gid && x.gdirty && !x.del)){
+      const r=await calReq("POST", CAL_API+"?fields=id", calGoogleBody(d));
+      if(r && r.id) ops.push([M.doc(calCol(), d.id), calDocPayload({gid:String(r.id), gdirty:false}, me)]);
+    }
+    for(let i=0;i<ops.length;i+=400){
+      const b=M.writeBatch(Cloud.db);
+      ops.slice(i,i+400).forEach(([ref,data])=>b.set(ref, data, {merge:true}));
+      await b.commit();
+    }
+  }catch(e){ Cal.err=calErrText(e); }
   finally{ Cal.loading=false; calRender(); }
 }
-/* המשימות של יום — משימת "כל היום" שנמשכת כמה ימים מופיעה בכל אחד מהם */
-function calOfDay(d, evs){
-  const a=d.getTime(), b=new Date(d.getFullYear(), d.getMonth(), d.getDate()+1).getTime();
-  return (evs||Cal.events).filter(x => x.all ? (x.s<b && Math.max(x.e, x.s+1)>a) : (x.s>=a && x.s<b))
-    .sort((x,y)=>(y.all-x.all) || (x.s-y.s) || x.title.localeCompare(y.title));
+function calGoogleBody(d){
+  let tz="Asia/Jerusalem"; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||tz; }catch(e){}
+  const s=new Date(d.s), e=new Date(d.e), lt=x=>calKey(x)+"T"+calPad(x.getHours())+":"+calPad(x.getMinutes())+":00";
+  const body={summary:(d.done?CAL_DONE:"")+d.title,
+    start: d.all ? {date:calKey(s)} : {dateTime:lt(s), timeZone:tz},
+    end:   d.all ? {date:calKey(e>s?e:new Date(s.getFullYear(),s.getMonth(),s.getDate()+1))} : {dateTime:lt(e), timeZone:tz}};
+  if(d.loc) body.location=d.loc;
+  return body;
 }
-const calFind = id => Cal.events.find(x=>x.id===id);
 
-/* ---- מסך הבית: סיכום היום (מהעותק שבטלפון) ---- */
+/* ---- מסך הבית ---- */
 function calHomeSub(){
-  const today=new Date(), c=calCacheGet(calMonthOf(today));
-  if(!c) return 'המשימות שלך מיומן Google';
-  const list=calOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate()), c.ev||[]);
+  if(Cal.srvErr) return calWorker() ? 'המשימות ששויכו אליך' : 'המשימות של המנהלים, מסונכרן עם Google';
+  const t=new Date(), list=calOfDay(new Date(t.getFullYear(), t.getMonth(), t.getDate()), calItems().filter(x=>!x.busy));
   const open=list.filter(x=>!x.done), next=open.find(x=>!x.all && x.s>=Date.now()-15*60000);
   if(!list.length) return 'היום: אין משימות';
   if(!open.length) return 'היום: הכול בוצע ✓';
@@ -4908,147 +5044,241 @@ function calHomeSub(){
     + (next ? ' · <span>הבאה '+calHM(next.s)+'</span> <span data-tr>'+esc(next.title)+'</span>' : '');
 }
 
-/* ---- המסך ---- */
+/* ---- המסכים ---- */
 function viewCal(){
-  if(!Cal.month) calSetMonth(calMonthOf(new Date()));
+  if(!Cal.month){ Cal.month=calMonthOf(new Date()); Cal.past=false; }
   return '<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
-    +'<div class="grow"><h1>היומן שלי</h1><div class="sub">מסונכרן עם יומן Google</div></div></div>'
+    +'<div class="grow"><h1>יומן הצוות</h1><div class="sub">מסונכרן עם יומן Google</div></div></div>'
+    +'<div class="cal-chips" id="calChips"></div>'
     +'<div class="card cal-card"><div class="cal-head"><button type="button" class="cal-nav" onclick="calMove(-1)" aria-label="החודש הקודם">›</button>'
     +'<b id="calTitle" data-noi18n></b><button type="button" class="cal-nav" onclick="calMove(1)" aria-label="החודש הבא">‹</button></div>'
     +'<div class="cal-grid" id="calGrid"></div>'
-    +'<div class="cal-sync"><bdi dir="ltr">'+esc(Cloud.user?Cloud.user.email:"")+'</bdi><button type="button" class="cal-ref" id="calSync" onclick="calRefresh()"></button></div></div>'
+    +'<div class="cal-sync" id="calSyncRow"></div></div>'
     +'<div id="calConn"></div>'
     +'<div class="card cal-list" id="calList"></div>'
     +'<button class="btn primary fab" onclick="calAdd()">+ משימה חדשה</button>';
 }
+function viewTasks(){
+  if(!Cal.month){ Cal.month=calMonthOf(new Date()); Cal.past=false; }
+  return '<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
+    +'<div class="grow"><h1>המשימות שלי</h1><div class="sub">משימות שהמנהל שייך אליך</div></div></div>'
+    +'<div id="calConn"></div>'
+    +'<div class="card cal-list" id="calList"></div>';
+}
 function afterCalRender(){
-  calRender();
-  if(calTok() && (!Cal.at || Date.now()-Cal.at>60000)) calLoad();
-  if(!Cal.timer) Cal.timer=setInterval(()=>{ if(document.visibilityState==="visible" && document.getElementById("calList") && calTok()) calLoad(); }, 120000);
+  Cal.month=calMonthOf(new Date()); Cal.past=false;
+  calRender(); calPeopleLoad();
+  if(calOwner() && calTok() && (!Cal.at || Date.now()-Cal.at>60000)) calSyncSoon();
+  if(!Cal.timer) Cal.timer=setInterval(()=>{ if(document.visibilityState==="visible" && document.getElementById("calList") && calOwner() && calTok()) calSync(); }, 120000);
 }
 function calStop(){ if(Cal.timer){ clearInterval(Cal.timer); Cal.timer=null; } }
-function calMove(n){ const [y,m]=calYM(Cal.month); calSetMonth(calMonthOf(new Date(y,m+n,1))); calRender(); window.scrollTo(0,0); calLoad(); }
-function calRefresh(){ if(!calTok()){ calConnect(); return; } calLoad(); }
+function calMove(n){ const [y,m]=calYM(Cal.month); Cal.month=calMonthOf(new Date(y,m+n,1)); Cal.past=false; calRender(); window.scrollTo(0,0); }
+function calPick(em){ Cal.sel=em; calRender(); }
 function calRender(){
-  const grid=document.getElementById("calGrid"), list=document.getElementById("calList"); if(!grid || !list) return;
-  const [y,m]=calYM(Cal.month), rg=calRange(Cal.month), now=new Date(), tk=calKey(now);
-  document.getElementById("calTitle").textContent=calMonTitle(y,m);
-  /* החודש בקטן */
-  let g='';
-  for(let i=0;i<7;i++) g+='<div class="cal-wd" data-noi18n>'+esc(calWd(new Date(2026,9,4+i), true))+'</div>';
-  for(let d=new Date(rg[0]); d<rg[1]; d=new Date(d.getFullYear(), d.getMonth(), d.getDate()+1)){
-    const k=calKey(d), inM=d.getMonth()===m, has=inM && calOfDay(d).some(x=>!x.done);
-    g+= inM ? '<button type="button" class="cal-d'+(k===tk?' today':'')+'" data-d="'+k+'" onclick="calJump(this.dataset.d)">'+d.getDate()+(has?'<i class="cal-dot"></i>':'')+'</button>'
-            : '<div class="cal-d out">'+d.getDate()+'</div>';
+  const list=document.getElementById("calList"); if(!list) return;
+  const tasks=!document.getElementById("calGrid");     /* מסך העובד: בלי חודש ובלי בחירת יומן */
+  const [y,m]=calYM(Cal.month), now=new Date(), tk=calKey(now), items=calItems(), me=Cloud.user?Cloud.user.email:"";
+  if(!tasks){
+    document.getElementById("calTitle").textContent=calMonTitle(y,m);
+    const owners=calOwners();
+    if(Cal.sel!=="all" && !owners.some(o=>o.em===Cal.sel)) Cal.sel="all";
+    document.getElementById("calChips").innerHTML = owners.length<2 ? "" :
+      '<button type="button" class="cal-chip'+(Cal.sel==="all"?' on':'')+'" onclick="calPick(\'all\')">כולם</button>'
+      + owners.map(o=>'<button type="button" class="cal-chip'+(Cal.sel===o.em?' on':'')+'" data-em="'+esc(o.em)+'" onclick="calPick(this.dataset.em)"><i class="cal-cd" style="background:'+calColor(o.em)+'"></i>'
+        +(o.em===me?'<span>אני</span>':'<span data-noi18n>'+esc(o.name)+'</span>')+'</button>').join("");
+    const rg=calRange(Cal.month);
+    let g='';
+    for(let i=0;i<7;i++) g+='<div class="cal-wd" data-noi18n>'+esc(calWd(new Date(2026,9,4+i), true))+'</div>';
+    for(let d=new Date(rg[0]); d<rg[1]; d=new Date(d.getFullYear(), d.getMonth(), d.getDate()+1)){
+      const k=calKey(d), inM=d.getMonth()===m;
+      if(!inM){ g+='<div class="cal-d out">'+d.getDate()+'</div>'; continue; }
+      const own=[...new Set(calOfDay(d, items).filter(x=>!x.done).map(x=>x.own))].slice(0,3);
+      g+='<button type="button" class="cal-d'+(k===tk?' today':'')+'" data-d="'+k+'" onclick="calJump(this.dataset.d)">'+d.getDate()
+        +(own.length?'<span class="cal-dots">'+own.map(o=>'<i style="background:'+(k===tk?'#fff':calColor(o))+'"></i>').join("")+'</span>':'')+'</button>';
+    }
+    document.getElementById("calGrid").innerHTML=g;
+    document.getElementById("calSyncRow").innerHTML = calOwner()
+      ? (Cal.loading ? '<span>מתעדכן…</span>'
+        : calTok() ? '<button type="button" class="cal-ref" onclick="calSync()">'+(Cal.at?'<span>עודכן מ-Google</span> <span>'+esc(cloudRel(Cal.at))+'</span> · ':'')+'🔄</button>' : '')
+      : '<span>מתעדכן לבד כשמשהו משתנה</span>';
   }
-  grid.innerHTML=g;
-  const sync=document.getElementById("calSync");
-  sync.innerHTML = Cal.loading ? '<span>מתעדכן…</span>'
-    : !calTok() ? '<span>🔄 חבר מחדש</span>'
-    : (!navigator.onLine ? '<span>📴 בלי קליטה</span> · ' : '')+(Cal.at ? '<span>עודכן</span> <span>'+esc(cloudRel(Cal.at))+'</span> · 🔄' : '🔄');
-  /* חיבור / שגיאה */
+  /* הודעות: שרת לא מוכן / חיבור ל-Google / שגיאה */
   const conn=document.getElementById("calConn");
-  conn.innerHTML = !calTok()
-    ? (Cal.at
-      ? '<div class="card cal-note"><div class="grow">האישור של Google ליומן תקף לשעה. לחיצה אחת מחדשת אותו.</div><button class="btn small primary" onclick="calConnect()">🔄 חבר מחדש</button></div>'
-      : '<div class="card cal-note col"><b>📅 חיבור ליומן Google</b><div class="muted">כדי לראות כאן את המשימות שלך, מחברים את יומן ה-Google שלך. Google ישאל אם לתת לאפליקציה גישה ליומן.</div>'
-        +'<button class="btn primary wide" onclick="calConnect()">📅 חבר את יומן Google</button></div>')
-    : (Cal.err ? '<div class="card cal-note err"><div class="grow">'+esc(Cal.err)+'</div><button class="btn small" onclick="calLoad()">נסה שוב</button></div>' : '');
-  /* הרשימה — לפי ימים. בחודש הנוכחי מתחילים מהיום; ימים קודמים בלחיצה */
-  if(!Cal.at && !Cal.events.length){ list.hidden=true; list.innerHTML=""; return; }
-  list.hidden=false;
+  conn.innerHTML = Cal.srvErr==="permission-denied"
+      ? '<div class="card cal-note err"><div class="grow">יומן הצוות עוד לא הופעל בשרת. המפתח צריך לפרסם את כללי השרת החדשים.</div></div>'
+    : Cal.srvErr ? '<div class="card cal-note err"><div class="grow">'+esc(calErrText({code:Cal.srvErr}))+'</div></div>'
+    : (!tasks && calOwner() && !calTok())
+      ? (Cal.at
+        ? '<div class="card cal-note"><div class="grow">האישור של Google ליומן תקף לשעה. לחיצה אחת מחדשת אותו.</div><button class="btn small primary" onclick="calConnect()">🔄 חבר מחדש</button></div>'
+        : '<div class="card cal-note col"><b>📅 חיבור ליומן Google</b><div class="muted">כדי שהמשימות שלך יופיעו כאן ויסתנכרנו, מחברים את יומן ה-Google שלך. Google ישאל אם לתת לאפליקציה גישה ליומן.</div>'
+          +'<button class="btn primary wide" onclick="calConnect()">📅 חבר את יומן Google</button></div>')
+    : (Cal.err && !tasks ? '<div class="card cal-note err"><div class="grow">'+esc(Cal.err)+'</div><button class="btn small" onclick="calSync()">נסה שוב</button></div>' : '');
+  /* הרשימה לפי ימים: בחודש הנוכחי מהיום (ימים קודמים בלחיצה); בעובד — כל המשימות הבאות */
   const curMonth = y===now.getFullYear() && m===now.getMonth();
-  const first = (curMonth && !Cal.past) ? now.getDate() : 1, last=new Date(y,m+1,0).getDate();
-  let h='';
-  if(curMonth && !Cal.past && first>1) h+='<button type="button" class="cal-past" onclick="calShowPast()">הצג ימים קודמים ('+(first-1)+')</button>';
-  for(let i=first;i<=last;i++){
-    const d=new Date(y,m,i), k=calKey(d), evs=calOfDay(d), rel=k===tk ? "היום" : k===calKey(new Date(now.getFullYear(),now.getMonth(),now.getDate()+1)) ? "מחר" : "";
-    const cnt=evs.length ? (evs.length===1 ? 'משימה אחת' : evs.length+' משימות') : 'אין משימות';
-    h+='<div class="cal-day'+(k<tk?' past':'')+(k===tk?' is-today':'')+'" id="cd-'+k+'"><b>'+(rel?'<span>'+rel+'</span> · ':'')+'<span data-noi18n>'+esc(calWd(d))+' '+i+'/'+(m+1)+'</span></b><span class="muted">'+cnt+'</span></div>';
-    evs.forEach(x=>{
-      const busy=Cal.busy.has(x.id);
-      h+='<div class="cal-ev'+(x.done?' done':'')+(busy?' busy':'')+'">'
-        +'<button type="button" class="cal-bx" data-id="'+esc(x.id)+'" onclick="calToggle(this.dataset.id)" aria-label="'+(x.done?'בטל סימון':'סמן כבוצע')+'"'+(busy?' disabled':'')+'>'+(x.done?'✓':'')+'</button>'
-        +'<div class="cal-tm">'+(x.all?'<span class="cal-all">כל היום</span>':esc(calHM(x.s)))+'</div>'
-        +'<div class="grow"><div class="cal-et" data-tr>'+esc(x.title||"(ללא שם)")+'</div>'
-        +(x.loc?'<div class="cal-el">📍 <span data-tr>'+esc(x.loc)+'</span></div>':'')+'</div></div>';
-    });
+  let h='', days=[];
+  if(tasks){
+    const t0=new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const keys=[...new Set(items.filter(x=>Cal.past || Math.max(x.e, x.s+1)>t0).map(x=>calKey(new Date(Math.max(x.s, Cal.past?x.s:t0)))))].sort();
+    if(!Cal.past && items.some(x=>Math.max(x.e,x.s+1)<=t0)) h+='<button type="button" class="cal-past" onclick="calShowPast()">הצג משימות קודמות</button>';
+    if(!keys.includes(tk)) keys.unshift(tk);
+    days=keys.map(calDay);
+    if(!items.length && Cal.ready){ list.innerHTML='<div class="empty" style="padding:18px 0">עדיין לא שויכו אליך משימות.</div>'; return; }
+  } else {
+    const first=(curMonth && !Cal.past) ? now.getDate() : 1, last=new Date(y,m+1,0).getDate();
+    if(curMonth && !Cal.past && first>1) h+='<button type="button" class="cal-past" onclick="calShowPast()">הצג ימים קודמים ('+(first-1)+')</button>';
+    for(let i=first;i<=last;i++) days.push(new Date(y,m,i));
   }
+  const tomorrow=calKey(new Date(now.getFullYear(),now.getMonth(),now.getDate()+1));
+  days.forEach(d=>{
+    const k=calKey(d), evs=calOfDay(d, items), rel=k===tk ? "היום" : k===tomorrow ? "מחר" : "";
+    if(tasks && !evs.length && k!==tk) return;
+    const cnt=evs.length ? (evs.length===1 ? 'משימה אחת' : evs.length+' משימות') : 'אין משימות';
+    h+='<div class="cal-day'+(k<tk?' past':'')+'" id="cd-'+k+'"><b>'+(rel?'<span>'+rel+'</span> · ':'')+'<span data-noi18n>'+esc(calWd(d))+' '+d.getDate()+'/'+(d.getMonth()+1)+'</span></b><span class="muted">'+cnt+'</span></div>';
+    evs.forEach(x=>{ h+=calRow(x, tasks); });
+  });
   list.innerHTML=h;
+}
+function calRow(x, tasks){
+  const busy=Cal.busy.has(x.id), boss=calBoss();
+  const can=!x.busy && (boss || (calWorker() && x.asg.includes(Cloud.user.email)));
+  const tags=[];
+  if(boss){
+    if(Cal.sel==="all" && calOwners().length>1) tags.push('<span class="cal-tg cal-to" style="color:'+calColor(x.own)+'">'+(x.own===Cloud.user.email?'<span>אני</span>':'<span data-noi18n>'+esc(calOwnerName(x.own))+'</span>')+'</span>');
+    x.asg.forEach(a=>tags.push('<span class="cal-tg cal-tw">👷 <span data-noi18n>'+esc(calWorkerName(a))+'</span></span>'));
+    if(x.done && x.doneBy && x.asg.includes(x.doneBy)) tags.push('<span class="cal-tg cal-tok">✓ <span data-noi18n>'+esc(x.doneByName||calWorkerName(x.doneBy))+'</span></span>');
+    if(x.gdirty) tags.push('<span class="cal-tg cal-ts">'+(x.own!==Cloud.user.email ? '<span>⏳ יתעדכן ב-Google של</span> <span data-noi18n>'+esc(calOwnerName(x.own))+'</span>'
+      : calTok() ? '<span>⏳ מתעדכן ב-Google</span>' : '<span>⏳ יתעדכן ב-Google כשתתחבר</span>')+'</span>');
+    if(x.busy) tags.push('<span class="cal-tg cal-tp">מוצג רק כ"תפוס"</span>');
+  }
+  const bar = boss && !tasks ? '<i class="cal-bar" style="background:'+calColor(x.own)+'"></i>' : '';
+  const from = tasks && x.ownName ? '<span>מאת</span> <span data-noi18n>'+esc(x.ownName)+'</span>' : '';
+  return '<div class="cal-ev'+(x.done?' done':'')+(busy?' busy':'')+'">'+bar
+    +'<button type="button" class="cal-bx" data-id="'+esc(x.id)+'" onclick="calToggle(this.dataset.id)" aria-label="'+(x.done?'בטל סימון':'סמן כבוצע')+'"'+(busy||!can?' disabled':'')+'>'+(x.done?'✓':'')+'</button>'
+    +'<div class="cal-tm">'+(x.all?'<span class="cal-all">כל היום</span>':esc(calHM(x.s)))+'</div>'
+    +'<div class="grow cal-body" data-id="'+esc(x.id)+'"'+(boss&&!x.busy?' onclick="calOpen(this.dataset.id)"':'')+'>'
+    +(x.busy?'<div class="cal-et">🔒 <span>תפוס</span></div>':'<div class="cal-et" data-tr>'+esc(x.title||"(ללא שם)")+'</div>')
+    +(x.loc||from?'<div class="cal-el">'+(x.loc?'📍 <span data-tr>'+esc(x.loc)+'</span>':'')+(x.loc&&from?' · ':'')+from+'</div>':'')
+    +(tasks && x.loc?'<a class="cal-waze" href="'+esc(wazeUrl(x.loc))+'" target="_blank" rel="noopener noreferrer">🚗 נווט ב-Waze</a>':'')
+    +(tags.length?'<div class="cal-tags">'+tags.join("")+'</div>':'')
+    +'</div></div>';
 }
 function calShowPast(){ Cal.past=true; calRender(); }
 function calJump(k){
   const [y,m]=calYM(Cal.month), now=new Date(), d=calDay(k);
   if(y===now.getFullYear() && m===now.getMonth() && d<new Date(now.getFullYear(),now.getMonth(),now.getDate()) && !Cal.past){ Cal.past=true; calRender(); }
   const el=document.getElementById("cd-"+k); if(!el) return;
-  const top=el.getBoundingClientRect().top+window.scrollY-90;
-  window.scrollTo({top:Math.max(0,top), behavior:"smooth"});
+  window.scrollTo({top:Math.max(0, el.getBoundingClientRect().top+window.scrollY-90), behavior:"smooth"});
   el.classList.add("flash"); setTimeout(()=>el.classList.remove("flash"), 1200);
 }
 
-/* ---- סימון "בוצע" — נשמר ביומן Google ("✅ " בתחילת השם). ביטול — רק אחרי אישור ---- */
+/* ---- "בוצע": מנהל/מפתח בכל משימה, עובד במשימה ששויכה אליו. ביטול — רק אחרי אישור ---- */
 async function calToggle(id){
-  const x=calFind(id); if(!x || Cal.busy.has(id)) return;
-  if(!x.edit){ uiAlert("את המשימה הזו יצר מישהו אחר, ולכן אפשר לסמן אותה רק ביומן Google עצמו.","יומן Google"); return; }
-  if(!calTok()){ uiAlert("צריך לחבר מחדש את יומן Google. לחץ על \"חבר מחדש\" ונסה שוב.","יומן Google"); calRender(); return; }
+  const x=Cal.docs.get(id); if(!x || Cal.busy.has(id) || x.priv) return;
+  const me=Cloud.user.email, worker=!calBoss();
+  if(worker && !(calWorker() && x.asg.includes(me))) return;
   if(x.done){
     const ok=await uiConfirm("לבטל את הסימון \"בוצע\"? המשימה תחזור להיות פתוחה, גם ביומן Google.",{title:"ביטול סימון",ok:"בטל סימון",cancel:"השאר בוצע"});
     if(!ok) return;
   }
-  const want=!x.done, url=CAL_API+"/"+encodeURIComponent(id);
-  x.done=want; Cal.busy.add(id); calRender();
+  const M=Cloud.m, want=!x.done, ts=M.serverTimestamp();
+  Cal.busy.add(id); calRender();
   try{
-    /* קוראים את השם העדכני מהיומן (אולי שונה ב-Google בינתיים) ורק מוסיפים/מורידים את הסימון */
-    const cur=await calReq("GET", url+"?fields=summary");
-    const base=String((cur&&cur.summary)||"").replace(/^✅\s*/,"");
-    const r=await calReq("PATCH", url+"?fields=id,summary,location,start,end,organizer(self),guestsCanModify,status", {summary:(want?CAL_DONE:"")+base});
-    const n=r ? calNorm(r) : null; if(n){ Object.assign(x, n); }
-    Cal.busy.delete(id); calSave(); calRender();
-  }catch(e){
-    x.done=!want; Cal.busy.delete(id); calRender();
-    uiAlert(calErrText(e),"יומן Google");
-  }
+    await cloudTimeout(M.updateDoc(M.doc(calCol(), id), {done:want, doneBy:want?me:"", doneByName:want?String(Cloud.user.name||"").slice(0,60):"", doneAt:ts, gdirty:true, ub:me, ua:ts}), 12000)
+      .catch(e=>{ if(e && e.code==="deadline-exceeded") return; throw e; });   /* בלי קליטה: נשמר בטלפון ויעלה כשתחזור קליטה */
+  }catch(e){ uiAlert(calErrText(e),"יומן הצוות"); }
+  finally{ Cal.busy.delete(id); calRender(); }
+  if(calOwner() && x.own===me && calTok()) calSyncSoon();
 }
 
-/* ---- משימה חדשה — נכתבת ישר ליומן Google ---- */
+/* ---- פרטי משימה ושיוך לעובדים (מנהל ומפתח) ---- */
+function calWorkersList(){ return Cal.people ? [...Cal.people.entries()].filter(([,p])=>p.role==="employee").map(([id])=>id).sort((a,b)=>calWorkerName(a).localeCompare(calWorkerName(b))) : []; }
+function calAsgHTML(sel){
+  const ws=calWorkersList();
+  if(!Cal.people) return '<div class="muted">טוען…</div>';
+  if(!ws.length) return '<div class="muted">אין עדיין עובדים בצוות.</div>';
+  return '<div class="cal-asg">'+ws.map(w=>'<label class="cal-chk"><input type="checkbox" value="'+esc(w)+'"'+(sel.includes(w)?' checked':'')+'> <span data-noi18n>'+esc(calWorkerName(w))+'</span></label>').join("")+'</div>';
+}
+function calOpen(id){
+  const x=calItems().find(d=>d.id===id); if(!x || !calBoss() || x.busy) return;
+  const ov=document.createElement("div"); ov.className="modal-overlay";
+  const when=x.all ? '<span>כל היום</span>' : esc(calHM(x.s))+'–'+esc(calHM(x.e));
+  const d=new Date(x.s);
+  ov.innerHTML='<div class="modal cal-form" role="dialog" aria-modal="true"><h3 data-tr>'+esc(x.title||"(ללא שם)")+'</h3>'
+    +'<div class="muted"><span data-noi18n>'+esc(calWd(d))+' '+d.getDate()+'/'+(d.getMonth()+1)+'</span> · '+when+'</div>'
+    +'<div class="muted"><span>ביומן של</span> '+(x.own===Cloud.user.email?'<span>אני</span>':'<span data-noi18n>'+esc(calOwnerName(x.own))+'</span>')+'</div>'
+    +(x.loc?'<div class="muted">📍 <span data-tr>'+esc(x.loc)+'</span></div><a class="cal-waze" href="'+esc(wazeUrl(x.loc))+'" target="_blank" rel="noopener noreferrer">🚗 נווט ב-Waze</a>':'')
+    +(x.priv?'<div class="muted" style="margin-top:10px">אירוע פרטי — אי אפשר לשייך אותו לעובד.</div>'
+      :'<label>שייך לעובדים</label><div id="cfW">'+calAsgHTML(x.asg)+'</div><div class="hint">העובד יראה את המשימה אצלו ויוכל לסמן שבוצעה.</div>')
+    +'<div class="btns">'+(x.priv?'':'<button class="btn primary" data-m="ok">שמור</button>')+'<button class="btn" data-m="cancel">סגור</button></div></div>';
+  document.body.appendChild(ov);
+  const $=s=>ov.querySelector(s);
+  $('[data-m="cancel"]').onclick=()=>ov.remove();
+  ov.addEventListener("click",e=>{ if(e.target===ov) ov.remove(); });
+  if(!Cal.people) calPeopleLoad().then(()=>{ const w=$("#cfW"); if(w) w.innerHTML=calAsgHTML(x.asg); });
+  const ok=$('[data-m="ok"]'); if(!ok) return;
+  ok.onclick=async()=>{
+    const asg=[...ov.querySelectorAll('#cfW input:checked')].map(i=>i.value).filter(v=>Cal.people && Cal.people.has(v)).sort();
+    const M=Cloud.m;
+    ok.disabled=true;
+    try{
+      if(JSON.stringify(asg)!==JSON.stringify([...x.asg].sort()))
+        await cloudTimeout(M.updateDoc(M.doc(calCol(), id), {asg:asg, ub:Cloud.user.email, ua:M.serverTimestamp()}), 12000).catch(e=>{ if(e && e.code==="deadline-exceeded") return; throw e; });
+      ov.remove(); cloudToast("נשמר ✓");
+    }catch(e){ ok.disabled=false; uiAlert(calErrText(e),"יומן הצוות"); }
+  };
+}
+
+/* ---- משימה חדשה (מנהל ומפתח): ביומן של מנהל, עם שיוך לעובדים ---- */
 function calAdd(){
-  if(!calTok()){ uiAlert("כדי להוסיף משימה צריך קודם לחבר את יומן Google.","יומן Google"); return; }
+  if(!calBoss()) return;
+  const owners=calOwners(), me=Cloud.user.email;
+  if(!owners.length){ uiAlert("עדיין אין מנהל בצוות. היומן שייך למנהלים.","יומן הצוות"); return; }
+  const def = owners.some(o=>o.em===me) ? me : (Cal.sel!=="all" ? Cal.sel : owners[0].em);
   const now=new Date(), [y,m]=calYM(Cal.month);
   const day = (y===now.getFullYear() && m===now.getMonth()) ? calKey(now) : calKey(new Date(y,m,1));
   const h0=new Date(now.getTime()+60*60000); h0.setMinutes(0,0,0);
   if(h0.getHours()<7 || h0.getHours()>=20 || day!==calKey(now)) h0.setHours(9);   /* בלילה, או ביום אחר — ברירת מחדל 09:00 */
   const ov=document.createElement("div"); ov.className="modal-overlay";
-  ov.innerHTML='<div class="modal cal-form" role="dialog" aria-modal="true"><h3>משימה חדשה ביומן</h3>'
+  ov.innerHTML='<div class="modal cal-form" role="dialog" aria-modal="true"><h3>משימה חדשה</h3>'
     +'<label>מה צריך לעשות</label><input id="cfT" maxlength="200" autocomplete="off" placeholder="למשל: מדידה אצל משפחת לוי">'
+    +'<label>ביומן של</label><select id="cfO">'+owners.map(o=>'<option value="'+esc(o.em)+'"'+(o.em===def?' selected':'')+(o.em===me?'':' data-noi18n')+'>'+(o.em===me?'אני':esc(o.name))+'</option>').join("")+'</select>'
     +'<label>תאריך</label><input id="cfD" type="date" value="'+day+'">'
     +'<label class="cal-chk"><input id="cfA" type="checkbox"> <span>כל היום</span></label>'
     +'<div class="two" id="cfTimes"><div><label>משעה</label><input id="cfS" type="time" value="'+calPad(h0.getHours())+':00"></div>'
     +'<div><label>עד שעה</label><input id="cfE" type="time" value="'+calPad((h0.getHours()+1)%24)+':00"></div></div>'
     +'<label>כתובת (לא חובה)</label><input id="cfL" maxlength="200" autocomplete="off">'
-    +'<div class="btns"><button class="btn primary" data-m="ok">הוסף ליומן</button><button class="btn" data-m="cancel">ביטול</button></div></div>';
+    +'<label>שייך לעובדים</label><div id="cfW">'+calAsgHTML([])+'</div><div class="hint">העובד יראה את המשימה אצלו ויוכל לסמן שבוצעה.</div>'
+    +'<div class="btns"><button class="btn primary" data-m="ok">הוסף</button><button class="btn" data-m="cancel">ביטול</button></div></div>';
   document.body.appendChild(ov);
   const $=s=>ov.querySelector(s);
+  if(!Cal.people) calPeopleLoad().then(()=>{ const w=$("#cfW"); if(w && !w.querySelector("input")) w.innerHTML=calAsgHTML([]); });
   $("#cfA").onchange=()=>{ $("#cfTimes").hidden=$("#cfA").checked; };
   $("#cfS").onchange=()=>{ const a=$("#cfS").value.split(":"); if(a.length===2) $("#cfE").value=calPad((Number(a[0])+1)%24)+":"+a[1]; };
   $('[data-m="cancel"]').onclick=()=>ov.remove();
   ov.addEventListener("click",e=>{ if(e.target===ov) ov.remove(); });
   $('[data-m="ok"]').onclick=async()=>{
-    const title=$("#cfT").value.trim().slice(0,200), d=$("#cfD").value, all=$("#cfA").checked, s=$("#cfS").value, en=$("#cfE").value, loc=$("#cfL").value.trim().slice(0,200);
+    const title=$("#cfT").value.trim().slice(0,200), d=$("#cfD").value, all=$("#cfA").checked, s=$("#cfS").value, en=$("#cfE").value, loc=$("#cfL").value.trim().slice(0,200), own=$("#cfO").value;
+    const asg=[...ov.querySelectorAll('#cfW input:checked')].map(i=>i.value).filter(v=>Cal.people && Cal.people.has(v)).sort();
     if(!title){ uiAlert("כתוב מה צריך לעשות.","משימה חדשה"); return; }
     if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ uiAlert("בחר תאריך.","משימה חדשה"); return; }
     if(!all && !(/^\d{2}:\d{2}$/.test(s) && /^\d{2}:\d{2}$/.test(en) && en>s)){ uiAlert("שעת הסיום צריכה להיות אחרי שעת ההתחלה.","משימה חדשה"); return; }
-    let tz="Asia/Jerusalem"; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||tz; }catch(e){}
-    const nd=calDay(d), next=calKey(new Date(nd.getFullYear(), nd.getMonth(), nd.getDate()+1));
-    const body={summary:title, start: all?{date:d}:{dateTime:d+"T"+s+":00", timeZone:tz}, end: all?{date:next}:{dateTime:d+"T"+en+":00", timeZone:tz}};
-    if(loc) body.location=loc;
-    const btn=$('[data-m="ok"]'); btn.disabled=true;
+    if(!owners.some(o=>o.em===own)){ uiAlert("בחר ביומן של מי.","משימה חדשה"); return; }
+    const nd=calDay(d), st=all ? nd : new Date(d+"T"+s+":00"), et=all ? new Date(nd.getFullYear(), nd.getMonth(), nd.getDate()+1) : new Date(d+"T"+en+":00");
+    const M=Cloud.m, ts=M.serverTimestamp(), btn=$('[data-m="ok"]');
+    const doc={own:own, ownName:own===me?String(Cloud.user.name||"").slice(0,60):calOwnerName(own).slice(0,60), gid:"", title:title, loc:loc, all:all, s:st.getTime(), e:et.getTime(), priv:false,
+      done:false, doneBy:"", doneByName:"", asg:asg, gdirty:true, del:false, cb:me, ca:ts, ub:me, ua:ts};
+    btn.disabled=true;
     try{
-      const r=await calReq("POST", CAL_API+"?fields=id,summary,location,start,end,organizer(self),guestsCanModify,status", body);
+      /* בעל היומן עם חיבור ל-Google — נכתב מיד גם ל-Google; אחרת יעלה כשבעל היומן יפתח את האפליקציה */
+      if(own===me && calOwner() && calTok()){ const r=await calReq("POST", CAL_API+"?fields=id", calGoogleBody(doc)); if(r && r.id){ doc.gid=String(r.id); doc.gdirty=false; } }
+      await cloudTimeout(M.setDoc(M.doc(calCol(), uid()), doc), 12000).catch(e=>{ if(e && e.code==="deadline-exceeded") return; throw e; });
       ov.remove();
-      if(calMonthOf(nd)!==Cal.month) calSetMonth(calMonthOf(nd));
-      if(r && r.id && !calFind(r.id)) Cal.events.push(calNorm(r));
-      calSave(); calRender(); cloudToast("נוסף ליומן ✓"); calJump(d);
-    }catch(e){ btn.disabled=false; uiAlert(calErrText(e),"יומן Google"); }
+      if(calMonthOf(nd)!==Cal.month){ Cal.month=calMonthOf(nd); Cal.past=false; }
+      if(Cal.sel!=="all" && Cal.sel!==own) Cal.sel="all";
+      calRender();
+      cloudToast(doc.gdirty && own!==me ? "נוסף ✓ — יופיע ב-Google של "+calOwnerName(own)+" כשיפתח את האפליקציה" : "נוסף ליומן ✓");
+      calJump(d);
+    }catch(e){ btn.disabled=false; uiAlert(calErrText(e),"יומן הצוות"); }
   };
   $("#cfT").focus();
 }
@@ -5077,7 +5307,7 @@ function cloudRender(){
   if(r==="activity" && document.getElementById("actbox")){ renderActivityList(); return; }
   if(r==="team" && document.getElementById("teambox")){ renderTeamList(); return; }
   if(r==="map" && document.getElementById("tmap")){ tmapList(); return; }
-  if(r==="cal" && document.getElementById("calList")){ calRender(); return; }   /* לא בונים את המפה מחדש בכל עדכון */
+  if((r==="cal" || r==="tasks") && document.getElementById("calList")){ calRender(); return; }   /* לא בונים את המפה מחדש בכל עדכון */
   const y=window.scrollY, open=[].map.call(document.querySelectorAll("#app details"), d=>d.open);
   render();
   const ds=document.querySelectorAll("#app details");
@@ -5104,7 +5334,8 @@ function cloudGate(parts){
   if(!canPrice() && (r==="pricing" || (r==="p" && (parts[2]==="pricing" || parts[2]==="quote-export")))){ nav("/"); return true; }
   if((r==="trash" || r==="team") && Cloud.ready && !canBoss()){ nav("/settings"); return true; }
   if(r==="map" && Cloud.ready && !canBoss()){ nav("/"); return true; }
-  if(r==="cal" && !calCan()){ nav("/"); return true; }   /* היומן — רק מנהל ומפתח */
+  if(r==="cal" && !calBoss()){ nav("/"); return true; }      /* יומן הצוות — מנהל ומפתח */
+  if(r==="tasks" && !calWorker()){ nav("/"); return true; }  /* המשימות שלי — עובד */
   if(r==="p" && parts[2]==="export" && !canExport()){ nav("/p/"+parts[1]); return true; }
   return false;
 }
