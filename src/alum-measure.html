@@ -1298,7 +1298,7 @@ function viewHome(){
   +menuItem("📐","pc3","פרויקטים","מדידות ייצור לשליחה ליצרן · "+countKind("production")+" פרויקטים","/projects")
   +menuItem("💰","pc1","מידות להצעת מחיר","מדידה מהירה לתמחור · "+countKind("quote")+" הצעות","/quotes")
   +(canPrice()?menuItem("📄","pc0","הצעת מחיר ללקוח","תמחור והפקת הצעה ללקוח","/pricing"):"")
-  +(canBoss()&&calBoss()?menuItem("📅","pc4","יומן הצוות",calHomeSub(),"/cal"):"")
+  +(canBoss()&&calBoss()?menuItem("📅","pc4","יומן עבודה",calHomeSub(),"/cal"):"")
   +menuItem("🧊","pc2","הדמיה ללקוח","בונים חלון ורואים אותו בתלת־ממד","/sim")
   +(Cloud.ready&&Cloud.role!=="maker"?menuItem("🕒","pc0","פעילות הצוות","מי עשה מה ומתי — כל השינויים של הצוות","/activity"):"")
   +(canBoss()?menuItem("📍","pc3","מפת הצוות","איפה העובדים והיצרן עכשיו","/map"):"")
@@ -4779,7 +4779,7 @@ document.addEventListener("visibilitychange", ()=>{
   }catch(e){}
 });
 
-/* ================= יומן הצוות — יומן של האפליקציה, מסונכרן עם יומן Google של כל מנהל (25/10) =================
+/* ================= יומן העבודה — יומן של האפליקציה, מסונכרן עם יומן Google של כל מנהל (25/10) =================
    החלטות מתניה: כל מנהל — היומן הראשי שלו ב-Google; מנהלים ומפתח רואים את היומנים של כל המנהלים;
    המפתח עצמו לא מופיע ביומן (אין לו יומן בצוות), אבל רואה הכול ויכול לשנות; מנהל (ומפתח) משייכים משימות לעובדים;
    עובד רואה רק את מה ששויך אליו ומסמן "בוצע" — לא מוסיף משימות. ביטול "בוצע" — רק אחרי חלון אישור.
@@ -4794,7 +4794,7 @@ const CAL_SCOPE="https://www.googleapis.com/auth/calendar.events";
 const CAL_KEY="alum_cal_v2", CAL_TOK="alum_caltok_v1", CAL_DONE="✅ ";
 const CAL_COLORS=["#0ca7b4","#f97316","#8b5cf6","#e11d48","#16a34a","#2563eb"];
 const Cal={month:"", sel:"all", docs:new Map(), ready:false, srvErr:"", g:[], at:0, loading:false, err:"", timer:null, syncT:null, past:false, busy:new Set(), people:null};
-const calBoss  = () => cloudIsBoss() && !!Cloud.user && !Cloud.user.phone;              /* רואה את יומן הצוות */
+const calBoss  = () => cloudIsBoss() && !!Cloud.user && !Cloud.user.phone;              /* רואה את יומן העבודה */
 const calOwner = () => Cloud.role==="manager" && !!Cloud.user && !Cloud.user.phone;    /* יש לו יומן Google שמסתנכרן */
 const calWorker= () => Cloud.role==="employee" && !!Cloud.user;                          /* מקבל משימות */
 const calPad = n => String(n).padStart(2,"0");
@@ -5048,7 +5048,7 @@ function calHomeSub(){
 function viewCal(){
   if(!Cal.month){ Cal.month=calMonthOf(new Date()); Cal.past=false; }
   return '<div class="topbar"><button class="backbtn" onclick="nav(\'/\')">→</button>'
-    +'<div class="grow"><h1>יומן הצוות</h1><div class="sub">מסונכרן עם יומן Google</div></div></div>'
+    +'<div class="grow"><h1>יומן עבודה</h1><div class="sub">מסונכרן עם יומן Google</div></div></div>'
     +'<div class="cal-chips" id="calChips"></div>'
     +'<div class="card cal-card"><div class="cal-head"><button type="button" class="cal-nav" onclick="calMove(-1)" aria-label="החודש הקודם">›</button>'
     +'<b id="calTitle" data-noi18n></b><button type="button" class="cal-nav" onclick="calMove(1)" aria-label="החודש הבא">‹</button></div>'
@@ -5105,7 +5105,7 @@ function calRender(){
   /* הודעות: שרת לא מוכן / חיבור ל-Google / שגיאה */
   const conn=document.getElementById("calConn");
   conn.innerHTML = Cal.srvErr==="permission-denied"
-      ? '<div class="card cal-note err"><div class="grow">יומן הצוות עוד לא הופעל בשרת. המפתח צריך לפרסם את כללי השרת החדשים.</div></div>'
+      ? '<div class="card cal-note err"><div class="grow">יומן העבודה עוד לא הופעל בשרת. המפתח צריך לפרסם את כללי השרת החדשים.</div></div>'
     : Cal.srvErr ? '<div class="card cal-note err"><div class="grow">'+esc(calErrText({code:Cal.srvErr}))+'</div></div>'
     : (!tasks && calOwner() && !calTok())
       ? (Cal.at
@@ -5185,7 +5185,7 @@ async function calToggle(id){
   try{
     await cloudTimeout(M.updateDoc(M.doc(calCol(), id), {done:want, doneBy:want?me:"", doneByName:want?String(Cloud.user.name||"").slice(0,60):"", doneAt:ts, gdirty:true, ub:me, ua:ts}), 12000)
       .catch(e=>{ if(e && e.code==="deadline-exceeded") return; throw e; });   /* בלי קליטה: נשמר בטלפון ויעלה כשתחזור קליטה */
-  }catch(e){ uiAlert(calErrText(e),"יומן הצוות"); }
+  }catch(e){ uiAlert(calErrText(e),"יומן עבודה"); }
   finally{ Cal.busy.delete(id); calRender(); }
   if(calOwner() && x.own===me && calTok()) calSyncSoon();
 }
@@ -5224,7 +5224,7 @@ function calOpen(id){
       if(JSON.stringify(asg)!==JSON.stringify([...x.asg].sort()))
         await cloudTimeout(M.updateDoc(M.doc(calCol(), id), {asg:asg, ub:Cloud.user.email, ua:M.serverTimestamp()}), 12000).catch(e=>{ if(e && e.code==="deadline-exceeded") return; throw e; });
       ov.remove(); cloudToast("נשמר ✓");
-    }catch(e){ ok.disabled=false; uiAlert(calErrText(e),"יומן הצוות"); }
+    }catch(e){ ok.disabled=false; uiAlert(calErrText(e),"יומן עבודה"); }
   };
 }
 
@@ -5232,7 +5232,7 @@ function calOpen(id){
 function calAdd(){
   if(!calBoss()) return;
   const owners=calOwners(), me=Cloud.user.email;
-  if(!owners.length){ uiAlert("עדיין אין מנהל בצוות. היומן שייך למנהלים.","יומן הצוות"); return; }
+  if(!owners.length){ uiAlert("עדיין אין מנהל בצוות. היומן שייך למנהלים.","יומן עבודה"); return; }
   const def = owners.some(o=>o.em===me) ? me : (Cal.sel!=="all" ? Cal.sel : owners[0].em);
   const now=new Date(), [y,m]=calYM(Cal.month);
   const day = (y===now.getFullYear() && m===now.getMonth()) ? calKey(now) : calKey(new Date(y,m,1));
@@ -5278,7 +5278,7 @@ function calAdd(){
       calRender();
       cloudToast(doc.gdirty && own!==me ? "נוסף ✓ — יופיע ב-Google של "+calOwnerName(own)+" כשיפתח את האפליקציה" : "נוסף ליומן ✓");
       calJump(d);
-    }catch(e){ btn.disabled=false; uiAlert(calErrText(e),"יומן הצוות"); }
+    }catch(e){ btn.disabled=false; uiAlert(calErrText(e),"יומן עבודה"); }
   };
   $("#cfT").focus();
 }
@@ -5334,7 +5334,7 @@ function cloudGate(parts){
   if(!canPrice() && (r==="pricing" || (r==="p" && (parts[2]==="pricing" || parts[2]==="quote-export")))){ nav("/"); return true; }
   if((r==="trash" || r==="team") && Cloud.ready && !canBoss()){ nav("/settings"); return true; }
   if(r==="map" && Cloud.ready && !canBoss()){ nav("/"); return true; }
-  if(r==="cal" && !calBoss()){ nav("/"); return true; }      /* יומן הצוות — מנהל ומפתח */
+  if(r==="cal" && !calBoss()){ nav("/"); return true; }      /* יומן העבודה — מנהל ומפתח */
   if(r==="tasks" && !calWorker()){ nav("/"); return true; }  /* המשימות שלי — עובד */
   if(r==="p" && parts[2]==="export" && !canExport()){ nav("/p/"+parts[1]); return true; }
   return false;
